@@ -1,0 +1,71 @@
+# This file represents the base specification of your challenge. It is used by
+# other tools to install and deploy your challenge.
+
+# Required sections
+name: "{{cookiecutter.name}}"
+author: "author"
+category: Cateogory
+description: This is a sample description
+value: 100
+
+# Specifies what version of the challenge specification was used.
+# Subject to change until ctfcli v1.0.0
+version: "0.1"
+
+# Settings used for Dockerfile deployment
+# If not used, remove or set to null
+# If you have a Dockerfile set to .
+# If you have an imaged hosted on Docker set to the image url (e.g. python/3.8:latest, registry.gitlab.com/python/3.8:latest)
+# Follow Docker best practices and assign a tag
+image: null
+
+# Optional settings
+# Can be removed if unused
+type: standard
+attempts: 5
+
+# Flags specify answers that your challenge use. You should generally provide
+# at least one.
+# Can be removed if unused
+# Accepts strings or dictionaries
+flags:
+    - flag{3xampl3}
+    - {
+        type: "static",
+        content: "flag{wat}",
+        data: "asdfasdfsdf",
+    }
+
+# Tags are used to classify your challenge with topics. You should provide at
+# least one.
+# Can be removed if unused
+# Accepts strings
+tags:
+    - web
+    - sandbox
+    - js
+
+# Provide paths to files from the same directory that this file is in
+# Accepts strings
+files:
+    - dist/source.py
+
+# Hints are used to give players a way to buy or have suggestions. They are not
+# required but can be nice.
+# Can be removed if unused
+# Accepts dictionaries or strings
+hints:
+    - {
+        content: "This hint costs points",
+        cost: 10
+    }
+    - This hint is free
+
+# Requirements are used to make a challenge require another challenge to be
+# solved before being available.
+# Can be removed if unused
+# Accepts challenge names as strings or challenge IDs as integers
+requirements:
+    - "Warmup"
+    - "Are you alive"
+    - 1

@@ -1,0 +1,42 @@
+# Changelog
+
+0.0.2 / 2020-04-02
+==================
+### Added
+- Initial release of ctfcli
+- `ctf init` commands
+- `ctf challenge` commands
+- `ctf config` commands
+- `ctf plugins` commands
+- README and basic example on plugins
+
+### Changed
+- Nothing
+
+### Removed
+- Removed initial stub release from source control
+
+0.0.1 / 2020-01-01
+==================
+
+### Added
+- Stub release
+
+### Changed
+- Nothing
+
+### Removed
+- Nothing
+
+
+0.0.1 / 2020-01-01
+==================
+
+### Added
+- Initial stub release of ctfcli
+
+### Changed
+- Nothing
+
+### Removed
+- Nothing

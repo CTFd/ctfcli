@@ -1,0 +1,11 @@
+image: python:3.7
+
+before_script:
+    - python -V
+    - mkdir -p .pip
+    - pip install --upgrade pip
+    - pip install --cache-dir='.pip' -r development.txt
+
+test:
+    script:
+    - make lint
