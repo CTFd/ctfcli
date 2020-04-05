@@ -14,7 +14,7 @@ ctfcli can be installed with `pip install ctfcli`
 
 ## 1. Create an Event
 
-ctfcli turns the current folder into a CTF event git repo. It asks for the base url of the CTFd instance you're working with ahd an access token.
+ctfcli turns the current folder into a CTF event git repo. It asks for the base url of the CTFd instance you're working with and an access token.
 
 ```
 ❯ ctf init
