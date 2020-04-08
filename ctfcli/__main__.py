@@ -33,7 +33,7 @@ class CTFCLI(object):
         os.mkdir(".ctf")
 
         config = configparser.ConfigParser()
-        config["config"] = {"url": ctf_url, "access_token": ctf_url}
+        config["config"] = {"url": ctf_url, "access_token": ctf_token}
         config["challenges"] = {}
 
         with open(".ctf/config", "a+") as f:
