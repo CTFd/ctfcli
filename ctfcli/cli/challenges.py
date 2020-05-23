@@ -5,6 +5,7 @@ from cookiecutter.main import cookiecutter
 from pathlib import Path
 
 import click
+import yaml
 
 from ctfcli.utils.challenge import (
     create_challenge,
@@ -18,6 +19,10 @@ from ctfcli.utils.config import (
     get_config_path,
     get_project_path,
     load_config,
+)
+from ctfcli.utils.spec import (
+    CHALLENGE_SPEC_DOCS,
+    blank_challenge_spec,
 )
 
 
@@ -128,6 +133,22 @@ class Challenge(object):
         click.secho(f'Syncing {challenge["name"]}', fg="yellow")
         sync_challenge(challenge=challenge)
         click.secho(f"Success!", fg="green")
+
+    def finalize(self, challenge=None):
+        if challenge is None:
+            challenge = os.getcwd()
+
+        path = Path(challenge)
+        spec = blank_challenge_spec()
+        for k in spec:
+            q = CHALLENGE_SPEC_DOCS.get(k)
+            r = click.prompt(**q._asdict())
+            spec[k] = r
+
+        with open(path / "challenge.yml", "w+") as f:
+            yaml.dump(spec, stream=f, default_flow_style=False, sort_keys=False)
+
+        print("challenge.yml written to", path / "challenge.yml")
 
     def lint(self, challenge=None):
         if challenge is None:
