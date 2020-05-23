@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 
 try:
     from setuptools import setup, find_packages
@@ -7,7 +8,8 @@ except ImportError:
 
 import os
 
-from ctfcli import __version__
+with open("ctfcli/__init__.py") as f:
+    version = re.search(r'__version__ = "(.*?)"', f.read()).group(1)
 
 
 def read(fname):
@@ -20,7 +22,7 @@ def read(fname):
 
 setup(
     name="ctfcli",
-    version=__version__,
+    version=version,
     author="Kevin Chung",
     author_email="kchung@ctfd.io",
     license="Apache 2.0",
