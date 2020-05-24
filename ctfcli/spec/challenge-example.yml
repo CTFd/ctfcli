@@ -7,10 +7,7 @@ author: "author"
 category: category
 description: This is a sample description
 value: 100
-
-# Specifies what version of the challenge specification was used.
-# Subject to change until ctfcli v1.0.0
-version: "0.1"
+type: standard
 
 # Settings used for Dockerfile deployment
 # If not used, remove or set to null
@@ -21,7 +18,6 @@ image: null
 
 # Optional settings
 # Can be removed if unused
-type: standard
 attempts: 5
 
 # Flags specify answers that your challenge use. You should generally provide
@@ -69,3 +65,7 @@ requirements:
     - "Warmup"
     - "Are you alive"
     - 1
+
+# Specifies what version of the challenge specification was used.
+# Subject to change until ctfcli v1.0.0
+version: "0.1"

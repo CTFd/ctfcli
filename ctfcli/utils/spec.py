@@ -5,47 +5,107 @@ from pathlib import Path
 import getpass
 
 
-Prompt = namedtuple("Prompt", ["text", "type", "default"])
+Prompt = namedtuple("Prompt", ["text", "type", "default", "required", "multiple"])
 
 
 CHALLENGE_SPEC_DOCS = {
-    "name": Prompt(text="Name of your challenge", type=None, default=None),
-    "author": Prompt(text="Your name or handle", type=None, default=getpass.getuser()),
-    "category": Prompt(text="The category of your challenge", type=None, default=None),
+    "name": Prompt(
+        text="Challenge name or identifier",
+        type=None,
+        default=None,
+        required=True,
+        multiple=False,
+    ),
+    "author": Prompt(
+        text="Your name or handle",
+        type=None,
+        default=getpass.getuser(),
+        required=True,
+        multiple=False,
+    ),
+    "category": Prompt(
+        text="Challenge category",
+        type=None,
+        default=None,
+        required=True,
+        multiple=False,
+    ),
     "description": Prompt(
-        text="The challenge description shown to the user", type=None, default=None
+        text="Challenge description shown to the user",
+        type=None,
+        default=None,
+        required=True,
+        multiple=False,
     ),
     "value": Prompt(
-        text="How many points your challenge should be worth", type=int, default=None
+        text="How many points your challenge should be worth",
+        type=int,
+        default=None,
+        required=True,
+        multiple=False,
     ),
     "version": Prompt(
         text="What version of the challenge specification was used",
         type=None,
-        default=None,
+        default="0.1",
+        required=False,
+        multiple=False,
     ),
     "image": Prompt(
-        text="Docker image used to deploy challenge", type=None, default=None
+        text="Docker image used to deploy challenge",
+        type=None,
+        default=None,
+        required=False,
+        multiple=False,
     ),
-    "type": Prompt(text="Challenge type", type=None, default="standard"),
+    "type": Prompt(
+        text="Type of challenge",
+        type=None,
+        default="standard",
+        required=True,
+        multiple=False,
+    ),
     "attempts": Prompt(
-        text="How many attempts a player should have", type=None, default=None
+        text="How many attempts should the player have",
+        type=int,
+        default=None,
+        required=False,
+        multiple=False,
     ),
     "flags": Prompt(
-        text="What inputs are the flags for your challenge", type=None, default=None
+        text="Flags that mark the challenge as solved",
+        type=None,
+        default=None,
+        required=False,
+        multiple=True,
     ),
-    "tags": Prompt(text="Challenge topics", type=None, default=None),
+    "tags": Prompt(
+        text="Tag that denotes a challenge topic",
+        type=None,
+        default=None,
+        required=False,
+        multiple=True,
+    ),
     "files": Prompt(
-        text="What files should be shared with the user", type=None, default=None
+        text="Files to be shared with the user",
+        type=None,
+        default=None,
+        required=False,
+        multiple=True,
     ),
     "hints": Prompt(
-        text="Hints are used to give players a way to buy or have suggestions",
+        text="Hints to be shared with the user",
         type=None,
         default=None,
+        required=False,
+        multiple=True,
     ),
     "requirements": Prompt(
-        text="Other challenges that must be solved before being able to work on this challenge.",
+        text="Challenge dependencies that must be solved before this one can be attempted",
         type=None,
         default=None,
+        required=False,
+        multiple=True,
     ),
 }
 

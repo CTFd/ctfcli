@@ -142,8 +142,38 @@ class Challenge(object):
         spec = blank_challenge_spec()
         for k in spec:
             q = CHALLENGE_SPEC_DOCS.get(k)
-            r = click.prompt(**q._asdict())
-            spec[k] = r
+            fields = q._asdict()
+
+            ask = False
+            required = fields.pop("required", False)
+            if required is False:
+                try:
+                    ask = click.confirm(f"Would you like to add the {k} field?")
+                    if ask is False:
+                        continue
+                except click.Abort:
+                    click.echo("\n")
+                    continue
+
+            if ask is True:
+                fields["text"] = "\t" + fields["text"]
+
+            multiple = fields.pop("multiple", False)
+            if multiple:
+                fields["text"] += " (Ctrl-C to continue)"
+                spec[k] = []
+                try:
+                    while True:
+                        r = click.prompt(**fields)
+                        spec[k].append(r)
+                except click.Abort:
+                    click.echo("\n")
+            else:
+                try:
+                    r = click.prompt(**fields)
+                    spec[k] = r
+                except click.Abort:
+                    click.echo("\n")
 
         with open(path / "challenge.yml", "w+") as f:
             yaml.dump(spec, stream=f, default_flow_style=False, sort_keys=False)
