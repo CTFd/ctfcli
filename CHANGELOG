@@ -1,5 +1,13 @@
 # Changelog
 
+
+0.0.4 / 2020-06-07
+==================
+### Added
+- `ctfcli` will now load all challenges regardless of visibility when using an
+admin token. Requires CTFd v2.5.0
+
+
 0.0.3 / 2020-04-09
 ==================
 ### Fixed
