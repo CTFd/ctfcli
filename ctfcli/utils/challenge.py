@@ -16,7 +16,7 @@ def load_challenge(path):
 
 def load_installed_challenges():
     s = generate_session()
-    return s.get("/api/v1/challenges", json=True).json()["data"]
+    return s.get("/api/v1/challenges?view=admin", json=True).json()["data"]
 
 
 def sync_challenge(challenge):
