@@ -143,8 +143,12 @@ def sync_challenge(challenge):
         r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
         r.raise_for_status()
 
-    # Unhide challenge
+    # Unhide challenge depending upon the value of "state" in spec
     data = {"state": "visible"}
+    if challenge.get("state"):
+        if challenge["state"] in ["hidden", "visible"]:
+            data["state"] = challenge["state"]
+
     r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
     r.raise_for_status()
 
@@ -212,7 +216,7 @@ def create_challenge(challenge):
                 }
 
             r = s.post(f"/api/v1/hints", json=data)
-            r.raise_for_status()
+            r.raise_for_status()        
 
     # Add requirements
     if challenge.get("requirements"):
@@ -228,6 +232,15 @@ def create_challenge(challenge):
 
         required_challenges = list(set(required_challenges))
         data = {"requirements": {"prerequisites": required_challenges}}
+        r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
+        r.raise_for_status()
+
+    # Set challenge state
+    if challenge.get("state"):
+        data = {"state": "hidden"}
+        if challenge["state"] in ["hidden", "visible"]:
+            data["state"] = challenge["state"]
+
         r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
         r.raise_for_status()
 
