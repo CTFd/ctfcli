@@ -30,6 +30,10 @@ def sync_challenge(challenge):
     if challenge.get("attempts"):
         data["max_attempts"] = challenge.get("attempts")
 
+    if data["type"] == "dynamic":
+        data["minimum"] = challenge.get("minimum")
+        data["decay"] = challenge.get("decay")
+
     data["state"] = "hidden"
 
     installed_challenges = load_installed_challenges()
@@ -155,6 +159,12 @@ def create_challenge(challenge):
     }
     if challenge.get("attempts"):
         data["max_attempts"] = challenge.get("attempts")
+
+    # If challenge type is dynamic, get minimum score for challenge, and the decay (amount)
+    # of solves before it reaches the minimum score
+    if data["type"] == "dynamic":
+        data["minimum"] = challenge.get("minimum")
+        data["decay"] = challenge.get("decay")
 
     s = generate_session()
 
