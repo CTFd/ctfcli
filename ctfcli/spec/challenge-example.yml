@@ -9,6 +9,12 @@ description: This is a sample description
 value: 100
 type: standard
 
+# Applicable if type: "dynamic" (dynamic scoring). decay sets the amount of solves before
+# challenge reaches the minimum score, and minimum defines the minimum score
+decay: 100
+minimum: 50
+
+
 # Settings used for Dockerfile deployment
 # If not used, remove or set to null
 # If you have a Dockerfile set to .
