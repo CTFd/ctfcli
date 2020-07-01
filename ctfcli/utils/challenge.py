@@ -227,7 +227,7 @@ def create_challenge(challenge):
 
     # Set challenge state
     if challenge.get("state"):
-        data = {"state": "visible"}
+        data = {"state": "hidden"}
         if challenge["state"] in ["hidden", "visible"]:
             data["state"] = challenge["state"]
 
