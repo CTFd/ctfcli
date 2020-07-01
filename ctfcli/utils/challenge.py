@@ -139,8 +139,12 @@ def sync_challenge(challenge):
         r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
         r.raise_for_status()
 
-    # Unhide challenge
+    # Unhide challenge depending upon the value of "state" in spec
     data = {"state": "visible"}
+    if (challenge.get("state")):
+        if challenge["state"] in ["hidden", "visible"]:
+            data["state"] = challenge["state"]
+
     r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
     r.raise_for_status()
 
