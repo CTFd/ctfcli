@@ -144,7 +144,7 @@ def sync_challenge(challenge):
         r.raise_for_status()
 
     # Unhide challenge depending upon the value of "state" in spec
-    data = {"state": "visible"}
+    data = {"state": "hidden"}
     if challenge.get("state"):
         if challenge["state"] in ["hidden", "visible"]:
             data["state"] = challenge["state"]
@@ -216,7 +216,7 @@ def create_challenge(challenge):
                 }
 
             r = s.post(f"/api/v1/hints", json=data)
-            r.raise_for_status()        
+            r.raise_for_status()
 
     # Add requirements
     if challenge.get("requirements"):
