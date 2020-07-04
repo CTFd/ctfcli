@@ -25,7 +25,7 @@ def sync_challenge(challenge):
         "category": challenge["category"],
         "description": challenge["description"],
         "type": challenge.get("type", "standard"),
-        "value": int(challenge["value"]),
+        "initial": int(challenge["value"]),
     }
     if challenge.get("attempts"):
         data["max_attempts"] = challenge.get("attempts")
