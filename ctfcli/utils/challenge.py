@@ -34,6 +34,7 @@ def sync_challenge(challenge):
         data["minimum"] = challenge.get("minimum")
         data["decay"] = challenge.get("decay")
         data["initial"] = data["value"]
+        del data["value"]
 
     data["state"] = "hidden"
 
