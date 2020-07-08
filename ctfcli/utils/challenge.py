@@ -25,7 +25,7 @@ def sync_challenge(challenge):
         "category": challenge["category"],
         "description": challenge["description"],
         "type": challenge.get("type", "standard"),
-        "initial": int(challenge["value"]),
+        "value": int(challenge["value"]),
     }
     if challenge.get("attempts"):
         data["max_attempts"] = challenge.get("attempts")
@@ -33,6 +33,7 @@ def sync_challenge(challenge):
     if data["type"] == "dynamic":
         data["minimum"] = challenge.get("minimum")
         data["decay"] = challenge.get("decay")
+        data["initial"] = data["value"]
 
     data["state"] = "hidden"
 
