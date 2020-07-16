@@ -154,6 +154,8 @@ def sync_challenge(challenge, path = None):
     if challenge.get("state"):
         if challenge["state"] in ["hidden", "visible"]:
             data["state"] = challenge["state"]
+    else:
+        data["state"] = "visible"
 
     r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
     r.raise_for_status()
