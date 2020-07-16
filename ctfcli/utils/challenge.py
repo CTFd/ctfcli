@@ -1,6 +1,7 @@
 import yaml
 
 import click
+import os
 
 from .config import generate_session
 
@@ -19,7 +20,7 @@ def load_installed_challenges():
     return s.get("/api/v1/challenges?view=admin", json=True).json()["data"]
 
 
-def sync_challenge(challenge):
+def sync_challenge(challenge, path = None):
     data = {
         "name": challenge["name"],
         "category": challenge["category"],
@@ -92,6 +93,15 @@ def sync_challenge(challenge):
     if challenge.get("files"):
         files = []
         for f in challenge["files"]:
+
+            if not os.path.exists(f):
+                if path is not None:
+                    rel_path = os.path.join(os.path.dirname(path), f)
+                    if not os.path.exists(rel_path):
+                        click.secho(f"File {f} was not found", fg="red")
+                        return
+                    f = rel_path
+
             files.append(("file", open(f, "rb")))
 
         data = {"challenge": challenge_id, "type": "challenge"}
@@ -149,7 +159,7 @@ def sync_challenge(challenge):
     r.raise_for_status()
 
 
-def create_challenge(challenge):
+def create_challenge(challenge, path=None):
     data = {
         "name": challenge["name"],
         "category": challenge["category"],
@@ -186,6 +196,15 @@ def create_challenge(challenge):
     if challenge.get("files"):
         files = []
         for f in challenge["files"]:
+
+            if not os.path.exists(f):
+                if path is not None:
+                    rel_path = os.path.join(os.path.dirname(path), f)
+                    if not os.path.exists(rel_path):
+                        click.secho(f"File {f} was not found", fg="red")
+                        return
+                    f = rel_path
+
             files.append(("file", open(f, "rb")))
 
         data = {"challenge": challenge_id, "type": "challenge"}

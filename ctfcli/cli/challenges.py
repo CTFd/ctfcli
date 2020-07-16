@@ -104,7 +104,7 @@ class Challenge(object):
                     return
 
         click.secho(f'Installing {challenge["name"]}', fg="yellow")
-        create_challenge(challenge=challenge)
+        create_challenge(challenge=challenge, path=path)
         click.secho(f"Success!", fg="green")
 
     def sync(self, challenge=None):
@@ -131,7 +131,7 @@ class Challenge(object):
             )
 
         click.secho(f'Syncing {challenge["name"]}', fg="yellow")
-        sync_challenge(challenge=challenge)
+        sync_challenge(challenge=challenge, path=path)
         click.secho(f"Success!", fg="green")
 
     def finalize(self, challenge=None):
