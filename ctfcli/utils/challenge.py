@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import yaml
 
 import click
@@ -5,10 +7,17 @@ import click
 from .config import generate_session
 
 
+class Yaml(dict):
+    def __init__(self, data, file_path=None):
+        super().__init__(data)
+        self.file_path = Path(file_path)
+        self.directory = self.file_path.parent
+
+
 def load_challenge(path):
     try:
         with open(path) as f:
-            return yaml.safe_load(f.read())
+            return Yaml(data=yaml.safe_load(f.read()), file_path=path)
     except FileNotFoundError:
         click.secho(f"No challenge.yml was found in {path}", fg="red")
         return
@@ -92,7 +101,13 @@ def sync_challenge(challenge):
     if challenge.get("files"):
         files = []
         for f in challenge["files"]:
-            files.append(("file", open(f, "rb")))
+            file_path = Path(challenge.directory, f)
+            if file_path.exists():
+                file_object = ("file", file_path.open(mode="rb"))
+                files.append(file_object)
+            else:
+                click.secho(f"File {file_path} was not found", fg="red")
+                raise Exception(f"File {file_path} was not found")
 
         data = {"challenge": challenge_id, "type": "challenge"}
         # Specifically use data= here instead of json= to send multipart/form-data
@@ -186,7 +201,13 @@ def create_challenge(challenge):
     if challenge.get("files"):
         files = []
         for f in challenge["files"]:
-            files.append(("file", open(f, "rb")))
+            file_path = Path(challenge.directory, f)
+            if file_path.exists():
+                file_object = ("file", file_path.open(mode="rb"))
+                files.append(file_object)
+            else:
+                click.secho(f"File {file_path} was not found", fg="red")
+                raise Exception(f"File {file_path} was not found")
 
         data = {"challenge": challenge_id, "type": "challenge"}
         # Specifically use data= here instead of json= to send multipart/form-data
