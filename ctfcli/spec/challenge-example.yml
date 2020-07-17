@@ -9,6 +9,11 @@ description: This is a sample description
 value: 100
 type: standard
 
+extra:
+    initial: 500
+    decay: 100
+    minimum: 50
+
 # Settings used for Dockerfile deployment
 # If not used, remove or set to null
 # If you have a Dockerfile set to .
