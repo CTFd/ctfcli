@@ -117,7 +117,7 @@ def sync_challenge(challenge):
     # Delete existing hints
     current_hints = s.get(f"/api/v1/hints", json=data).json()["data"]
     for hint in current_hints:
-        if hint["challenge_id"] == challenge_id:
+        if hint["challenge"] == challenge_id:
             hint_id = hint["id"]
             r = s.delete(f"/api/v1/hints/{hint_id}", json=True)
             r.raise_for_status()
