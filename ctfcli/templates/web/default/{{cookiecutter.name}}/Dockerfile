@@ -1,8 +1,7 @@
 FROM python:3.7-alpine
 RUN apk update && \
     apk add \
-        python \
-        python-dev \
+        python3-dev \
         linux-headers \
         libffi-dev \
         gcc \
