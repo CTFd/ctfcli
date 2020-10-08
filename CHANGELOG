@@ -1,7 +1,7 @@
 # Changelog
 
 
-0.0.5 / 2020-10-08
+0.0.5 / 2020-10-07
 ==================
 ### Added
 - Added `state` parameter to control whether a challenge is visible or not
