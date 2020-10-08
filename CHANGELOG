@@ -1,6 +1,12 @@
 # Changelog
 
 
+0.0.6 / 2020-10-07
+==================
+### Fixed
+- Properly default the challenge state to visible during sync
+
+
 0.0.5 / 2020-10-07
 ==================
 ### Added
