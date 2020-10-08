@@ -1,6 +1,18 @@
 # Changelog
 
 
+0.0.5 / 2020-10-07
+==================
+### Added
+- Added `state` parameter to control whether a challenge is visible or not
+- Make the `ctf challenge restore` command be able to take arguments to only restore one challenge
+- Add an `ctf challenge update` command to get the latest version of challenges
+
+### Fixed
+- Fix the sync and install commands to properly install challenge files relative to the `challenge.yml` path
+- Update dependencies in the web challenge template
+
+
 0.0.4 / 2020-06-07
 ==================
 ### Added
