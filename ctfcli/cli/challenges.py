@@ -65,11 +65,13 @@ class Challenge(object):
                 fg="red",
             )
 
-    def restore(self):
+    def restore(self, challenge=None):
         config = load_config()
         challenges = dict(config["challenges"])
         for folder, url in challenges.items():
             if url.endswith(".git"):
+                if challenge is not None and folder != challenge:
+                    continue
                 click.echo(f"Cloning {url} to {folder}")
                 subprocess.call(["git", "clone", "--depth", "1", url, folder])
                 shutil.rmtree(str(Path(folder) / ".git"))
@@ -133,6 +135,19 @@ class Challenge(object):
         click.secho(f'Syncing {challenge["name"]}', fg="yellow")
         sync_challenge(challenge=challenge)
         click.secho(f"Success!", fg="green")
+
+    def update(self):
+        config = load_config()
+        challenges = dict(config["challenges"])
+        for folder, url in challenges.items():
+            if url.endswith(".git"):
+                click.echo(f"Cloning {url} to {folder}")
+                subprocess.call(["git", "init"], cwd=folder)
+                subprocess.call(["git", "remote", "add", "origin", url], cwd=folder)
+                subprocess.call(["git", "pull"], cwd=folder)
+                shutil.rmtree(str(Path(folder) / ".git"))
+            else:
+                click.echo(f"Skipping {url} - {folder}")
 
     def finalize(self, challenge=None):
         if challenge is None:

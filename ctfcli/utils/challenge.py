@@ -73,6 +73,10 @@ def sync_challenge(challenge):
                 data = {"content": flag, "type": "static", "challenge": challenge_id}
                 r = s.post(f"/api/v1/flags", json=data)
                 r.raise_for_status()
+            elif type(flag) == dict:
+                flag["challenge"] = challenge_id
+                r = s.post(f"/api/v1/flags", json=flag)
+                r.raise_for_status()
 
     # Delete existing tags
     current_tags = s.get(f"/api/v1/tags", json=data).json()["data"]
@@ -189,6 +193,10 @@ def create_challenge(challenge):
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge": challenge_id}
                 r = s.post(f"/api/v1/flags", json=data)
+                r.raise_for_status()
+            elif type(flag) == dict:
+                flag["challenge"] = challenge_id
+                r = s.post(f"/api/v1/flags", json=flag)
                 r.raise_for_status()
 
     # Create tags
