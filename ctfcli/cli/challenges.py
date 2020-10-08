@@ -136,7 +136,6 @@ class Challenge(object):
         sync_challenge(challenge=challenge)
         click.secho(f"Success!", fg="green")
 
-
     def update(self):
         config = load_config()
         challenges = dict(config["challenges"])
@@ -149,7 +148,6 @@ class Challenge(object):
                 shutil.rmtree(str(Path(folder) / ".git"))
             else:
                 click.echo(f"Skipping {url} - {folder}")
-
 
     def finalize(self, challenge=None):
         if challenge is None:
