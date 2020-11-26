@@ -136,15 +136,28 @@ class Challenge(object):
         sync_challenge(challenge=challenge)
         click.secho(f"Success!", fg="green")
 
-    def update(self):
+    def update(self, challenge=None):
         config = load_config()
         challenges = dict(config["challenges"])
         for folder, url in challenges.items():
+            if challenge and challenge != folder:
+                continue
             if url.endswith(".git"):
                 click.echo(f"Cloning {url} to {folder}")
                 subprocess.call(["git", "init"], cwd=folder)
                 subprocess.call(["git", "remote", "add", "origin", url], cwd=folder)
-                subprocess.call(["git", "pull"], cwd=folder)
+                subprocess.call(["git", "add", "-A"], cwd=folder)
+                subprocess.call(
+                    ["git", "commit", "-m", "Persist local changes (ctfcli)"],
+                    cwd=folder,
+                )
+                subprocess.call(
+                    ["git", "pull", "--allow-unrelated-histories", "origin", "master"],
+                    cwd=folder,
+                )
+                subprocess.call(["git", "mergetool"], cwd=folder)
+                subprocess.call(["git", "clean", "-f"], cwd=folder)
+                subprocess.call(["git", "commit", "--no-edit"], cwd=folder)
                 shutil.rmtree(str(Path(folder) / ".git"))
             else:
                 click.echo(f"Skipping {url} - {folder}")
