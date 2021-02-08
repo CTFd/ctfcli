@@ -1,11 +1,12 @@
 import os
 import shutil
 import subprocess
-from cookiecutter.main import cookiecutter
 from pathlib import Path
+from urllib.parse import urlparse
 
 import click
 import yaml
+from cookiecutter.main import cookiecutter
 
 from ctfcli.utils.challenge import (
     create_challenge,
@@ -20,10 +21,8 @@ from ctfcli.utils.config import (
     get_project_path,
     load_config,
 )
-from ctfcli.utils.spec import (
-    CHALLENGE_SPEC_DOCS,
-    blank_challenge_spec,
-)
+from ctfcli.utils.deploy import DEPLOY_HANDLERS
+from ctfcli.utils.spec import CHALLENGE_SPEC_DOCS, blank_challenge_spec
 
 
 class Challenge(object):
@@ -218,3 +217,49 @@ class Challenge(object):
             path = path / "challenge.yml"
 
         lint_challenge(path)
+
+    def deploy(self, challenge, host=None):
+        if challenge is None:
+            challenge = os.getcwd()
+
+        path = Path(challenge)
+
+        if path.name.endswith(".yml") is False:
+            path = path / "challenge.yml"
+
+        challenge = load_challenge(path)
+        image = challenge.get("image")
+        target_host = host or challenge.get("host") or input("Target host URI: ")
+        if image is None:
+            click.secho(
+                "This challenge can't be deployed because it doesn't have an associated image",
+                fg="red",
+            )
+            return
+        if bool(target_host) is False:
+            click.secho(
+                "This challenge can't be deployed because there is no target host to deploy to",
+                fg="red",
+            )
+            return
+        url = urlparse(target_host)
+
+        if bool(url.netloc) is False:
+            click.secho(
+                "Provided host has no URI scheme. Provide a URI scheme like ssh:// or registry://",
+                fg="red",
+            )
+            return
+
+        status, domain, port = DEPLOY_HANDLERS[url.scheme](
+            challenge=challenge, host=target_host
+        )
+
+        if status:
+            click.secho(
+                f"Challenge deployed at {domain}:{port}", fg="green",
+            )
+        else:
+            click.secho(
+                f"An error occured during deployment", fg="red",
+            )

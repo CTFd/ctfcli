@@ -1,5 +1,6 @@
-import appdirs
 import os
+
+import appdirs
 
 from ctfcli import __name__ as pkg_name
 

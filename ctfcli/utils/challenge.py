@@ -1,8 +1,7 @@
 from pathlib import Path
 
-import yaml
-
 import click
+import yaml
 
 from .config import generate_session
 
