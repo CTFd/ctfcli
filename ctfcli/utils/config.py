@@ -2,9 +2,9 @@ import configparser
 import json
 import os
 
-from .api import APISession
-
 from ctfcli import __file__ as base_path
+
+from .api import APISession
 
 
 def get_base_path():

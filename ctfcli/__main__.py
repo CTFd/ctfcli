@@ -6,13 +6,12 @@ import sys
 from pathlib import Path
 
 import click
+import fire
 
 from ctfcli.cli.challenges import Challenge
 from ctfcli.cli.config import Config
 from ctfcli.cli.plugins import Plugins
 from ctfcli.utils.plugins import get_plugin_dir
-
-import fire
 
 
 class CTFCLI(object):

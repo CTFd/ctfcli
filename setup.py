@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import re
 
 try:
@@ -6,7 +7,6 @@ try:
 except ImportError:
     from distutils.core import setup, find_packages
 
-import os
 
 with open("ctfcli/__init__.py") as f:
     version = re.search(r'__version__ = "(.*?)"', f.read()).group(1)
@@ -31,6 +31,7 @@ setup(
     long_description_content_type="text/markdown",
     keywords=["ctf"],
     classifiers=[],
+    zip_safe=False,
     install_requires=[
         "cookiecutter==1.6.0",
         "click==7.0",
