@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-from flask import Flask, redirect, render_template, request, session
+import functools
+
+from flask import Flask, redirect, render_template, request, session, url_for
 from flask_bootstrap import Bootstrap
 from sqlalchemy.exc import IntegrityError
 
@@ -17,6 +19,17 @@ with app.app_context():
 def authed():
     user_id = session.get("id", None)
     return user_id is not None
+
+
+def authed_only(f):
+    @functools.wraps(f)
+    def _authed_only(*args, **kwargs):
+        if authed():
+            return f(*args, **kwargs)
+        else:
+            return redirect(url_for("login", next=request.full_path))
+
+    return _authed_only
 
 
 @app.context_processor
