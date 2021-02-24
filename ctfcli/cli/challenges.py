@@ -26,7 +26,7 @@ from ctfcli.utils.spec import CHALLENGE_SPEC_DOCS, blank_challenge_spec
 
 
 class Challenge(object):
-    def new(self, type):
+    def new(self, type="blank"):
         path = Path(get_base_path())
         if os.sep not in type:
             type += os.sep + "default"
