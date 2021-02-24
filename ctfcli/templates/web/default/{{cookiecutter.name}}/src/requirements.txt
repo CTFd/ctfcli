@@ -1,3 +1,4 @@
 gunicorn==19.10.0
 Flask==1.1.1
 Bootstrap-Flask==1.2.0
+Flask-SQLAlchemy==2.4.4

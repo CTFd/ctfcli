@@ -1,0 +1,25 @@
+{% raw %}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row pt-5">
+    <div class="col-md-6 offset-md-3">
+        <form class="text-center p-5 border" method="POST">
+            <p class="h4 mb-4">Login</p>
+            {% for error in errors %}
+                <div class="alert alert-danger alert-dismissable text-center" role="alert">
+                    <span>{{ error }}</span>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                </div>
+            {% endfor %}
+
+            <input type="text" name="username" class="form-control mb-4" placeholder="Username" required>
+            <input type="password" name="password" class="form-control mb-4" placeholder="Password" required>
+            <input class="btn btn-primary btn-block my-4" type="submit" value="Sign in">
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% endraw %}
