@@ -64,7 +64,7 @@ def preview_config(as_string=False):
 def generate_session():
     config = load_config()
     url = config["config"]["url"]
-    url = url.strip("/")
+    url = url.rstrip("/") + "/"
     access_token = config["config"]["access_token"]
     s = APISession(url)
     s.headers.update({"Authorization": f"Token {access_token}"})

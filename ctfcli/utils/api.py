@@ -9,5 +9,5 @@ class APISession(Session):
         self.prefix_url = prefix_url
 
     def request(self, method, url, *args, **kwargs):
-        url = urljoin(self.prefix_url, url)
+        url = urljoin(self.prefix_url, url.lstrip("/"))
         return super(APISession, self).request(method, url, *args, **kwargs)
