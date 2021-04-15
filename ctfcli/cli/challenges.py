@@ -275,11 +275,9 @@ class Challenge(object):
 
         if status:
             click.secho(
-                f"Challenge deployed at {domain}:{port}",
-                fg="green",
+                f"Challenge deployed at {domain}:{port}", fg="green",
             )
         else:
             click.secho(
-                f"An error occured during deployment",
-                fg="red",
+                f"An error occured during deployment", fg="red",
             )
