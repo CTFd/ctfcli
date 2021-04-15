@@ -30,7 +30,12 @@ def export_image(challenge):
 def get_exposed_ports(challenge):
     image_name = sanitize_name(challenge["name"])
     output = subprocess.check_output(
-        ["docker", "inspect", "--format={{json .Config.ExposedPorts }}", image_name,]
+        [
+            "docker",
+            "inspect",
+            "--format={{json .Config.ExposedPorts }}",
+            image_name,
+        ]
     )
     output = json.loads(output)
     if output:
