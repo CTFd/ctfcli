@@ -23,15 +23,33 @@ from ctfcli.utils.config import (
 )
 from ctfcli.utils.deploy import DEPLOY_HANDLERS
 from ctfcli.utils.spec import CHALLENGE_SPEC_DOCS, blank_challenge_spec
+from ctfcli.utils.templates import get_template_dir
 
 
 class Challenge(object):
     def new(self, type="blank"):
-        path = Path(get_base_path())
-        if os.sep not in type:
-            type += os.sep + "default"
-        path = path / "templates" / type
-        cookiecutter(str(path))
+        if type == "blank":
+            path = Path(get_base_path())
+            path = path / "templates" / type / "default"
+            cookiecutter(str(path))
+        else:
+            # Check if we're referencing an installed template
+            template_dir = Path(get_template_dir())
+            template_path = template_dir / type
+
+            if template_path.is_dir():  # If we found a template directory, use it
+                cookiecutter(str(template_path))
+            else:  # If we didn't, use a built in template
+                path = Path(get_base_path())
+                if os.sep not in type:
+                    type += os.sep + "default"
+                path = path / "templates" / type
+                cookiecutter(str(path))
+
+    def templates(self):
+        from ctfcli.cli.templates import Templates
+
+        Templates().list()
 
     def add(self, repo):
         config = load_config()

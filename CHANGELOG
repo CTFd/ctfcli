@@ -1,6 +1,27 @@
 # Changelog
 
 
+UNRELEASED
+==================
+### Added
+- Added the following commands:
+    ```
+    ctf templates install [repo]
+    ctf templates uninstall [folder]
+    ctf templates dir
+    ctf templates list
+    ctf challenge templates
+   ```
+- Modified `ctf challenge new` to accept and search through installed third-party templates
+- Added a parameter to `ctf challenge update` to allow updating a single challenge
+- Added a login system for the default web template
+- Added a blank challenge template
+
+### Fixed
+- Moved challenge template writeups into their own dedicated folder
+- Fixed an issue when using CTFd in a subdirectory
+
+
 0.0.6 / 2020-10-07
 ==================
 ### Fixed
