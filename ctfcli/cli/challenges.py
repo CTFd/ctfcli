@@ -97,61 +97,73 @@ class Challenge(object):
 
     def install(self, challenge=None, force=False):
         if challenge is None:
-            challenge = os.getcwd()
+            # Get all challenges if not specifying a challenge
+            config = load_config()
+            challenges = dict(config["challenges"]).keys()
+        else:
+            challenges = [challenge]
 
-        path = Path(challenge)
+        for challenge in challenges:
+            path = Path(challenge)
 
-        if path.name.endswith(".yml") is False:
-            path = path / "challenge.yml"
+            if path.name.endswith(".yml") is False:
+                path = path / "challenge.yml"
 
-        click.secho(f"Found {path}")
-        challenge = load_challenge(path)
-        click.secho(f'Loaded {challenge["name"]}', fg="yellow")
+            click.secho(f"Found {path}")
+            challenge = load_challenge(path)
+            click.secho(f'Loaded {challenge["name"]}', fg="yellow")
 
-        installed_challenges = load_installed_challenges()
-        for c in installed_challenges:
-            if c["name"] == challenge["name"]:
-                click.secho(
-                    "Already found existing challenge with same name. Perhaps you meant sync instead of install?",
-                    fg="red",
-                )
-                if force is True:
+            installed_challenges = load_installed_challenges()
+            for c in installed_challenges:
+                if c["name"] == challenge["name"]:
                     click.secho(
-                        "Ignoring existing challenge because of --force", fg="yellow"
+                        f'Already found existing challenge with same name ({challenge["name"]}). Perhaps you meant sync instead of install?',
+                        fg="red",
                     )
-                else:
-                    return
-
-        click.secho(f'Installing {challenge["name"]}', fg="yellow")
-        create_challenge(challenge=challenge)
-        click.secho(f"Success!", fg="green")
+                    if force is True:
+                        click.secho(
+                            "Ignoring existing challenge because of --force",
+                            fg="yellow",
+                        )
+                    else:
+                        break
+            else:  # If we don't break because of duplicated challenge names
+                click.secho(f'Installing {challenge["name"]}', fg="yellow")
+                create_challenge(challenge=challenge)
+                click.secho(f"Success!", fg="green")
 
     def sync(self, challenge=None):
         if challenge is None:
-            challenge = os.getcwd()
-
-        path = Path(challenge)
-
-        if path.name.endswith(".yml") is False:
-            path = path / "challenge.yml"
-
-        click.secho(f"Found {path}")
-        challenge = load_challenge(path)
-        click.secho(f'Loaded {challenge["name"]}', fg="yellow")
-
-        installed_challenges = load_installed_challenges()
-        for c in installed_challenges:
-            if c["name"] == challenge["name"]:
-                break
+            # Get all challenges if not specifying a challenge
+            config = load_config()
+            challenges = dict(config["challenges"]).keys()
         else:
-            click.secho(
-                "Couldn't find existing challenge. Perhaps you meant install instead of sync?",
-                fg="red",
-            )
+            challenges = [challenge]
 
-        click.secho(f'Syncing {challenge["name"]}', fg="yellow")
-        sync_challenge(challenge=challenge)
-        click.secho(f"Success!", fg="green")
+        for challenge in challenges:
+            path = Path(challenge)
+
+            if path.name.endswith(".yml") is False:
+                path = path / "challenge.yml"
+
+            click.secho(f"Found {path}")
+            challenge = load_challenge(path)
+            click.secho(f'Loaded {challenge["name"]}', fg="yellow")
+
+            installed_challenges = load_installed_challenges()
+            for c in installed_challenges:
+                if c["name"] == challenge["name"]:
+                    break
+            else:
+                click.secho(
+                    f'Couldn\'t find existing challenge {c["name"]}. Perhaps you meant install instead of sync?',
+                    fg="red",
+                )
+                continue  # Go to the next challenge in the overall list
+
+            click.secho(f'Syncing {challenge["name"]}', fg="yellow")
+            sync_challenge(challenge=challenge)
+            click.secho(f"Success!", fg="green")
 
     def update(self, challenge=None):
         config = load_config()
