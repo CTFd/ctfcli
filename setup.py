@@ -36,7 +36,7 @@ setup(
         "cookiecutter==1.6.0",
         "click==7.0",
         "fire==0.2.1",
-        "pyyaml==5.2",
+        "pyyaml==5.4",
         "Pygments==2.7.4",
         "requests==2.22.0",
         "colorama==0.4.3",
