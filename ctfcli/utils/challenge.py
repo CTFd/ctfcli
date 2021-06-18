@@ -34,7 +34,7 @@ def sync_challenge(challenge):
         "description": challenge["description"],
         "type": challenge.get("type", "standard"),
         "value": int(challenge["value"]) if challenge["value"] else challenge["value"],
-        **challenge.get("extra", {})
+        **challenge.get("extra", {}),
     }
 
     # Some challenge types (e.g. dynamic) override value.
@@ -181,7 +181,7 @@ def create_challenge(challenge):
         "description": challenge["description"],
         "type": challenge.get("type", "standard"),
         "value": int(challenge["value"]) if challenge["value"] else challenge["value"],
-        **challenge.get("extra", {})
+        **challenge.get("extra", {}),
     }
 
     # Some challenge types (e.g. dynamic) override value.
