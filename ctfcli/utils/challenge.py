@@ -33,8 +33,15 @@ def sync_challenge(challenge):
         "category": challenge["category"],
         "description": challenge["description"],
         "type": challenge.get("type", "standard"),
-        "value": int(challenge["value"]),
+        "value": int(challenge["value"]) if challenge["value"] else challenge["value"],
+        **challenge.get("extra", {}),
     }
+
+    # Some challenge types (e.g. dynamic) override value.
+    # We can't send it to CTFd because we don't know the current value
+    if challenge["value"] is None:
+        del challenge["value"]
+
     if challenge.get("attempts"):
         data["max_attempts"] = challenge.get("attempts")
 
@@ -173,8 +180,15 @@ def create_challenge(challenge):
         "category": challenge["category"],
         "description": challenge["description"],
         "type": challenge.get("type", "standard"),
-        "value": int(challenge["value"]),
+        "value": int(challenge["value"]) if challenge["value"] else challenge["value"],
+        **challenge.get("extra", {}),
     }
+
+    # Some challenge types (e.g. dynamic) override value.
+    # We can't send it to CTFd because we don't know the current value
+    if challenge["value"] is None:
+        del challenge["value"]
+
     if challenge.get("attempts"):
         data["max_attempts"] = challenge.get("attempts")
 

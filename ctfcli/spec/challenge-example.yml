@@ -9,6 +9,15 @@ description: This is a sample description
 value: 100
 type: standard
 
+# The extra field provides additional fields for data during the install/sync commands/
+# Fields in extra can be used to supply additional information for other challenge types
+# For example the follow extra field is for dynamic challenges. To use these following
+# extra fields, set the type to "dynamic" and uncomment the "extra" section below
+# extra:
+#     initial: 500
+#     decay: 100
+#     minimum: 50
+
 # Settings used for Dockerfile deployment
 # If not used, remove or set to null
 # If you have a Dockerfile set to .
