@@ -20,6 +20,12 @@ extra:
 # If you have an imaged hosted on Docker set to the image url (e.g. python/3.8:latest, registry.gitlab.com/python/3.8:latest)
 # Follow Docker best practices and assign a tag
 image: null
+# Specify a host to deploy the challenge onto.
+# The currently supported URI schemes are ssh:// and registry://
+# ssh is an ssh URI where the above image will be copied to and deployed (e.g. ssh://root@123.123.123.123)
+# registry is a Docker registry tag (e.g registry://registry.example.com/test/image)
+# host can also be specified during the deploy process: `ctf challenge deploy challenge --host=ssh://root@123.123.123.123`
+host: null
 
 # Optional settings
 # Can be removed if unused

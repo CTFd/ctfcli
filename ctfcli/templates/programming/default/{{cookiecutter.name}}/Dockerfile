@@ -6,7 +6,8 @@ RUN apk update && \
 RUN mkdir "/opt/{{cookiecutter.name}}"
 COPY ./src/* "/opt/{{cookiecutter.name}}/"
 RUN pip install -r "/opt/{{cookiecutter.name}}/requirements.txt"
+WORKDIR "/opt/{{cookiecutter.name}}/"
+RUN chmod +x serve.sh server.py
 
 EXPOSE {{cookiecutter.port}}
-WORKDIR "/opt/{{cookiecutter.name}}/"
 CMD ./serve.sh

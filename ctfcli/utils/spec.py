@@ -1,9 +1,8 @@
-import yaml
-
+import getpass
 from collections import namedtuple
 from pathlib import Path
-import getpass
 
+import yaml
 
 Prompt = namedtuple("Prompt", ["text", "type", "default", "required", "multiple"])
 

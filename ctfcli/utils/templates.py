@@ -5,8 +5,8 @@ import appdirs
 from ctfcli import __name__ as pkg_name
 
 
-def get_plugin_dir():
-    plugins_path = os.path.join(get_data_dir(), "plugins")
+def get_template_dir():
+    plugins_path = os.path.join(get_data_dir(), "templates")
     if not os.path.exists(plugins_path):
         os.makedirs(plugins_path)
     return os.path.join(plugins_path)

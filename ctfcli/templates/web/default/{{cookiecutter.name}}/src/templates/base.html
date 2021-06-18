@@ -10,6 +10,8 @@
     {{ bootstrap.load_css() }}
     {% endblock %}
 
+    <link rel="stylesheet" href="/static/css/main.css">
+
     {% block styles %}
     {% endblock %}
 </head>
@@ -32,6 +34,25 @@
                     <a class="nav-link" href="#">Link</a>
                 </li>
             </ul>
+            {% raw %}
+            <ul class="navbar-nav">
+                {% if id is defined %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+                </li>
+                {% endif %}
+            </ul>
+            {% endraw %}
         </div>
     </nav>
 

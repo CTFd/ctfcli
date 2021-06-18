@@ -2,10 +2,10 @@ import os
 import subprocess
 
 import click
-
 from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import IniLexer, JsonLexer
+
 from ctfcli.utils.config import get_config_path, preview_config
 
 

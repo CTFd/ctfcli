@@ -1,8 +1,7 @@
 from pathlib import Path
 
-import yaml
-
 import click
+import yaml
 
 from .config import generate_session
 
@@ -79,6 +78,10 @@ def sync_challenge(challenge):
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge": challenge_id}
                 r = s.post(f"/api/v1/flags", json=data)
+                r.raise_for_status()
+            elif type(flag) == dict:
+                flag["challenge"] = challenge_id
+                r = s.post(f"/api/v1/flags", json=flag)
                 r.raise_for_status()
 
     # Delete existing tags
@@ -162,7 +165,7 @@ def sync_challenge(challenge):
         r.raise_for_status()
 
     # Unhide challenge depending upon the value of "state" in spec
-    data = {"state": "hidden"}
+    data = {"state": "visible"}
     if challenge.get("state"):
         if challenge["state"] in ["hidden", "visible"]:
             data["state"] = challenge["state"]
@@ -203,6 +206,10 @@ def create_challenge(challenge):
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge": challenge_id}
                 r = s.post(f"/api/v1/flags", json=data)
+                r.raise_for_status()
+            elif type(flag) == dict:
+                flag["challenge"] = challenge_id
+                r = s.post(f"/api/v1/flags", json=flag)
                 r.raise_for_status()
 
     # Create tags

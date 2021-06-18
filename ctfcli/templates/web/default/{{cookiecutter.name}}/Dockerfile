@@ -1,8 +1,7 @@
 FROM python:3.7-alpine
 RUN apk update && \
     apk add \
-        python \
-        python-dev \
+        python3-dev \
         linux-headers \
         libffi-dev \
         gcc \
@@ -20,6 +19,7 @@ RUN mkdir -p /opt/app
 COPY src/ /opt/app/
 
 RUN pip install -r requirements.txt
+RUN chmod +x /opt/app/serve.sh
 
 USER 1001
 EXPOSE 8000

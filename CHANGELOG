@@ -1,6 +1,45 @@
 # Changelog
 
 
+0.0.7 / 2021-04-15
+==================
+### Added
+- Added the following commands:
+    ```
+    ctf templates install [repo]
+    ctf templates uninstall [folder]
+    ctf templates dir
+    ctf templates list
+    ctf challenge templates
+   ```
+- Modified `ctf challenge new` to accept and search through installed third-party templates
+- Added a parameter to `ctf challenge update` to allow updating a single challenge
+- Added a login system for the default web template
+- Added a blank challenge template
+
+### Fixed
+- Moved challenge template writeups into their own dedicated folder
+- Fixed an issue when using CTFd in a subdirectory
+
+
+0.0.6 / 2020-10-07
+==================
+### Fixed
+- Properly default the challenge state to visible during sync
+
+
+0.0.5 / 2020-10-07
+==================
+### Added
+- Added `state` parameter to control whether a challenge is visible or not
+- Make the `ctf challenge restore` command be able to take arguments to only restore one challenge
+- Add an `ctf challenge update` command to get the latest version of challenges
+
+### Fixed
+- Fix the sync and install commands to properly install challenge files relative to the `challenge.yml` path
+- Update dependencies in the web challenge template
+
+
 0.0.4 / 2020-06-07
 ==================
 ### Added

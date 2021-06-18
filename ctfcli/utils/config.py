@@ -2,9 +2,9 @@ import configparser
 import json
 import os
 
-from .api import APISession
-
 from ctfcli import __file__ as base_path
+
+from .api import APISession
 
 
 def get_base_path():
@@ -64,8 +64,7 @@ def preview_config(as_string=False):
 def generate_session():
     config = load_config()
     url = config["config"]["url"]
-    url = url.strip("/")
     access_token = config["config"]["access_token"]
-    s = APISession(url)
+    s = APISession(prefix_url=url)
     s.headers.update({"Authorization": f"Token {access_token}"})
     return s
