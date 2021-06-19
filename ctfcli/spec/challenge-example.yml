@@ -41,7 +41,7 @@ attempts: 5
 flags:
     # A static case sensitive flag
     - flag{3xampl3}
-    # A static case insensitive flag created with a dictionary
+    # A static case sensitive flag created with a dictionary
     - {
         type: "static",
         content: "flag{wat}",
