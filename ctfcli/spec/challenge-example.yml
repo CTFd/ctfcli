@@ -35,16 +35,28 @@ host: null
 # Can be removed if unused
 attempts: 5
 
-# Flags specify answers that your challenge use. You should generally provide
-# at least one.
+# Flags specify answers that your challenge use. You should generally provide at least one.
 # Can be removed if unused
-# Accepts strings or dictionaries
+# Accepts strings or dictionaries of CTFd API data
 flags:
+    # A static case sensitive flag
     - flag{3xampl3}
+    # A static case insensitive flag created with a dictionary
     - {
         type: "static",
         content: "flag{wat}",
-        data: "asdfasdfsdf",
+    }
+    # A static case insensitive flag
+    - {
+        type: "static",
+        content: "flag{wat}",
+        data: "case_insensitive",
+    }
+    # A regex case insensitive flag
+    - {
+        type: "regex",
+        content: "(.*)STUFF(.*)",
+        data: "case_insensitive",
     }
 
 # Tags are used to classify your challenge with topics. You should provide at
