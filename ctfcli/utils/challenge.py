@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 import click
 import yaml
@@ -314,8 +315,17 @@ def lint_challenge(path):
             print("Dockerfile missing EXPOSE")
             exit(1)
 
+        # Check Dockerfile with hadolint
+        proc = subprocess.run(
+            ["docker", "run", "--rm", "-i", "hadolint/hadolint"],
+            input=dockerfile.encode(),
+        )
+        if proc.returncode != 0:
+            print("Hadolint found Dockerfile lint issues, please resolve")
+            exit(1)
+
     # Check that all files exists
-    files = challenge.get("files")
+    files = challenge.get("files", [])
     errored = False
     for f in files:
         fpath = Path(path).parent / f
