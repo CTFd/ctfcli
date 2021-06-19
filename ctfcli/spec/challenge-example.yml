@@ -82,7 +82,8 @@ requirements:
     - 1
 
 # The state of the challenge.
-# This is visible by default. It takes two values: hidden, visible.
+# If the field is omitted, the challenge is visible by default.
+# If provided, the field can take one of two values: hidden, visible.
 state: hidden
 
 # Specifies what version of the challenge specification was used.
