@@ -28,7 +28,7 @@ def load_installed_challenges():
     return s.get("/api/v1/challenges?view=admin", json=True).json()["data"]
 
 
-def sync_challenge(challenge):
+def sync_challenge(challenge, ignore=[]):
     data = {
         "name": challenge["name"],
         "category": challenge["category"],
@@ -43,7 +43,7 @@ def sync_challenge(challenge):
     if challenge["value"] is None:
         del challenge["value"]
 
-    if challenge.get("attempts"):
+    if challenge.get("attempts") and "attempts" not in ignore:
         data["max_attempts"] = challenge.get("attempts")
 
     data["state"] = "hidden"
@@ -65,16 +65,15 @@ def sync_challenge(challenge):
     r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
     r.raise_for_status()
 
-    # Delete existing flags
-    current_flags = s.get(f"/api/v1/flags", json=data).json()["data"]
-    for flag in current_flags:
-        if flag["challenge_id"] == challenge_id:
-            flag_id = flag["id"]
-            r = s.delete(f"/api/v1/flags/{flag_id}", json=True)
-            r.raise_for_status()
-
     # Create new flags
-    if challenge.get("flags"):
+    if challenge.get("flags") and "flags" not in ignore:
+        # Delete existing flags
+        current_flags = s.get(f"/api/v1/flags", json=data).json()["data"]
+        for flag in current_flags:
+            if flag["challenge_id"] == challenge_id:
+                flag_id = flag["id"]
+                r = s.delete(f"/api/v1/flags/{flag_id}", json=True)
+                r.raise_for_status()
         for flag in challenge["flags"]:
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge": challenge_id}
@@ -85,31 +84,31 @@ def sync_challenge(challenge):
                 r = s.post(f"/api/v1/flags", json=flag)
                 r.raise_for_status()
 
-    # Delete existing tags
-    current_tags = s.get(f"/api/v1/tags", json=data).json()["data"]
-    for tag in current_tags:
-        if tag["challenge_id"] == challenge_id:
-            tag_id = tag["id"]
-            r = s.delete(f"/api/v1/tags/{tag_id}", json=True)
-            r.raise_for_status()
-
     # Update tags
-    if challenge.get("tags"):
+    if challenge.get("tags") and "tags" not in ignore:
+        # Delete existing tags
+        current_tags = s.get(f"/api/v1/tags", json=data).json()["data"]
+        for tag in current_tags:
+            if tag["challenge_id"] == challenge_id:
+                tag_id = tag["id"]
+                r = s.delete(f"/api/v1/tags/{tag_id}", json=True)
+                r.raise_for_status()
         for tag in challenge["tags"]:
             r = s.post(f"/api/v1/tags", json={"challenge": challenge_id, "value": tag})
             r.raise_for_status()
 
-    # Delete existing files
-    all_current_files = s.get(f"/api/v1/files?type=challenge", json=data).json()["data"]
-    for f in all_current_files:
-        for used_file in original_challenge["files"]:
-            if f["location"] in used_file:
-                file_id = f["id"]
-                r = s.delete(f"/api/v1/files/{file_id}", json=True)
-                r.raise_for_status()
-
     # Upload files
-    if challenge.get("files"):
+    if challenge.get("files") and "files" not in ignore:
+        # Delete existing files
+        all_current_files = s.get(f"/api/v1/files?type=challenge", json=data).json()[
+            "data"
+        ]
+        for f in all_current_files:
+            for used_file in original_challenge["files"]:
+                if f["location"] in used_file:
+                    file_id = f["id"]
+                    r = s.delete(f"/api/v1/files/{file_id}", json=True)
+                    r.raise_for_status()
         files = []
         for f in challenge["files"]:
             file_path = Path(challenge.directory, f)
@@ -125,16 +124,16 @@ def sync_challenge(challenge):
         r = s.post(f"/api/v1/files", files=files, data=data)
         r.raise_for_status()
 
-    # Delete existing hints
-    current_hints = s.get(f"/api/v1/hints", json=data).json()["data"]
-    for hint in current_hints:
-        if hint["challenge_id"] == challenge_id:
-            hint_id = hint["id"]
-            r = s.delete(f"/api/v1/hints/{hint_id}", json=True)
-            r.raise_for_status()
-
     # Create hints
-    if challenge.get("hints"):
+    if challenge.get("hints") and "hints" not in ignore:
+        # Delete existing hints
+        current_hints = s.get(f"/api/v1/hints", json=data).json()["data"]
+        for hint in current_hints:
+            if hint["challenge_id"] == challenge_id:
+                hint_id = hint["id"]
+                r = s.delete(f"/api/v1/hints/{hint_id}", json=True)
+                r.raise_for_status()
+
         for hint in challenge["hints"]:
             if type(hint) == str:
                 data = {"content": hint, "cost": 0, "challenge": challenge_id}
@@ -149,7 +148,7 @@ def sync_challenge(challenge):
             r.raise_for_status()
 
     # Update requirements
-    if challenge.get("requirements"):
+    if challenge.get("requirements") and "requirements" not in ignore:
         installed_challenges = load_installed_challenges()
         required_challenges = []
         for r in challenge["requirements"]:
@@ -166,16 +165,17 @@ def sync_challenge(challenge):
         r.raise_for_status()
 
     # Unhide challenge depending upon the value of "state" in spec
-    data = {"state": "visible"}
-    if challenge.get("state"):
-        if challenge["state"] in ["hidden", "visible"]:
-            data["state"] = challenge["state"]
+    if "state" not in ignore:
+        data = {"state": "visible"}
+        if challenge.get("state"):
+            if challenge["state"] in ["hidden", "visible"]:
+                data["state"] = challenge["state"]
 
-    r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
-    r.raise_for_status()
+        r = s.patch(f"/api/v1/challenges/{challenge_id}", json=data)
+        r.raise_for_status()
 
 
-def create_challenge(challenge):
+def create_challenge(challenge, ignore=[]):
     data = {
         "name": challenge["name"],
         "category": challenge["category"],
@@ -190,7 +190,7 @@ def create_challenge(challenge):
     if challenge["value"] is None:
         del challenge["value"]
 
-    if challenge.get("attempts"):
+    if challenge.get("attempts") and "attempts" not in ignore:
         data["max_attempts"] = challenge.get("attempts")
 
     s = generate_session()
@@ -202,7 +202,7 @@ def create_challenge(challenge):
     challenge_id = challenge_data["data"]["id"]
 
     # Create flags
-    if challenge.get("flags"):
+    if challenge.get("flags") and "flags" not in ignore:
         for flag in challenge["flags"]:
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge": challenge_id}
@@ -214,13 +214,13 @@ def create_challenge(challenge):
                 r.raise_for_status()
 
     # Create tags
-    if challenge.get("tags"):
+    if challenge.get("tags") and "tags" not in ignore:
         for tag in challenge["tags"]:
             r = s.post(f"/api/v1/tags", json={"challenge": challenge_id, "value": tag})
             r.raise_for_status()
 
     # Upload files
-    if challenge.get("files"):
+    if challenge.get("files") and "files" not in ignore:
         files = []
         for f in challenge["files"]:
             file_path = Path(challenge.directory, f)
@@ -237,7 +237,7 @@ def create_challenge(challenge):
         r.raise_for_status()
 
     # Add hints
-    if challenge.get("hints"):
+    if challenge.get("hints") and "hints" not in ignore:
         for hint in challenge["hints"]:
             if type(hint) == str:
                 data = {"content": hint, "cost": 0, "challenge": challenge_id}
@@ -252,7 +252,7 @@ def create_challenge(challenge):
             r.raise_for_status()
 
     # Add requirements
-    if challenge.get("requirements"):
+    if challenge.get("requirements") and "requirements" not in ignore:
         installed_challenges = load_installed_challenges()
         required_challenges = []
         for r in challenge["requirements"]:
@@ -269,7 +269,7 @@ def create_challenge(challenge):
         r.raise_for_status()
 
     # Set challenge state
-    if challenge.get("state"):
+    if challenge.get("state") and "state" not in ignore:
         data = {"state": "hidden"}
         if challenge["state"] in ["hidden", "visible"]:
             data["state"] = challenge["state"]
