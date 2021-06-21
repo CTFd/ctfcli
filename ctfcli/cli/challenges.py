@@ -95,13 +95,15 @@ class Challenge(object):
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
-    def install(self, challenge=None, force=False):
+    def install(self, challenge=None, force=False, ignore=""):
         if challenge is None:
             # Get all challenges if not specifying a challenge
             config = load_config()
             challenges = dict(config["challenges"]).keys()
         else:
             challenges = [challenge]
+
+        ignore = ignore.split(",")
 
         for challenge in challenges:
             path = Path(challenge)
@@ -129,16 +131,18 @@ class Challenge(object):
                         break
             else:  # If we don't break because of duplicated challenge names
                 click.secho(f'Installing {challenge["name"]}', fg="yellow")
-                create_challenge(challenge=challenge)
+                create_challenge(challenge=challenge, ignore=ignore)
                 click.secho(f"Success!", fg="green")
 
-    def sync(self, challenge=None):
+    def sync(self, challenge=None, ignore=""):
         if challenge is None:
             # Get all challenges if not specifying a challenge
             config = load_config()
             challenges = dict(config["challenges"]).keys()
         else:
             challenges = [challenge]
+
+        ignore = ignore.split(",")
 
         for challenge in challenges:
             path = Path(challenge)
@@ -162,7 +166,7 @@ class Challenge(object):
                 continue  # Go to the next challenge in the overall list
 
             click.secho(f'Syncing {challenge["name"]}', fg="yellow")
-            sync_challenge(challenge=challenge)
+            sync_challenge(challenge=challenge, ignore=ignore)
             click.secho(f"Success!", fg="green")
 
     def update(self, challenge=None):
