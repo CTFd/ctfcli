@@ -1,25 +1,16 @@
-FROM python:3.7-alpine
-RUN apk update && \
-    apk add \
-        python3-dev \
-        linux-headers \
-        libffi-dev \
-        gcc \
-        make \
-        musl-dev \
-        py-pip \
-        mysql-client \
-        git \
-        openssl-dev
-RUN adduser -D -u 1001 -s /bin/bash app
-
+FROM python:3.7-slim-buster
+RUN adduser \
+    --disabled-login \
+    -u 1001 \
+    --gecos "" \
+    --shell /bin/bash \
+    app
 WORKDIR /opt/app
 RUN mkdir -p /opt/app
 
 COPY src/ /opt/app/
-
 RUN pip install -r requirements.txt
-RUN chmod +x /opt/app/serve.sh
+RUN chown -R 1001:1001 /opt/app && chmod -R 755 /opt/app
 
 USER 1001
 EXPOSE 8000
