@@ -95,7 +95,7 @@ class Challenge(object):
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
-    def install(self, challenge=None, force=False, ignore=""):
+    def install(self, challenge=None, force=False, ignore=()):
         if challenge is None:
             # Get all challenges if not specifying a challenge
             config = load_config()
@@ -103,7 +103,8 @@ class Challenge(object):
         else:
             challenges = [challenge]
 
-        ignore = ignore.split(",")
+        if isinstance(ignore, str):
+            ignore = (ignore,)
 
         for challenge in challenges:
             path = Path(challenge)
@@ -134,7 +135,7 @@ class Challenge(object):
                 create_challenge(challenge=challenge, ignore=ignore)
                 click.secho(f"Success!", fg="green")
 
-    def sync(self, challenge=None, ignore=""):
+    def sync(self, challenge=None, ignore=()):
         if challenge is None:
             # Get all challenges if not specifying a challenge
             config = load_config()
@@ -142,7 +143,8 @@ class Challenge(object):
         else:
             challenges = [challenge]
 
-        ignore = ignore.split(",")
+        if isinstance(ignore, str):
+            ignore = (ignore,)
 
         for challenge in challenges:
             path = Path(challenge)
