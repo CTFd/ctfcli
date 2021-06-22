@@ -5,7 +5,7 @@
 ==================
 ### Added
 - Added an `extra` field in challenge specification to support different CTFd challenge types
-    - This adds support for dynamic value challenges in CTFd > 3.3.0 (Must have commit df27d0e7a9e336b86165d41920aa176db4ff0e06).
+    - This adds support for dynamic value challenges in CTFd > 3.3.0 (Must have commit [df27d0e7a9e336b86165d41920aa176db4ff0e06](https://github.com/CTFd/CTFd/commit/df27d0e7a9e336b86165d41920aa176db4ff0e06)).
 - Improved `ctf challenge lint` to catch some common mistakes in a challenge
 - Added an `--ignore` flag to `ctf challenge install` and `ctf challenge sync` to disable installation of certain challenge properties (e.g. flags, tags, hints, etc).
     - Usage: `ctf challenge install challenge.yml --ignore=flags,tags`
