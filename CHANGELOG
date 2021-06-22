@@ -1,7 +1,7 @@
 # Changelog
 
 
-UNRELEASED
+0.0.8 / 2021-06-21
 ==================
 ### Added
 - Added an `extra` field in challenge specification to support different CTFd challenge types
@@ -12,6 +12,7 @@ UNRELEASED
     - Usage: `ctf challenge install --ignore=flags,tags`
     - Usage: `ctf challenge sync challenge.yml --ignore=flags,tags`
     - Usage: `ctf challenge sync --ignore=flags,tags`
+- Automatic releases from Github to PyPI
 
 ### Fixed
 - Fix web challenge template for serve.sh
