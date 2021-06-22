@@ -3,6 +3,8 @@ name: Build wheels
 on:
   release:
     types: [created, edited]
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -35,9 +37,15 @@ jobs:
       - name: Build wheels
         run: python setup.py sdist bdist_wheel
 
+      - uses: actions/upload-artifact@v2
+        with:
+          path: |
+           ./dist/*.tar.gz
+
       # Publish to pypi
       - name: Publish to pypi
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        if: ${{ github.event_name == 'release' && env.TWINE_USERNAME != null }}
         run: twine upload --repository pypi dist/*
