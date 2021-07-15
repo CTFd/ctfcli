@@ -71,13 +71,14 @@ class Challenge(object):
 
             config["challenges"][str(challenge_path)] = repo
 
-            with open(get_config_path(), "w+") as f:
-                config.write(f)
-
-            # Setup remote to easily push and pull git subtree
+            # Setup remote for a user to easily push and pull git subtree
             subprocess.call(["git", "remote", "add", base_repo_path, repo])
             print(f"Added git remote {base_repo_path}")
             subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, base_repo_path, "master", "--squash"])
+
+            with open(get_config_path(), "w+") as f:
+                config.write(f)
+
         elif Path(repo).exists():
             config["challenges"][repo] = repo
             with open(get_config_path(), "w+") as f:
