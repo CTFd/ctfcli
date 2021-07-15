@@ -1,5 +1,5 @@
 import os
-import shutil
+import re
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -67,8 +67,9 @@ class Challenge(object):
 
             config["challenges"][str(challenge_path)] = repo
 
-            # Setup remote for a user to easily push and pull git subtree
-            default_branch = subprocess.call("git", "remote", "show", repo, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
+            # Get default branch for the repo
+            git_remote = subprocess.check_output(["git", "remote", "show", repo])
+            default_branch = re.findall('(?<=HEAD branch: )\w*', str(git_remote))[0]
             subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, repo, default_branch, "--squash"], cwd=get_project_path())
             with open(get_config_path(), "w+") as f:
                 config.write(f)
@@ -91,8 +92,9 @@ class Challenge(object):
                 if challenge is not None and folder != challenge:
                     continue
                 click.echo(f"Adding git repo {url} to {folder} as subtree")
-                default_branch = subprocess.call("git", "remote", "show", url, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
-                subprocess.call(["git", "subtree", "add", "--prefix", folder, url, default_branch, "--squash"])
+                git_remote = subprocess.check_output(["git", "remote", "show", url])
+                default_branch = re.findall('(?<=HEAD branch: )\w*', str(git_remote))[0]
+                subprocess.call(["git", "subtree", "add", "--prefix", folder, url, default_branch, "--squash"], cwd=get_project_path())
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
@@ -180,9 +182,10 @@ class Challenge(object):
                 continue
             if url.endswith(".git"):
                 click.echo(f"Pulling latest {url} to {folder}")
-                default_branch = subprocess.call("git", "remote", "show", url, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
-                subprocess.call(["git", "subtree", "pull", "--prefix", folder, url, default_branch, "--squash"])
-                subprocess.call(["git", "mergetool"], cwd=folder)
+                git_remote = subprocess.check_output(["git", "remote", "show", url], cwd=get_project_path())
+                default_branch = re.findall('(?<=HEAD branch: )\w*', str(git_remote))[0]
+                subprocess.call(["git", "subtree", "pull", "--prefix", folder, url, default_branch, "--squash"], cwd=get_project_path())
+                subprocess.call(["git", "mergetool", "--prompt"], cwd=folder)
                 subprocess.call(["git", "clean", "-f"], cwd=folder)
                 subprocess.call(["git", "commit", "--no-edit"], cwd=folder)
             else:
