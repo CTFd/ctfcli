@@ -61,6 +61,7 @@ class Challenge(object):
             # Get new directory that will add the git subtree
             base_repo_path = Path(os.path.basename(repo).rsplit(".", maxsplit=1)[0])
 
+            # Set the challenge path's category directory
             if category:
                 category_path = Path(category)
                 # Join targets
