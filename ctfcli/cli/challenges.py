@@ -51,7 +51,7 @@ class Challenge(object):
 
         Templates().list()
 
-    def add(self, repo, category=None):
+    def add(self, repo):
         config = load_config()
 
         if repo.endswith(".git"):
@@ -61,21 +61,16 @@ class Challenge(object):
             # Get new directory that will add the git subtree
             base_repo_path = Path(os.path.basename(repo).rsplit(".", maxsplit=1)[0])
 
-            # Set the challenge path's category directory
-            if category:
-                category_path = Path(category)
-                # Join targets
-                challenge_path = challenge_path / category_path / base_repo_path
-            else:
-                challenge_path = challenge_path / base_repo_path
+            # Join targets
+            challenge_path = challenge_path / base_repo_path
             print(challenge_path)
 
             config["challenges"][str(challenge_path)] = repo
 
             # Setup remote for a user to easily push and pull git subtree
-            subprocess.call(["git", "remote", "add", base_repo_path, repo])
-            print(f"Added git remote {base_repo_path}")
-            subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, base_repo_path, "master", "--squash"])
+            subprocess.call(["git", "remote", "add", base_repo_path, repo], cwd=get_project_path())
+            default_branch = subprocess.call("git", "remote", "show", repo, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
+            subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, repo, default_branch, "--squash"], cwd=get_project_path())
 
             with open(get_config_path(), "w+") as f:
                 config.write(f)
@@ -97,8 +92,9 @@ class Challenge(object):
             if url.endswith(".git"):
                 if challenge is not None and folder != challenge:
                     continue
-                click.echo(f"Adding subtree {url} to {folder}")
-                subprocess.call(["git", "subtree", "add", "--prefix", folder, url, "master", "--squash"])
+                click.echo(f"Adding git repo {url} to {folder} as subtree")
+                default_branch = subprocess.call("git", "remote", "show", url, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
+                subprocess.call(["git", "subtree", "add", "--prefix", folder, url, default_branch, "--squash"])
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
@@ -186,7 +182,8 @@ class Challenge(object):
                 continue
             if url.endswith(".git"):
                 click.echo(f"Pulling latest {url} to {folder}")
-                subprocess.call(["git", "subtree", "pull", "--prefix", folder, url, "master", "--squash"])
+                default_branch = subprocess.call("git", "remote", "show", url, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
+                subprocess.call(["git", "subtree", "pull", "--prefix", folder, url, default_branch, "--squash"])
                 subprocess.call(["git", "mergetool"], cwd=folder)
                 subprocess.call(["git", "clean", "-f"], cwd=folder)
                 subprocess.call(["git", "commit", "--no-edit"], cwd=folder)
