@@ -51,7 +51,7 @@ class Challenge(object):
 
         Templates().list()
 
-    def add(self, repo):
+    def add(self, repo, category=None):
         config = load_config()
 
         if repo.endswith(".git"):
@@ -61,8 +61,12 @@ class Challenge(object):
             # Get new directory that will add the git subtree
             base_repo_path = Path(os.path.basename(repo).rsplit(".", maxsplit=1)[0])
 
-            # Join targets
-            challenge_path = challenge_path / base_repo_path
+            if category:
+                category_path = Path(category)
+                # Join targets
+                challenge_path = challenge_path / category_path / base_repo_path
+            else:
+                challenge_path = challenge_path / base_repo_path
             print(challenge_path)
 
             config["challenges"][str(challenge_path)] = repo
@@ -73,7 +77,7 @@ class Challenge(object):
             # Setup remote to easily push and pull git subtree
             subprocess.call(["git", "remote", "add", base_repo_path, repo])
             print(f"Added git remote {base_repo_path}")
-            subprocess.call(["git", "subtree", "add", "--prefix", base_repo_path, base_repo_path, "master", "--squash"])
+            subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, base_repo_path, "master", "--squash"])
         elif Path(repo).exists():
             config["challenges"][repo] = repo
             with open(get_config_path(), "w+") as f:
