@@ -68,10 +68,8 @@ class Challenge(object):
             config["challenges"][str(challenge_path)] = repo
 
             # Setup remote for a user to easily push and pull git subtree
-            subprocess.call(["git", "remote", "add", base_repo_path, repo], cwd=get_project_path())
             default_branch = subprocess.call("git", "remote", "show", repo, "|", "sed", "-n", "'/Fetch URL/s/.*: //p'")
             subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, repo, default_branch, "--squash"], cwd=get_project_path())
-
             with open(get_config_path(), "w+") as f:
                 config.write(f)
 
