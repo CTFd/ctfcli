@@ -58,7 +58,7 @@ class Challenge(object):
             # Get relative path from project root to current directory
             challenge_path = Path(os.path.relpath(os.getcwd(), get_project_path()))
 
-            # Get new directory that will exist after clone
+            # Get new directory that will add the git subtree
             base_repo_path = Path(os.path.basename(repo).rsplit(".", maxsplit=1)[0])
 
             # Join targets
@@ -70,8 +70,10 @@ class Challenge(object):
             with open(get_config_path(), "w+") as f:
                 config.write(f)
 
-            subprocess.call(["git", "clone", "--depth", "1", repo])
-            shutil.rmtree(str(base_repo_path / ".git"))
+            # Setup remote to easily push and pull git subtree
+            subprocess.call(["git", "remote", "add", base_repo_path, repo])
+            print(f"Added git remote {base_repo_path}")
+            subprocess.call(["git", "subtree", "add", "--prefix", base_repo_path, base_repo_path, "master", "--squash"])
         elif Path(repo).exists():
             config["challenges"][repo] = repo
             with open(get_config_path(), "w+") as f:
