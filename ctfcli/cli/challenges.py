@@ -293,3 +293,20 @@ class Challenge(object):
             click.secho(
                 f"An error occured during deployment", fg="red",
             )
+
+    def push(self, challenge=None):
+        config = load_config()
+        challenges = dict(config["challenges"])
+        if challenge is None:
+            # Get relative path from project root to current directory
+            challenge_path = Path(os.path.relpath(os.getcwd(), get_project_path()))
+            challenge = str(challenge_path)
+
+        try:
+            url = challenges[challenge]
+            # Get default branch for the repo
+            git_remote = subprocess.check_output(["git", "remote", "show", url])
+            default_branch = re.findall('(?<=HEAD branch: )\w*', str(git_remote))[0]
+            subprocess.call(["git", "subtree", "push", "--prefix", challenge, url, default_branch], cwd=get_project_path())
+        except KeyError:
+            click.echo("Couldn't process that challenge path. Please check that the challenge is added to .ctf/config and that your path matches.")
