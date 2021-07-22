@@ -217,7 +217,7 @@ class Challenge(object):
                     ],
                     cwd=get_project_path(),
                 )
-                subprocess.call(["git", "mergetool", "--prompt"], cwd=folder)
+                subprocess.call(["git", "mergetool"], cwd=folder)
                 subprocess.call(["git", "clean", "-f"], cwd=folder)
                 subprocess.call(["git", "commit", "--no-edit"], cwd=folder)
             else:
