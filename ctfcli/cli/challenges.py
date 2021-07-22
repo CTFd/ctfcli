@@ -1,5 +1,4 @@
 import os
-import re
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -25,6 +24,7 @@ from ctfcli.utils.deploy import DEPLOY_HANDLERS
 from ctfcli.utils.spec import CHALLENGE_SPEC_DOCS, blank_challenge_spec
 from ctfcli.utils.templates import get_template_dir
 from ctfcli.utils.git import get_git_repo_head_branch
+
 
 class Challenge(object):
     def new(self, type="blank"):
@@ -68,7 +68,19 @@ class Challenge(object):
             config["challenges"][str(challenge_path)] = repo
 
             head_branch = get_git_repo_head_branch(repo)
-            subprocess.call(["git", "subtree", "add", "--prefix", challenge_path, repo, head_branch, "--squash"], cwd=get_project_path())
+            subprocess.call(
+                [
+                    "git",
+                    "subtree",
+                    "add",
+                    "--prefix",
+                    challenge_path,
+                    repo,
+                    head_branch,
+                    "--squash",
+                ],
+                cwd=get_project_path(),
+            )
             with open(get_config_path(), "w+") as f:
                 config.write(f)
 
@@ -91,7 +103,19 @@ class Challenge(object):
                     continue
                 click.echo(f"Adding git repo {url} to {folder} as subtree")
                 head_branch = get_git_repo_head_branch(url)
-                subprocess.call(["git", "subtree", "add", "--prefix", folder, url, head_branch, "--squash"], cwd=get_project_path())
+                subprocess.call(
+                    [
+                        "git",
+                        "subtree",
+                        "add",
+                        "--prefix",
+                        folder,
+                        url,
+                        head_branch,
+                        "--squash",
+                    ],
+                    cwd=get_project_path(),
+                )
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
@@ -180,7 +204,19 @@ class Challenge(object):
             if url.endswith(".git"):
                 click.echo(f"Pulling latest {url} to {folder}")
                 head_branch = get_git_repo_head_branch(url)
-                subprocess.call(["git", "subtree", "pull", "--prefix", folder, url, head_branch, "--squash"], cwd=get_project_path())
+                subprocess.call(
+                    [
+                        "git",
+                        "subtree",
+                        "pull",
+                        "--prefix",
+                        folder,
+                        url,
+                        head_branch,
+                        "--squash",
+                    ],
+                    cwd=get_project_path(),
+                )
                 subprocess.call(["git", "mergetool", "--prompt"], cwd=folder)
                 subprocess.call(["git", "clean", "-f"], cwd=folder)
                 subprocess.call(["git", "commit", "--no-edit"], cwd=folder)
@@ -301,6 +337,11 @@ class Challenge(object):
         try:
             url = challenges[challenge]
             head_branch = get_git_repo_head_branch(url)
-            subprocess.call(["git", "subtree", "push", "--prefix", challenge, url, head_branch], cwd=get_project_path())
+            subprocess.call(
+                ["git", "subtree", "push", "--prefix", challenge, url, head_branch],
+                cwd=get_project_path(),
+            )
         except KeyError:
-            click.echo("Couldn't process that challenge path. Please check that the challenge is added to .ctf/config and that your path matches.")
+            click.echo(
+                "Couldn't process that challenge path. Please check that the challenge is added to .ctf/config and that your path matches."
+            )
