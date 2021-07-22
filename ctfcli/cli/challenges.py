@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -24,6 +23,7 @@ from ctfcli.utils.config import (
 from ctfcli.utils.deploy import DEPLOY_HANDLERS
 from ctfcli.utils.spec import CHALLENGE_SPEC_DOCS, blank_challenge_spec
 from ctfcli.utils.templates import get_template_dir
+from ctfcli.utils.git import get_git_repo_head_branch
 
 
 class Challenge(object):
@@ -58,7 +58,7 @@ class Challenge(object):
             # Get relative path from project root to current directory
             challenge_path = Path(os.path.relpath(os.getcwd(), get_project_path()))
 
-            # Get new directory that will exist after clone
+            # Get new directory that will add the git subtree
             base_repo_path = Path(os.path.basename(repo).rsplit(".", maxsplit=1)[0])
 
             # Join targets
@@ -67,11 +67,23 @@ class Challenge(object):
 
             config["challenges"][str(challenge_path)] = repo
 
+            head_branch = get_git_repo_head_branch(repo)
+            subprocess.call(
+                [
+                    "git",
+                    "subtree",
+                    "add",
+                    "--prefix",
+                    challenge_path,
+                    repo,
+                    head_branch,
+                    "--squash",
+                ],
+                cwd=get_project_path(),
+            )
             with open(get_config_path(), "w+") as f:
                 config.write(f)
 
-            subprocess.call(["git", "clone", "--depth", "1", repo])
-            shutil.rmtree(str(base_repo_path / ".git"))
         elif Path(repo).exists():
             config["challenges"][repo] = repo
             with open(get_config_path(), "w+") as f:
@@ -89,9 +101,21 @@ class Challenge(object):
             if url.endswith(".git"):
                 if challenge is not None and folder != challenge:
                     continue
-                click.echo(f"Cloning {url} to {folder}")
-                subprocess.call(["git", "clone", "--depth", "1", url, folder])
-                shutil.rmtree(str(Path(folder) / ".git"))
+                click.echo(f"Adding git repo {url} to {folder} as subtree")
+                head_branch = get_git_repo_head_branch(url)
+                subprocess.call(
+                    [
+                        "git",
+                        "subtree",
+                        "add",
+                        "--prefix",
+                        folder,
+                        url,
+                        head_branch,
+                        "--squash",
+                    ],
+                    cwd=get_project_path(),
+                )
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
@@ -178,22 +202,24 @@ class Challenge(object):
             if challenge and challenge != folder:
                 continue
             if url.endswith(".git"):
-                click.echo(f"Cloning {url} to {folder}")
-                subprocess.call(["git", "init"], cwd=folder)
-                subprocess.call(["git", "remote", "add", "origin", url], cwd=folder)
-                subprocess.call(["git", "add", "-A"], cwd=folder)
+                click.echo(f"Pulling latest {url} to {folder}")
+                head_branch = get_git_repo_head_branch(url)
                 subprocess.call(
-                    ["git", "commit", "-m", "Persist local changes (ctfcli)"],
-                    cwd=folder,
-                )
-                subprocess.call(
-                    ["git", "pull", "--allow-unrelated-histories", "origin", "master"],
-                    cwd=folder,
+                    [
+                        "git",
+                        "subtree",
+                        "pull",
+                        "--prefix",
+                        folder,
+                        url,
+                        head_branch,
+                        "--squash",
+                    ],
+                    cwd=get_project_path(),
                 )
                 subprocess.call(["git", "mergetool"], cwd=folder)
                 subprocess.call(["git", "clean", "-f"], cwd=folder)
                 subprocess.call(["git", "commit", "--no-edit"], cwd=folder)
-                shutil.rmtree(str(Path(folder) / ".git"))
             else:
                 click.echo(f"Skipping {url} - {folder}")
 
@@ -298,4 +324,24 @@ class Challenge(object):
         else:
             click.secho(
                 f"An error occured during deployment", fg="red",
+            )
+
+    def push(self, challenge=None):
+        config = load_config()
+        challenges = dict(config["challenges"])
+        if challenge is None:
+            # Get relative path from project root to current directory
+            challenge_path = Path(os.path.relpath(os.getcwd(), get_project_path()))
+            challenge = str(challenge_path)
+
+        try:
+            url = challenges[challenge]
+            head_branch = get_git_repo_head_branch(url)
+            subprocess.call(
+                ["git", "subtree", "push", "--prefix", challenge, url, head_branch],
+                cwd=get_project_path(),
+            )
+        except KeyError:
+            click.echo(
+                "Couldn't process that challenge path. Please check that the challenge is added to .ctf/config and that your path matches."
             )
