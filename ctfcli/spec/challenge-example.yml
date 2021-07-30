@@ -59,8 +59,15 @@ flags:
         data: "case_insensitive",
     }
 
-# Tags are used to classify your challenge with topics. You should provide at
-# least one.
+# Topics are used to help tell what techniques/information a challenge involves
+# They are generally only visible to admins
+# Accepts strings
+topics:
+    - information disclosure
+    - buffer overflow
+    - memory forensics
+
+# Tags are used to provide additional public tagging to a challenge
 # Can be removed if unused
 # Accepts strings
 tags:
