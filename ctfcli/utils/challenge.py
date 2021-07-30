@@ -46,6 +46,9 @@ def sync_challenge(challenge, ignore=[]):
     if challenge.get("attempts") and "attempts" not in ignore:
         data["max_attempts"] = challenge.get("attempts")
 
+    if challenge.get("connection_info") and "connection_info" not in ignore:
+        data["connection_info"] = challenge.get("connection_info")
+
     data["state"] = "hidden"
 
     installed_challenges = load_installed_challenges()
@@ -218,6 +221,9 @@ def create_challenge(challenge, ignore=[]):
 
     if challenge.get("attempts") and "attempts" not in ignore:
         data["max_attempts"] = challenge.get("attempts")
+
+    if challenge.get("connection_info") and "connection_info" not in ignore:
+        data["connection_info"] = challenge.get("connection_info")
 
     s = generate_session()
 
