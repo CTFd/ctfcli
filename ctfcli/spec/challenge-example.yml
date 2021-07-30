@@ -102,7 +102,6 @@ hints:
 requirements:
     - "Warmup"
     - "Are you alive"
-    - 1
 
 # The state of the challenge.
 # If the field is omitted, the challenge is visible by default.
