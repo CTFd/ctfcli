@@ -32,6 +32,10 @@ image: null
 host: null
 
 # Optional settings
+
+# connection_info is used to provide a link, hostname, or instructions on how to connect to a challenge
+connection_info: nc hostname 12345
+
 # Can be removed if unused
 attempts: 5
 
