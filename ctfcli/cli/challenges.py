@@ -84,6 +84,14 @@ class Challenge(object):
             with open(get_config_path(), "w+") as f:
                 config.write(f)
 
+            subprocess.call(
+                ["git", "add", ".ctf/config"], cwd=get_project_path(),
+            )
+            subprocess.call(
+                ["git", "commit", "-m", f"Added {str(challenge_path)}"],
+                cwd=get_project_path(),
+            )
+
         elif Path(repo).exists():
             config["challenges"][repo] = repo
             with open(get_config_path(), "w+") as f:
