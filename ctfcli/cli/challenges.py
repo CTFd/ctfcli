@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -11,6 +12,7 @@ from ctfcli.utils.challenge import (
     create_challenge,
     lint_challenge,
     load_challenge,
+    load_installed_challenge,
     load_installed_challenges,
     sync_challenge,
 )
@@ -353,3 +355,56 @@ class Challenge(object):
             click.echo(
                 "Couldn't process that challenge path. Please check that the challenge is added to .ctf/config and that your path matches."
             )
+
+    def healthcheck(self, challenge):
+        config = load_config()
+        challenges = config["challenges"]
+
+        # challenge_path = challenges[challenge]
+        path = Path(challenge)
+        if path.name.endswith(".yml") is False:
+            path = path / "challenge.yml"
+
+        challenge = load_challenge(path)
+        click.secho(f'Loaded {challenge["name"]}', fg="yellow")
+        try:
+            healthcheck = challenge["healthcheck"]
+        except KeyError:
+            click.secho(f'{challenge["name"]} missing healthcheck parameter', fg="red")
+            return
+
+        # Get challenges installed from CTFd and try to find our challenge
+        installed_challenges = load_installed_challenges()
+        target = None
+        for c in installed_challenges:
+            if c["name"] == challenge["name"]:
+                target = c
+                break
+        else:
+            click.secho(
+                f'Couldn\'t find challenge {c["name"]} on CTFd', fg="red",
+            )
+            return
+
+        # Get the actual challenge data
+        installed_challenge = load_installed_challenge(target["id"])
+        connection_info = installed_challenge["connection_info"]
+
+        # Run healthcheck
+        if connection_info:
+            rcode = subprocess.call(
+                [healthcheck, "--connection-info", connection_info], cwd=path.parent
+            )
+        else:
+            rcode = subprocess.call([healthcheck], cwd=path.parent)
+
+        if rcode != 0:
+            click.secho(
+                f"Healcheck failed", fg="red",
+            )
+            sys.exit(1)
+        else:
+            click.secho(
+                f"Success", fg="green",
+            )
+            sys.exit(0)

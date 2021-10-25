@@ -23,6 +23,11 @@ def load_challenge(path):
         return
 
 
+def load_installed_challenge(challenge_id):
+    s = generate_session()
+    return s.get(f"/api/v1/challenges/{challenge_id}", json=True).json()["data"]
+
+
 def load_installed_challenges():
     s = generate_session()
     return s.get("/api/v1/challenges?view=admin", json=True).json()["data"]
