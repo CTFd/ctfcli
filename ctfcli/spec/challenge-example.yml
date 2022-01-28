@@ -36,6 +36,11 @@ host: null
 # connection_info is used to provide a link, hostname, or instructions on how to connect to a challenge
 connection_info: nc hostname 12345
 
+# healthcheck is a tool/script used to check a challenge
+# If connection_info was provided to CTFd when the challenge was installed, it will be passed to the healthcheck script:
+# ./writeup/exploit.sh --connection-info "nc hostname 12345"
+healthcheck: writeup/exploit.sh
+
 # Can be removed if unused
 attempts: 5
 
