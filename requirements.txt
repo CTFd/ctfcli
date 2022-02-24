@@ -6,3 +6,4 @@ Pygments==2.7.4
 requests==2.22.0
 colorama==0.4.3
 appdirs==1.4.3
+python-frontmatter==1.0.0
