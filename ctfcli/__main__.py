@@ -12,6 +12,7 @@ from ctfcli.cli.challenges import Challenge
 from ctfcli.cli.config import Config
 from ctfcli.cli.plugins import Plugins
 from ctfcli.cli.templates import Templates
+from ctfcli.cli.pages import Pages
 from ctfcli.utils.plugins import get_plugin_dir
 
 
@@ -47,6 +48,9 @@ class CTFCLI(object):
     def challenge(self):
         return COMMANDS.get("challenge")
 
+    def pages(self):
+        return COMMANDS.get("pages")
+
     def plugins(self):
         return COMMANDS.get("plugins")
 
@@ -57,6 +61,7 @@ class CTFCLI(object):
 COMMANDS = {
     "challenge": Challenge(),
     "config": Config(),
+    "pages": Pages(),
     "plugins": Plugins(),
     "templates": Templates(),
     "cli": CTFCLI(),
