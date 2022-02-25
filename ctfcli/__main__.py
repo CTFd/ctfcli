@@ -17,9 +17,13 @@ from ctfcli.utils.plugins import get_plugin_dir
 
 
 class CTFCLI(object):
-    def init(self):
-        ctf_url = click.prompt("Please enter CTFd instance URL")
-        ctf_token = click.prompt("Please enter CTFd Admin Access Token")
+    def init(self, no_config=False):
+        ctf_url = click.prompt(
+            "Please enter CTFd instance URL", default="", show_default=False
+        )
+        ctf_token = click.prompt(
+            "Please enter CTFd Admin Access Token", default="", show_default=False
+        )
         if (
             click.confirm(f"Do you want to continue with {ctf_url} and {ctf_token}")
             is False
