@@ -14,16 +14,27 @@ from ctfcli.cli.plugins import Plugins
 from ctfcli.cli.templates import Templates
 from ctfcli.cli.pages import Pages
 from ctfcli.utils.plugins import get_plugin_dir
+from ctfcli.utils.git import check_if_dir_is_inside_git_repo
 
 
 class CTFCLI(object):
-    def init(self, no_config=False):
+    def init(self, directory=None, no_config=False, no_git=False):
+        # Create our event directory if requested and use it as our base directory
+        if directory:
+            path = Path(directory)
+            path.mkdir()
+            click.secho(f"Created empty directory in {path.absolute()}", fg="green")
+        else:
+            path = Path(".")
+
+        # Get variables from user
         ctf_url = click.prompt(
             "Please enter CTFd instance URL", default="", show_default=False
         )
         ctf_token = click.prompt(
             "Please enter CTFd Admin Access Token", default="", show_default=False
         )
+        # Confirm information with user
         if (
             click.confirm(f"Do you want to continue with {ctf_url} and {ctf_token}")
             is False
@@ -31,20 +42,29 @@ class CTFCLI(object):
             click.echo("Aborted!")
             return
 
-        if Path(".ctf").exists():
+        # Avoid colliding with existing .ctf directory
+        if (path / ".ctf").exists():
             click.secho(".ctf/ folder already exists. Aborting!", fg="red")
             return
 
-        os.mkdir(".ctf")
+        # Create .ctf directory
+        (path / ".ctf").mkdir()
 
+        # Create initial .ctf/config file
         config = configparser.ConfigParser()
         config["config"] = {"url": ctf_url, "access_token": ctf_token}
         config["challenges"] = {}
-
-        with open(".ctf/config", "a+") as f:
+        with (path / ".ctf" / "config").open(mode="a+") as f:
             config.write(f)
 
-        subprocess.call(["git", "init"])
+        # Create a git repo in the event folder
+        if check_if_dir_is_inside_git_repo(dir=path.absolute()) is True:
+            click.secho("Already in git repo. Skipping git init.", fg="yellow")
+        elif no_git is True:
+            click.secho("Skipping git init.", fg="yellow")
+        else:
+            click.secho(f"Creating git repo in {path.absolute()}", fg="green")
+            subprocess.call(["git", "init", str(path)])
 
     def config(self):
         return COMMANDS.get("config")
