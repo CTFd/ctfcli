@@ -5,6 +5,7 @@ import click
 import yaml
 
 from .config import generate_session
+from .tools import strings
 
 
 class Yaml(dict):
@@ -384,6 +385,21 @@ def lint_challenge(path):
         if fpath.is_file() is False:
             print(f"File {f} specified but not found at {fpath.absolute()}")
             errored = True
+    if errored:
+        exit(1)
+
+    # Check that files don't have a flag in them
+    files = challenge.get("files", [])
+    errored = False
+    for f in files:
+        fpath = Path(path).parent / f
+        for s in strings(fpath):
+            # TODO make flag format customizable
+            if "flag" in s:
+                print(
+                    f"Potential flag {s} found in distributed file {fpath.absolute()}"
+                )
+                errored = True
     if errored:
         exit(1)
 
