@@ -1,5 +1,27 @@
 # Changelog
 
+# 0.0.10 / 2022-03-07
+
+### Added
+
+- Add support for pages in event repos
+  - Add the `ctf pages install` command that looks for markdown and html files with frontmatter in a special pages folder
+- Add `healthcheck` key in `challenge.yml` to specify a healthcheck script
+  - Add `ctf challenge healthcheck [challenge_name]`
+- Add `ssl_verify` in the `.ctf/config` file to support SSL verification disabling. `ssl_verify` can be `true` or `false` or a string (specifying the trusted SSL certificates)
+- Adds a `--no-git` option to `ctf init` to skip git repo creation in event folder
+
+### Changed
+
+- Allow empty string in CTFd URL and CTFd access token values for `ctf init`
+- `ctf init` will not attempt to create git repos when the event folder is in a git repo already
+- `ctf init <folder>` can now be used to create the event folder instead of creating the folder beforehand
+
+### Fixed
+
+- Fix issue in `ctf challenge add` where challenges weren't being added to `.ctf/config`
+- Fix issue where plugins couldnt be installed if only pip3 was available
+
 # 0.0.9 / 2021-08-06
 
 ### Added
