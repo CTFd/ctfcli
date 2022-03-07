@@ -2,7 +2,7 @@ name: Build wheels
 
 on:
   release:
-    types: [created, edited]
+    types: [published]
   pull_request:
     types: [opened, reopened, edited, synchronize]
 
