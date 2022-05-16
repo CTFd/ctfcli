@@ -19,7 +19,7 @@ class Templates(object):
 
     def list(self):
         template_dir = get_template_dir() + "/"
-        for template in glob(f"{template_dir}/**/*/cookiecutter.json"):
+        for template in glob(f"{template_dir}/**/*/cookiecutter.json", recursive=True):
             # Remove prefix of template_dir and remove suffix of /cookiecutter.json
             template = template[len(template_dir) : -len("/cookiecutter.json")]
             print(template)
