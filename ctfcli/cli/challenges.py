@@ -171,13 +171,13 @@ class Challenge(object):
 
     def sync(self, challenge=None, ignore=()):
         
-        # Sanity check to avoid UnboundLocalError: which occurs in the inner loop                                                                                                     │····················
-        # If there are no challenges installed at all in the database.                                                                                                                │····················
-        if not load_installed_challenges():                                                                                                                                           │····················
+        # Sanity check to avoid UnboundLocalError: which occurs in the inner loop                                                                           
+        # If there are no challenges installed at all in the database.                                                                                     
+        if not load_installed_challenges():                                                                                                                 
             click.secho(
-                "There are no challenges installed, therefore there cannot be anything to sync, try install.",                                                               │····················
-                fg="red",                                                                                                                                                     │····················
-            )                                                                                                                                                                         │····················
+                "There are no challenges installed, therefore there cannot be anything to sync, try install.",                                             
+                fg="red",                                                                                                                                   
+            )                                                                                                                                               
             return
         
         if challenge is None:
