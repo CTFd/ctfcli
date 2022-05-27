@@ -190,7 +190,7 @@ class Challenge(object):
             challenge = load_challenge(path)
             click.secho(f'Loaded {challenge["name"]}', fg="yellow")
 
-            installed_challenges = load_installed_challenges()              
+            installed_challenges = load_installed_challenges()
             for c in installed_challenges:
                 if c["name"] == challenge["name"]:
                     break
