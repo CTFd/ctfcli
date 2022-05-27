@@ -196,7 +196,7 @@ class Challenge(object):
                     break
             else:
                 click.secho(
-                    f'Couldn\'t find existing challenge {c["name"]}. Perhaps you meant install instead of sync?',
+                    f'Couldn\'t find existing challenge {challenge["name"]}. Perhaps you meant install instead of sync?',
                     fg="red",
                 )
                 continue  # Go to the next challenge in the overall list
