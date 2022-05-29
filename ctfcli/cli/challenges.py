@@ -53,7 +53,7 @@ class Challenge(object):
 
         Templates().list()
 
-    def add(self, repo):
+    def add(self, repo, yaml_path=None):
         config = load_config()
 
         if repo.endswith(".git"):
@@ -67,7 +67,13 @@ class Challenge(object):
             challenge_path = challenge_path / base_repo_path
             print(challenge_path)
 
-            config["challenges"][str(challenge_path)] = repo
+            # If a custom yaml_path is specified we add it to our challenge_key
+            if yaml_path:
+                challenge_key = str(challenge_path / yaml_path)
+            else:
+                challenge_key = str(challenge_path)
+
+            config["challenges"][challenge_key] = repo
 
             head_branch = get_git_repo_head_branch(repo)
             subprocess.call(
