@@ -31,7 +31,7 @@ def ssh(challenge, host):
         [
             "ssh",
             host.netloc,
-            f"docker run -d -p{exposed_port}:{exposed_port} {image_name}",
+            f"docker run -d -p{exposed_port}:{exposed_port} --name {image_name} --restart always {image_name}",
         ]
     )
 
