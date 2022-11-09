@@ -1,6 +1,6 @@
 # Changelog
 
-# 0.0.11 / UNRELEASED
+# 0.0.11 / 2022-11-09
 
 ### Added
 
