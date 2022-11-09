@@ -1,5 +1,20 @@
 # Changelog
 
+# 0.0.11 / UNRELEASED
+
+### Added
+
+- Added a restart policy and container name to services deployed via ssh
+- Added `--yaml-path` to `ctf challenge add` to specify a specific `challenge.yml` path that will be added to the .ctf config
+
+### Fixed
+
+- Fixed issue in `ctf templates list` where not all templates would be listed
+- Bumped version of dependencies to support Python 3.11
+  - Bumped `cookiecutter` to 2.1.1
+  - Bumped `requests` to 2.28.1
+  - Bumped `colorama` to 0.4.6
+
 # 0.0.10 / 2022-03-07
 
 ### Added
