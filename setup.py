@@ -38,7 +38,7 @@ setup(
         "fire==0.2.1",
         "pyyaml==5.4",
         "Pygments==2.7.4",
-        "requests==2.22.0",
+        "requests==2.28.1",
         "colorama==0.4.3",
         "appdirs==1.4.3",
         "python-frontmatter==1.0.0",
