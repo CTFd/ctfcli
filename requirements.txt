@@ -20,7 +20,7 @@ click==7.0
     # via
     #   -r requirements.in
     #   cookiecutter
-colorama==0.4.3
+colorama==0.4.6
     # via -r requirements.in
 cookiecutter==2.1.1
     # via -r requirements.in
