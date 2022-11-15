@@ -15,6 +15,8 @@ from ctfcli.utils.challenge import (
     load_installed_challenge,
     load_installed_challenges,
     sync_challenge,
+    verify_challenge,
+    pull_challenge
 )
 from ctfcli.utils.config import (
     get_base_path,
@@ -414,3 +416,47 @@ class Challenge(object):
                 f"Success", fg="green",
             )
             sys.exit(0)
+
+    def verify(self, challenge=None, verify_contents=False):
+        if challenge is None:
+            # Get all challenges if not specifying a challenge
+            config = load_config()
+            challenges = dict(config["challenges"]).keys()
+        else:
+            challenges = [challenge]
+
+        for challenge in challenges:
+            path = Path(challenge)
+
+            if path.name.endswith(".yml") is False:
+                path = path / "challenge.yml"
+
+            click.secho(f"Found {path}")
+            challenge = load_challenge(path)
+            click.secho(f'Loaded {challenge["name"]}', fg="yellow")
+
+            click.secho(f'Verifying {challenge["name"]}', fg="yellow")
+            verify_challenge(challenge=challenge, verify_contents=verify_contents)
+            click.secho(f"Success!", fg="green")
+    
+    def pull(self, challenge=None, create_files=False):
+        if challenge is None:
+            # Get all challenges if not specifying a challenge
+            config = load_config()
+            challenges = dict(config["challenges"]).keys()
+        else:
+            challenges = [challenge]
+
+        for challenge in challenges:
+            path = Path(challenge)
+
+            if path.name.endswith(".yml") is False:
+                path = path / "challenge.yml"
+
+            click.secho(f"Found {path}")
+            challenge = load_challenge(path)
+            click.secho(f'Loaded {challenge["name"]}', fg="yellow")
+
+            click.secho(f'Verifying {challenge["name"]}', fg="yellow")
+            pull_challenge(challenge=challenge, create_files=create_files)
+            click.secho(f"Success!", fg="green")

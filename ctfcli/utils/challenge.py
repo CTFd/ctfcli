@@ -404,3 +404,133 @@ def lint_challenge(path):
         exit(1)
 
     exit(0)
+
+def get_challenge_details(challenge_id):
+    s = generate_session()
+    r = s.get(f"/api/v1/challenges/{challenge_id}")
+    r.raise_for_status()
+    challenge = r.json()["data"]
+    # Remove non-yaml fields
+
+    challenge.pop("id")
+    challenge.pop("type_data")
+    challenge.pop("view")
+
+    # Add flags
+    r = s.get(f"/api/v1/challenges/{challenge_id}/flags")
+    r.raise_for_status()
+    flags = r.json()["data"]
+    challenge["flags"] = [f["content"] if f["type"] == "static" and f["data"] == None else { "content": f["content"], "type": f["type"], "data": f["data"] } for f in flags]
+
+    # Add tags
+    r = s.get(f"/api/v1/challenges/{challenge_id}/tags")
+    r.raise_for_status()
+    tags = r.json()["data"]
+    challenge["tags"] = [t["value"] for t in tags]
+
+    # Add hints
+    r = s.get(f"/api/v1/challenges/{challenge_id}/hints")
+    r.raise_for_status()
+    hints = r.json()["data"]
+    challenge["hints"] = [{ "content": h["content"], "cost": h["cost"] } if h["cost"] > 0 else h["content"] for h in hints]
+
+    # Add topics
+    r = s.get(f"/api/v1/challenges/{challenge_id}/topics")
+    r.raise_for_status()
+    topics = r.json()["data"]
+    challenge["topics"] = [t["value"] for t in topics]
+
+    # Add requirements
+    r = s.get(f"/api/v1/challenges/{challenge_id}/requirements")
+    r.raise_for_status()
+    requirements = r.json()["data"].get("prerequisites", [])
+    if len(requirements) > 0:
+        # Prefer challenge names over IDs
+        r = s.get("/api/v1/challenges")
+        r.raise_for_status()
+        challenges = r.json()["data"]
+        challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
+
+    return challenge
+
+def verify_challenge(challenge, verify_contents=False):
+    """
+    Verify that the challenge.yml matches the remote challenge if one exists with the same name
+    """
+    s = generate_session()
+
+    installed_challenges = load_installed_challenges()
+    for c in installed_challenges:
+        if c["name"] == challenge["name"]:
+            challenge_id = c["id"]
+            break
+    else:
+        return
+    
+    remote_challenge = get_challenge_details(challenge_id)
+    for key in remote_challenge:
+        # Special validation needed for files
+        if key == "files":
+            # Get base file name of challenge files
+            local_files = {Path(f).name : f for f in challenge[key]}
+
+            for f in remote_challenge["files"]:
+                # Get base file name
+                f_base = f.split("/")[-1]
+                if f_base not in local_files:
+                    raise Exception(f"Remote challenge has file {f_base} that is not present locally")
+                else:
+                    if verify_contents:
+                        # Download remote file and compare contents
+                        req = s.get(f"files/{f}")
+                        req.raise_for_status()
+                        remote_file = req.content
+                        local_file = Path(challenge.directory, local_files[f_base]).read_bytes()
+                        if remote_file != local_file:
+                            raise Exception(f"Remote challenge file {f_base} does not match local file")
+
+        if key not in challenge:
+            raise Exception(f"Missing field {key} in challenge.yml")
+            
+        if challenge[key] != remote_challenge[key]:
+            raise Exception(f"Field {key} in challenge.yml does not match remote challenge")
+
+def pull_challenge(challenge, create_files=False):
+    """
+    Rewrite challenge.yml and local files to match the remote challenge
+    """
+    s = generate_session()
+    installed_challenges = load_installed_challenges()
+    for c in installed_challenges:
+        if c["name"] == challenge["name"]:
+            challenge_id = c["id"]
+            break
+    else:
+        return
+    
+    details = get_challenge_details(challenge_id)
+    local_files = {Path(f).name : f for f in challenge["files"]}
+    # Update files
+    remote_files = details["files"]
+    for i, f in enumerate(remote_files):
+        # Get base file name
+        f_base = f.split("/")[-1]
+        if f_base not in local_files and create_files:
+            # Download remote file and save locally
+            req = s.get(f"files/{f}")
+            req.raise_for_status()
+            Path(challenge.directory, f_base).write_bytes(req.content)
+            details["files"].append(f_base)
+
+        else:
+            # Download remote file and replace local file
+            req = s.get(f"files/{f}")
+            req.raise_for_status()
+            remote_file = req.content
+            local_file = Path(challenge.directory, local_files[f_base])
+            local_file.write_bytes(remote_file)
+            details["files"][i] = local_files[f_base]
+
+    # Update challenge.yml
+    with open(Path(challenge.directory, "challenge.yml"), "w") as f:
+        yaml.dump(details, f)
