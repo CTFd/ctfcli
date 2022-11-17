@@ -422,6 +422,11 @@ def get_challenge_details(challenge_id):
     challenge['attempts'] = challenge['max_attempts']
     challenge.pop("max_attempts")
     challenge['description'] = challenge['description'].replace('\r\n', '\n')
+    
+    for key in ['initial', 'decay', 'minimum']:
+        if key in challenge:
+            challenge['extra'][key] = challenge[key]
+            challenge.pop(key)
 
     # Add flags
     r = s.get(f"/api/v1/challenges/{challenge_id}/flags", json=True)
