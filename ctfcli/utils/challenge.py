@@ -60,6 +60,8 @@ def sync_challenge(challenge, ignore=[]):
     installed_challenges = load_installed_challenges()
     for c in installed_challenges:
         if c["name"] == challenge["name"]:
+            if "category" in ignore:
+                data["category"] = c["category"]
             challenge_id = c["id"]
             break
     else:
