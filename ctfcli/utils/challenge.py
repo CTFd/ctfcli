@@ -407,7 +407,7 @@ def lint_challenge(path):
 
 def get_challenge_details(challenge_id):
     s = generate_session()
-    r = s.get(f"/api/v1/challenges/{challenge_id}")
+    r = s.get(f"/api/v1/challenges/{challenge_id}", json=True)
     r.raise_for_status()
     challenge = r.json()["data"]
     # Remove non-yaml fields
@@ -415,45 +415,65 @@ def get_challenge_details(challenge_id):
     challenge.pop("id")
     challenge.pop("type_data")
     challenge.pop("view")
+    challenge.pop("solves")
+    challenge.pop("solved_by_me")
+
+    # Normalize fields to ctfcli format
+    challenge['attempts'] = challenge['max_attempts']
+    challenge.pop("max_attempts")
+    challenge['description'] = challenge['description'].replace('\r\n', '\n')
 
     # Add flags
-    r = s.get(f"/api/v1/challenges/{challenge_id}/flags")
+    r = s.get(f"/api/v1/challenges/{challenge_id}/flags", json=True)
     r.raise_for_status()
     flags = r.json()["data"]
     challenge["flags"] = [f["content"] if f["type"] == "static" and f["data"] == None else { "content": f["content"], "type": f["type"], "data": f["data"] } for f in flags]
 
     # Add tags
-    r = s.get(f"/api/v1/challenges/{challenge_id}/tags")
+    r = s.get(f"/api/v1/challenges/{challenge_id}/tags", json=True)
     r.raise_for_status()
     tags = r.json()["data"]
     challenge["tags"] = [t["value"] for t in tags]
 
     # Add hints
-    r = s.get(f"/api/v1/challenges/{challenge_id}/hints")
+    r = s.get(f"/api/v1/challenges/{challenge_id}/hints", json=True)
     r.raise_for_status()
     hints = r.json()["data"]
     challenge["hints"] = [{ "content": h["content"], "cost": h["cost"] } if h["cost"] > 0 else h["content"] for h in hints]
 
     # Add topics
-    r = s.get(f"/api/v1/challenges/{challenge_id}/topics")
+    r = s.get(f"/api/v1/challenges/{challenge_id}/topics", json=True)
     r.raise_for_status()
     topics = r.json()["data"]
     challenge["topics"] = [t["value"] for t in topics]
 
     # Add requirements
-    r = s.get(f"/api/v1/challenges/{challenge_id}/requirements")
+    r = s.get(f"/api/v1/challenges/{challenge_id}/requirements", json=True)
     r.raise_for_status()
-    requirements = r.json()["data"].get("prerequisites", [])
+    requirements = (r.json().get("data") or {}).get("prerequisites", [])
     if len(requirements) > 0:
         # Prefer challenge names over IDs
-        r = s.get("/api/v1/challenges")
+        r = s.get("/api/v1/challenges", json=True)
         r.raise_for_status()
         challenges = r.json()["data"]
         challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
 
     return challenge
 
-def verify_challenge(challenge, verify_contents=False):
+def is_default(key, value):
+    if key == "connection_info" and value == None:
+        return True
+    if key == "attempts" and value == 0:
+        return True
+    if key == "state" and value == "visible":
+        return True
+    if key == "type" and value == "standard":
+        return True
+    if key in ["tags", "hints", "topics", "requirements"] and value == []:
+        return True
+    return False
+
+def verify_challenge(challenge, verify_files=False, verify_defaults=False, _verify_new_files=True):
     """
     Verify that the challenge.yml matches the remote challenge if one exists with the same name
     """
@@ -476,29 +496,42 @@ def verify_challenge(challenge, verify_contents=False):
 
             for f in remote_challenge["files"]:
                 # Get base file name
-                f_base = f.split("/")[-1]
-                if f_base not in local_files:
+                f_base = f.split("/")[-1].split('?token=')[0]
+                if f_base not in local_files and _verify_new_files:
                     raise Exception(f"Remote challenge has file {f_base} that is not present locally")
                 else:
-                    if verify_contents:
+                    if verify_files:
                         # Download remote file and compare contents
-                        req = s.get(f"files/{f}")
+                        req = s.get(f)
                         req.raise_for_status()
                         remote_file = req.content
                         local_file = Path(challenge.directory, local_files[f_base]).read_bytes()
                         if remote_file != local_file:
                             raise Exception(f"Remote challenge file {f_base} does not match local file")
 
-        if key not in challenge:
+        elif key not in challenge:
+            # Ignore optional keys with default values
+            if is_default(key, remote_challenge[key]) and not verify_defaults:
+                continue
+
             raise Exception(f"Missing field {key} in challenge.yml")
             
-        if challenge[key] != remote_challenge[key]:
+        elif challenge[key] != remote_challenge[key]:
             raise Exception(f"Field {key} in challenge.yml does not match remote challenge")
 
-def pull_challenge(challenge, create_files=False):
+def pull_challenge(challenge, update_files=False, create_files=False, create_defaults=False):
     """
     Rewrite challenge.yml and local files to match the remote challenge
     """
+
+    # Update challenge.yml if verification shows that something changed
+    try:
+        verify_challenge(challenge, verify_files=update_files, verify_defaults=create_defaults, _verify_new_files=create_files)
+        click.secho(f"Challenge {challenge['name']} is already up to date", fg="green")
+        return
+    except Exception:
+        pass
+
     s = generate_session()
     installed_challenges = load_installed_challenges()
     for c in installed_challenges:
@@ -508,29 +541,41 @@ def pull_challenge(challenge, create_files=False):
     else:
         return
     
-    details = get_challenge_details(challenge_id)
+    remote_details = get_challenge_details(challenge_id)
+    # Ignore optional fields with default values
+    remote_details = {k: v for k, v in remote_details.items() if not is_default(k, v) or create_defaults}
     local_files = {Path(f).name : f for f in challenge["files"]}
     # Update files
-    remote_files = details["files"]
-    for i, f in enumerate(remote_files):
+    for f in remote_details["files"]:
         # Get base file name
-        f_base = f.split("/")[-1]
+        f_base = f.split("/")[-1].split('?token=')[0]
         if f_base not in local_files and create_files:
+            print(f"Creating file {f_base} for challenge {challenge['name']}")
             # Download remote file and save locally
-            req = s.get(f"files/{f}")
+            req = s.get(f)
             req.raise_for_status()
             Path(challenge.directory, f_base).write_bytes(req.content)
-            details["files"].append(f_base)
+            challenge["files"].append(f_base)
 
-        else:
+        elif f_base in local_files and update_files:
             # Download remote file and replace local file
-            req = s.get(f"files/{f}")
+            print(f"Updating file {f_base} for challenge {challenge['name']}")
+            req = s.get(f)
             req.raise_for_status()
             remote_file = req.content
             local_file = Path(challenge.directory, local_files[f_base])
             local_file.write_bytes(remote_file)
-            details["files"][i] = local_files[f_base]
 
-    # Update challenge.yml
-    with open(Path(challenge.directory, "challenge.yml"), "w") as f:
-        yaml.dump(details, f)
+    del remote_details["files"]
+
+    print(f"Updating challenge.yml for {challenge['name']}")
+
+    # Merge local and remote challenge.yml & Preserve local keys + order
+    updated_challenge = dict(challenge)
+
+    for key in remote_details:
+        updated_challenge[key] = remote_details[key]
+
+    with open(challenge.file_path, "w") as f:
+        yaml.dump(updated_challenge, f, sort_keys=False)
+        

@@ -417,7 +417,7 @@ class Challenge(object):
             )
             sys.exit(0)
 
-    def verify(self, challenge=None, verify_contents=False):
+    def verify(self, challenge=None, verify_files=False, verify_defaults=False):
         if challenge is None:
             # Get all challenges if not specifying a challenge
             config = load_config()
@@ -436,10 +436,10 @@ class Challenge(object):
             click.secho(f'Loaded {challenge["name"]}', fg="yellow")
 
             click.secho(f'Verifying {challenge["name"]}', fg="yellow")
-            verify_challenge(challenge=challenge, verify_contents=verify_contents)
-            click.secho(f"Success!", fg="green")
+            verify_challenge(challenge=challenge, verify_files=verify_files, verify_defaults=verify_defaults)
+            click.secho("Success!", fg="green")
     
-    def pull(self, challenge=None, create_files=False):
+    def pull(self, challenge=None, update_files=False, create_files=False, create_defaults=False):
         if challenge is None:
             # Get all challenges if not specifying a challenge
             config = load_config()
@@ -458,5 +458,5 @@ class Challenge(object):
             click.secho(f'Loaded {challenge["name"]}', fg="yellow")
 
             click.secho(f'Verifying {challenge["name"]}', fg="yellow")
-            pull_challenge(challenge=challenge, create_files=create_files)
-            click.secho(f"Success!", fg="green")
+            pull_challenge(challenge=challenge, update_files=update_files, create_files=create_files, create_defaults=create_defaults)
+            click.secho("Success!", fg="green")
