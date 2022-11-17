@@ -532,7 +532,7 @@ def pull_challenge(challenge, ignore=(), update_files=False, create_files=False,
             fixed_data = "\n".join(text_list)
             return dumper.represent_scalar('tag:yaml.org,2002:str', fixed_data, style='|')
         elif len(data) > 80:
-            return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='>')
+            return dumper.represent_scalar('tag:yaml.org,2002:str', data.rstrip(), style='>')
         return dumper.represent_scalar('tag:yaml.org,2002:str', data)
 
     yaml.add_representer(str, str_presenter)
