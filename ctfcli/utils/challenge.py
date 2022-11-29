@@ -578,6 +578,8 @@ def pull_challenge(challenge, ignore=(), update_files=False, create_files=False,
             req = s.get(f)
             req.raise_for_status()
             Path(challenge.directory, f_base).write_bytes(req.content)
+            if "files" not in challenge:
+                challenge["files"] = []
             challenge["files"].append(f_base)
 
         elif f_base in local_files and update_files:
