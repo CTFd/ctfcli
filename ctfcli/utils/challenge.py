@@ -566,7 +566,7 @@ def pull_challenge(challenge, ignore=(), update_files=False, create_files=False,
     remote_details = get_challenge_details(challenge_id)
     # Ignore optional fields with default values
     remote_details = {k: v for k, v in remote_details.items() if not is_default(k, v) or create_defaults}
-    local_files = {Path(f).name : f for f in challenge["files"]}
+    local_files = {Path(f).name : f for f in challenge.get("files",[])}
     # Update files
     for f in remote_details["files"]:
         # Get base file name
@@ -590,7 +590,7 @@ def pull_challenge(challenge, ignore=(), update_files=False, create_files=False,
 
     # Remove files that are no longer present on the remote challenge
     remote_cleaned_files = [f.split("/")[-1].split('?token=')[0] for f in remote_details["files"]]
-    challenge["files"] = [f for f in challenge["files"] if Path(f).name in remote_cleaned_files]
+    challenge["files"] = [f for f in challenge.get("files",[]) if Path(f).name in remote_cleaned_files]
     del remote_details["files"]
         
     print(f"Updating challenge.yml for {challenge['name']}")
