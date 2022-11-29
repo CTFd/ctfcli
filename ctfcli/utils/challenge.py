@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from pathlib import Path
 import subprocess
 
@@ -595,15 +596,25 @@ def pull_challenge(challenge, ignore=(), update_files=False, create_files=False,
         
     print(f"Updating challenge.yml for {challenge['name']}")
 
+    # Prefer ordering remote details as described by spec
+    preferred_order = ["name", "category", "description", \
+        "value", "type", "connection_info", "attempts", \
+            "flags", "topics", "tags", "files", "hints", "requirements", "state"]
+
     # Merge local and remote challenge.yml & Preserve local keys + order
     updated_challenge = dict(challenge)
 
-    for key in remote_details:
-        if key in ignore:
-            continue
-        updated_challenge[key] = remote_details[key]
+    # Add all preferred keys
+    for key in preferred_order:
+        if key in remote_details and key not in ignore:
+            updated_challenge[key] = remote_details[key]
 
-    # Hack: remove whitespace before newlines in multiline strings
+    # Add remaining keys
+    for key in remote_details:
+        if key not in preferred_order and key not in ignore:
+            updated_challenge[key] = remote_details[key]
+
+    # Hack: remove tabs in multiline strings
     updated_challenge['description'] = updated_challenge['description'].replace('\t', '')
 
     with open(challenge.file_path, "w") as f:
