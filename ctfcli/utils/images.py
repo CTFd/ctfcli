@@ -2,33 +2,37 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
+from slugify import slugify
 
 
-def sanitize_name(name):
-    """
-    Function to sanitize names to docker safe image names
-    TODO: Good enough but probably needs to be more conformant with docker
-    """
-    return name.lower().replace(" ", "-")
+def login_registry(host, username, password):
+    subprocess.call(["docker", "login", "-u", username, "-p"], password, host)
 
 
 def build_image(challenge):
-    name = sanitize_name(challenge["name"])
-    path = Path(challenge.file_path).parent.absolute()
+    name = slugify(challenge["name"])
+    path = Path(challenge.file_path).parent.absolute() / challenge["image"]
     print(f"Building {name} from {path}")
     subprocess.call(["docker", "build", "-t", name, "."], cwd=path)
+    print(f"Built {name}")
     return name
 
 
+def push_image(local_tag, location):
+    print(f"Pushing {local_tag} to {location}")
+    subprocess.call(["docker", "tag", local_tag, location])
+    subprocess.call(["docker", "push", location])
+
+
 def export_image(challenge):
-    name = sanitize_name(challenge["name"])
+    name = slugify(challenge["name"])
     temp = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{name}.docker.tar")
     subprocess.call(["docker", "save", "--output", temp.name, name])
     return temp.name
 
 
 def get_exposed_ports(challenge):
-    image_name = sanitize_name(challenge["name"])
+    image_name = slugify(challenge["name"])
     output = subprocess.check_output(
         ["docker", "inspect", "--format={{json .Config.ExposedPorts }}", image_name,]
     )
