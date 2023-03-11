@@ -24,7 +24,7 @@ class Pages(object):
         pages = Path("./pages")
         if pages.is_dir() is False:
             click.secho(
-                f'"pages" folder not found. All pages must exist in the "pages" folder.',
+                '"pages" folder not found. All pages must exist in the "pages" folder.',
                 fg="red",
             )
             sys.exit(1)

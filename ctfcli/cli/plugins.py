@@ -18,7 +18,7 @@ class Plugins(object):
         pip3 = shutil.which("pip3")
 
         if pip is None and pip3 is None:
-            click.secho(f"Neither pip nor pip3 was found, is it in the PATH?", fg="red")
+            click.secho("Neither pip nor pip3 was found, is it in the PATH?", fg="red")
             return
 
         if pip is None:
