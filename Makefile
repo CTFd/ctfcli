@@ -1,5 +1,5 @@
 lint:
-	flake8 --ignore=E402,E501,E712,W503,E203,I002 --exclude=ctfcli/templates **/*.py
+	ruff check --ignore=E402,E501,E712,I002 --exclude=ctfcli/templates --exclude=build .
 	black --check --exclude=ctfcli/templates .
 
 format:
