@@ -12,7 +12,6 @@ from ctfcli.utils.images import (
     export_image,
     get_exposed_ports,
     push_image,
-    login_registry,
 )
 
 
@@ -92,15 +91,15 @@ def cloud(challenge, host, protocol):
 
     s = generate_session()
     # Detect whether we have the appropriate endpoints
-    check = s.get(f"/api/v1/images", json=True)
+    check = s.get("/api/v1/images", json=True)
     if check.ok is False:
         click.secho(
-            f"Target instance does not have deployment endpoints", fg="red",
+            "Target instance does not have deployment endpoints", fg="red",
         )
         return False, None, None, None
 
     # Try to find an appropriate image.
-    images = s.get(f"/api/v1/images", json=True).json()["data"]
+    images = s.get("/api/v1/images", json=True).json()["data"]
     image = None
     for i in images:
         if i["location"].endswith(f"/{slug}"):
@@ -108,7 +107,7 @@ def cloud(challenge, host, protocol):
             break
     else:
         # Create the image if we did not find it.
-        image = s.post(f"/api/v1/images", json={"name": slug}).json()["data"]
+        image = s.post("/api/v1/images", json={"name": slug}).json()["data"]
 
     # Build image
     image_name = build_image(challenge=challenge)
@@ -120,7 +119,7 @@ def cloud(challenge, host, protocol):
     push_image(image_name, location)
 
     # Look for existing service
-    services = s.get(f"/api/v1/services", json=True).json()["data"]
+    services = s.get("/api/v1/services", json=True).json()["data"]
     service = None
     for srv in services:
         if srv["name"] == slug:
@@ -137,7 +136,7 @@ def cloud(challenge, host, protocol):
         # Could not find the service. Create it using our pushed image.
         # Deploy the image by creating service
         service = s.post(
-            f"/api/v1/services", json={"name": slug, "image": location,}
+            "/api/v1/services", json={"name": slug, "image": location,}
         ).json()["data"]
 
     # Get connection details
@@ -146,7 +145,7 @@ def cloud(challenge, host, protocol):
 
     while service["hostname"] is None:
         click.secho(
-            f"Waiting for challenge hostname", fg="yellow",
+            "Waiting for challenge hostname", fg="yellow",
         )
         service = s.get(f"/api/v1/services/{service_id}", json=True).json()["data"]
         time.sleep(10)

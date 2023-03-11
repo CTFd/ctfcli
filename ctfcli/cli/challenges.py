@@ -1,14 +1,12 @@
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 from urllib.parse import urlparse
 
 import click
 import yaml
 from cookiecutter.main import cookiecutter
-from slugify import slugify
 
 from ctfcli.utils.challenge import (
     create_challenge,
@@ -19,14 +17,12 @@ from ctfcli.utils.challenge import (
     sync_challenge,
 )
 from ctfcli.utils.config import (
-    generate_session,
     get_base_path,
     get_config_path,
     get_project_path,
     load_config,
 )
 from ctfcli.utils.git import get_git_repo_head_branch
-from ctfcli.utils.images import build_image, push_image
 from ctfcli.utils.spec import CHALLENGE_SPEC_DOCS, blank_challenge_spec
 from ctfcli.utils.templates import get_template_dir
 from ctfcli.utils.deploy import DEPLOY_HANDLERS
