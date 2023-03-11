@@ -364,7 +364,7 @@ class Challenge(object):
 
     def healthcheck(self, challenge):
         config = load_config()
-        challenges = config["challenges"]
+        _challenges = config["challenges"]
 
         # challenge_path = challenges[challenge]
         path = Path(challenge)

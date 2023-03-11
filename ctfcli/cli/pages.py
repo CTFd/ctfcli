@@ -17,7 +17,8 @@ class Pages(object):
     def install(self):
         try:
             _config = load_config()
-        except:
+        except Exception as e:
+            print(e)
             click.secho("No ctfcli configuration found", fg="red")
             sys.exit(1)
 
