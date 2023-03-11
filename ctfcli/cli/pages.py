@@ -17,14 +17,15 @@ class Pages(object):
     def install(self):
         try:
             _config = load_config()
-        except:
+        except Exception as e:
+            print(e)
             click.secho("No ctfcli configuration found", fg="red")
             sys.exit(1)
 
         pages = Path("./pages")
         if pages.is_dir() is False:
             click.secho(
-                f'"pages" folder not found. All pages must exist in the "pages" folder.',
+                '"pages" folder not found. All pages must exist in the "pages" folder.',
                 fg="red",
             )
             sys.exit(1)

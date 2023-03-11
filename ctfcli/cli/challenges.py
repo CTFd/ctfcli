@@ -173,7 +173,7 @@ class Challenge(object):
             else:  # If we don't break because of duplicated challenge names
                 click.secho(f'Installing {challenge["name"]}', fg="yellow")
                 create_challenge(challenge=challenge, ignore=ignore)
-                click.secho(f"Success!", fg="green")
+                click.secho("Success!", fg="green")
 
     def sync(self, challenge=None, ignore=()):
         if challenge is None:
@@ -209,7 +209,7 @@ class Challenge(object):
 
             click.secho(f'Syncing {challenge["name"]}', fg="yellow")
             sync_challenge(challenge=challenge, ignore=ignore)
-            click.secho(f"Success!", fg="green")
+            click.secho("Success!", fg="green")
 
     def update(self, challenge=None):
         config = load_config()
@@ -339,7 +339,7 @@ class Challenge(object):
             )
         else:
             click.secho(
-                f"An error occured during deployment", fg="red",
+                "An error occured during deployment", fg="red",
             )
 
     def push(self, challenge=None):
@@ -364,7 +364,7 @@ class Challenge(object):
 
     def healthcheck(self, challenge):
         config = load_config()
-        challenges = config["challenges"]
+        _challenges = config["challenges"]
 
         # challenge_path = challenges[challenge]
         path = Path(challenge)
@@ -406,11 +406,11 @@ class Challenge(object):
 
         if rcode != 0:
             click.secho(
-                f"Healcheck failed", fg="red",
+                "Healcheck failed", fg="red",
             )
             sys.exit(1)
         else:
             click.secho(
-                f"Success", fg="green",
+                "Success", fg="green",
             )
             sys.exit(0)
