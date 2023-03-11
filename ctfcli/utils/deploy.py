@@ -97,7 +97,7 @@ def cloud(challenge, host, protocol):
         click.secho(
             f"Target instance does not have deployment endpoints", fg="red",
         )
-        return False, domain, port, connect_info
+        return False, None, None, None
 
     # Try to find an appropriate image.
     images = s.get(f"/api/v1/images", json=True).json()["data"]
