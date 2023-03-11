@@ -24,6 +24,12 @@ type: standard
 # If you have an imaged hosted on Docker set to the image url (e.g. python/3.8:latest, registry.gitlab.com/python/3.8:latest)
 # Follow Docker best practices and assign a tag
 image: null
+
+# Specify a protocol that should be used to connect to the running image
+# For example if the image is a website you can specify http or https
+# Otherwise you can specify tcp
+protocol: null
+
 # Specify a host to deploy the challenge onto.
 # The currently supported URI schemes are ssh:// and registry://
 # ssh is an ssh URI where the above image will be copied to and deployed (e.g. ssh://root@123.123.123.123)

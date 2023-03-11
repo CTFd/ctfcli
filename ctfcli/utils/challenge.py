@@ -79,7 +79,7 @@ def sync_challenge(challenge, ignore=[]):
     # Create new flags
     if challenge.get("flags") and "flags" not in ignore:
         # Delete existing flags
-        current_flags = s.get(f"/api/v1/flags", json=data).json()["data"]
+        current_flags = s.get("/api/v1/flags", json=data).json()["data"]
         for flag in current_flags:
             if flag["challenge_id"] == challenge_id:
                 flag_id = flag["id"]
@@ -88,11 +88,11 @@ def sync_challenge(challenge, ignore=[]):
         for flag in challenge["flags"]:
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge_id": challenge_id}
-                r = s.post(f"/api/v1/flags", json=data)
+                r = s.post("/api/v1/flags", json=data)
                 r.raise_for_status()
             elif type(flag) == dict:
                 flag["challenge_id"] = challenge_id
-                r = s.post(f"/api/v1/flags", json=flag)
+                r = s.post("/api/v1/flags", json=flag)
                 r.raise_for_status()
 
     # Update topics
@@ -110,7 +110,7 @@ def sync_challenge(challenge, ignore=[]):
         # Add new challenge topics
         for topic in challenge["topics"]:
             r = s.post(
-                f"/api/v1/topics",
+                "/api/v1/topics",
                 json={
                     "value": topic,
                     "type": "challenge",
@@ -122,7 +122,7 @@ def sync_challenge(challenge, ignore=[]):
     # Update tags
     if challenge.get("tags") and "tags" not in ignore:
         # Delete existing tags
-        current_tags = s.get(f"/api/v1/tags", json=data).json()["data"]
+        current_tags = s.get("/api/v1/tags", json=data).json()["data"]
         for tag in current_tags:
             if tag["challenge_id"] == challenge_id:
                 tag_id = tag["id"]
@@ -130,14 +130,14 @@ def sync_challenge(challenge, ignore=[]):
                 r.raise_for_status()
         for tag in challenge["tags"]:
             r = s.post(
-                f"/api/v1/tags", json={"challenge_id": challenge_id, "value": tag}
+                "/api/v1/tags", json={"challenge_id": challenge_id, "value": tag}
             )
             r.raise_for_status()
 
     # Upload files
     if challenge.get("files") and "files" not in ignore:
         # Delete existing files
-        all_current_files = s.get(f"/api/v1/files?type=challenge", json=data).json()[
+        all_current_files = s.get("/api/v1/files?type=challenge", json=data).json()[
             "data"
         ]
         for f in all_current_files:
@@ -158,13 +158,13 @@ def sync_challenge(challenge, ignore=[]):
 
         data = {"challenge_id": challenge_id, "type": "challenge"}
         # Specifically use data= here instead of json= to send multipart/form-data
-        r = s.post(f"/api/v1/files", files=files, data=data)
+        r = s.post("/api/v1/files", files=files, data=data)
         r.raise_for_status()
 
     # Create hints
     if challenge.get("hints") and "hints" not in ignore:
         # Delete existing hints
-        current_hints = s.get(f"/api/v1/hints", json=data).json()["data"]
+        current_hints = s.get("/api/v1/hints", json=data).json()["data"]
         for hint in current_hints:
             if hint["challenge_id"] == challenge_id:
                 hint_id = hint["id"]
@@ -181,7 +181,7 @@ def sync_challenge(challenge, ignore=[]):
                     "challenge_id": challenge_id,
                 }
 
-            r = s.post(f"/api/v1/hints", json=data)
+            r = s.post("/api/v1/hints", json=data)
             r.raise_for_status()
 
     # Update requirements
@@ -246,18 +246,18 @@ def create_challenge(challenge, ignore=[]):
         for flag in challenge["flags"]:
             if type(flag) == str:
                 data = {"content": flag, "type": "static", "challenge_id": challenge_id}
-                r = s.post(f"/api/v1/flags", json=data)
+                r = s.post("/api/v1/flags", json=data)
                 r.raise_for_status()
             elif type(flag) == dict:
                 flag["challenge"] = challenge_id
-                r = s.post(f"/api/v1/flags", json=flag)
+                r = s.post("/api/v1/flags", json=flag)
                 r.raise_for_status()
 
     # Create topics
     if challenge.get("topics") and "topics" not in ignore:
         for topic in challenge["topics"]:
             r = s.post(
-                f"/api/v1/topics",
+                "/api/v1/topics",
                 json={
                     "value": topic,
                     "type": "challenge",
@@ -270,7 +270,7 @@ def create_challenge(challenge, ignore=[]):
     if challenge.get("tags") and "tags" not in ignore:
         for tag in challenge["tags"]:
             r = s.post(
-                f"/api/v1/tags", json={"challenge_id": challenge_id, "value": tag}
+                "/api/v1/tags", json={"challenge_id": challenge_id, "value": tag}
             )
             r.raise_for_status()
 
@@ -288,7 +288,7 @@ def create_challenge(challenge, ignore=[]):
 
         data = {"challenge_id": challenge_id, "type": "challenge"}
         # Specifically use data= here instead of json= to send multipart/form-data
-        r = s.post(f"/api/v1/files", files=files, data=data)
+        r = s.post("/api/v1/files", files=files, data=data)
         r.raise_for_status()
 
     # Add hints
@@ -303,7 +303,7 @@ def create_challenge(challenge, ignore=[]):
                     "challenge_id": challenge_id,
                 }
 
-            r = s.post(f"/api/v1/hints", json=data)
+            r = s.post("/api/v1/hints", json=data)
             r.raise_for_status()
 
     # Add requirements

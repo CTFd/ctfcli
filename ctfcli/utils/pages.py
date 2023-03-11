@@ -9,7 +9,7 @@ FORMATS = {
 
 def get_current_pages():
     s = generate_session()
-    return s.get(f"/api/v1/pages", json=True).json()["data"]
+    return s.get("/api/v1/pages", json=True).json()["data"]
 
 
 def get_existing_page(route, pageset=None):
@@ -67,5 +67,5 @@ def install_page(matter, path_obj):
         "auth_required": auth_required,
         "format": format,
     }
-    r = s.post(f"/api/v1/pages", json=data)
+    r = s.post("/api/v1/pages", json=data)
     r.raise_for_status()
