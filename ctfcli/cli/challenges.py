@@ -318,7 +318,7 @@ class Challenge(object):
             )
             return
 
-        target_host = host or challenge.get("host") or input("Target host URI: ")
+        target_host = host or challenge.get("host")
         if bool(target_host) is False:
             # If we do not have a host we should set to cloud
             click.secho(
