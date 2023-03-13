@@ -1,4 +1,4 @@
-import configparser
+import configobj
 import json
 import os
 
@@ -35,25 +35,15 @@ def get_project_path():
 
 def load_config():
     path = get_config_path()
-    parser = configparser.ConfigParser()
+    parser = configobj.ConfigObj(path)
 
-    # Preserve case in configparser
-    parser.optionxform = str
-
-    parser.read(path)
     return parser
 
 
 def preview_config(as_string=False):
     config = load_config()
 
-    d = {}
-    for section in config.sections():
-        d[section] = {}
-        for k, v in config.items(section):
-            d[section][k] = v
-
-    preview = json.dumps(d, sort_keys=True, indent=4)
+    preview = json.dumps(config, sort_keys=True, indent=4)
 
     if as_string is True:
         return preview
@@ -71,7 +61,10 @@ def generate_session():
     # Handle SSL verification disabling
     try:
         # Get an ssl_verify config. Default to True if it doesn't exist
-        ssl_verify = config["config"].getboolean("ssl_verify", True)
+        if config["config"].get("ssl_verify"):
+            ssl_verify = config["config"].as_bool("ssl_verify")
+        else:
+            ssl_verify = True
     except ValueError:
         # If we didn't a proper boolean value we should load it as a string
         # https://requests.kennethreitz.org/en/master/user/advanced/#ssl-cert-verification
@@ -80,8 +73,6 @@ def generate_session():
     s = APISession(prefix_url=url)
     s.verify = ssl_verify
     s.headers.update({"Authorization": f"Token {access_token}"})
-
-    if 'cookies' in config:
-        s.cookies.update(config["cookies"])
+    s.cookies.update(config["config"].get("cookies", {}))
 
     return s
