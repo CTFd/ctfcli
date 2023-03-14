@@ -10,6 +10,8 @@ def get_git_repo_head_branch(repo):
         ["git", "ls-remote", "--symref", repo, "HEAD"]
     ).decode()
     head_branch = out.split()[1]
+    if head_branch.startswith("refs/heads/"):
+        head_branch = head_branch[11:]
     return head_branch
 
 
