@@ -143,12 +143,20 @@ def cloud(challenge, host, protocol):
     service_id = service["id"]
     service = s.get(f"/api/v1/services/{service_id}", json=True).json()["data"]
 
-    while service["hostname"] is None:
+    DEPLOY_TIMEOUT = 180
+    while service["hostname"] is None and DEPLOY_TIMEOUT > 0:
         click.secho(
             "Waiting for challenge hostname", fg="yellow",
         )
         service = s.get(f"/api/v1/services/{service_id}", json=True).json()["data"]
+        DEPLOY_TIMEOUT -= 10
         time.sleep(10)
+
+    if DEPLOY_TIMEOUT == 0:
+        click.secho(
+            "Timeout waiting for challenge to deploy", fg="red",
+        )
+        return False, None, None, None
 
     # Expose port if we are using tcp
     if protocol == "tcp":
