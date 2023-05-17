@@ -80,4 +80,9 @@ def generate_session():
     s = APISession(prefix_url=url)
     s.verify = ssl_verify
     s.headers.update({"Authorization": f"Token {access_token}"})
+
+    # Handle cookies section in config
+    if "cookies" in config:
+        s.cookies.update(dict(config["cookies"]))
+
     return s
