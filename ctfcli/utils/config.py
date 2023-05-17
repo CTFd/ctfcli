@@ -81,7 +81,8 @@ def generate_session():
     s.verify = ssl_verify
     s.headers.update({"Authorization": f"Token {access_token}"})
 
-    if 'cookies' in config:
-        s.cookies.update(config["cookies"])
+    # Handle cookies section in config
+    if "cookies" in config:
+        s.cookies.update(dict(config["cookies"]))
 
     return s
