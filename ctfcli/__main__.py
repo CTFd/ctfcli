@@ -1,4 +1,4 @@
-import configobj
+import configparser
 import importlib
 import os
 import subprocess
@@ -51,10 +51,10 @@ class CTFCLI(object):
         (path / ".ctf").mkdir()
 
         # Create initial .ctf/config file
-        config = configobj.ConfigObj()
+        config = configparser.ConfigParser()
         config["config"] = {"url": ctf_url, "access_token": ctf_token}
         config["challenges"] = {}
-        with (path / ".ctf" / "config").open(mode="a+b") as f:
+        with (path / ".ctf" / "config").open(mode="a+") as f:
             config.write(f)
 
         # Create a git repo in the event folder
