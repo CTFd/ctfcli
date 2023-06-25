@@ -1,5 +1,18 @@
 # Changelog
 
+# 0.0.12 / 2023-06-25
+
+### Added
+
+- Add cloud deploy for hosted CTFd instances
+- Add the `protocol` field in the challenge.yml spec
+- Further define what other deployment methods should provide & return
+- Add the ability to add HTTP cookies to ctfcli requests via the config file
+
+### Fixed
+
+- Allow ignoring category during challenge sync
+
 # 0.0.11 / 2022-11-09
 
 ### Added
