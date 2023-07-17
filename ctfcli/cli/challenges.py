@@ -337,7 +337,7 @@ class Challenge(object):
             challenge=challenge, host=target_host, protocol=protocol,
         )
 
-        challenge["connection_info"] = connect_info
+        challenge["connection_info"] = challenge.get("connection_info") or connect_info
 
         if status:
             # Search for challenge
