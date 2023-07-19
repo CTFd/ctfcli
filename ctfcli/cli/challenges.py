@@ -53,7 +53,7 @@ class Challenge(object):
 
         Templates().list()
 
-    def add(self, repo, yaml_path=None):
+    def add(self, repo, directory=None, yaml_path=None):
         config = load_config()
 
         if repo.endswith(".git"):
@@ -63,9 +63,11 @@ class Challenge(object):
             # Get new directory that will add the git subtree
             base_repo_path = Path(os.path.basename(repo).rsplit(".", maxsplit=1)[0])
 
+            if directory:
+                base_repo_path = directory / base_repo_path
+
             # Join targets
             challenge_path = challenge_path / base_repo_path
-            print(challenge_path)
 
             # If a custom yaml_path is specified we add it to our challenge_key
             if yaml_path:
