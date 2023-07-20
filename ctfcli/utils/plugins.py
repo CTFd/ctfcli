@@ -24,7 +24,7 @@ def load_plugins(commands: dict):
 
 
 def get_plugin_dir():
-    if os.getenv('CTFCLI_PLUGIN_DIR'):
+    if os.getenv("CTFCLI_PLUGIN_DIR"):
         plugins_path = get_custom_plugin_dir()
     else:
         plugins_path = get_data_dir() / "plugins"
@@ -36,7 +36,7 @@ def get_plugin_dir():
 
 
 def get_custom_plugin_dir() -> Path:
-    custom_plugins_path = Path(os.getenv('CTFCLI_PLUGIN_DIR'))
+    custom_plugins_path = Path(os.getenv("CTFCLI_PLUGIN_DIR"))
 
     if custom_plugins_path.is_absolute():
         return custom_plugins_path
