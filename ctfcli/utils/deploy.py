@@ -136,7 +136,7 @@ def cloud(challenge, host, protocol):
         # Could not find the service. Create it using our pushed image.
         # Deploy the image by creating service
         service = s.post(
-            "/api/v1/services", json={"name": slug, "image": location,}
+            "/api/v1/services", json={"name": slug, "image": location,},
         ).json()["data"]
 
     # Get connection details
