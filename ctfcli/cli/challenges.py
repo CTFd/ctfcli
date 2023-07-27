@@ -339,7 +339,15 @@ class Challenge(object):
             challenge=challenge, host=target_host, protocol=protocol,
         )
 
-        challenge["connection_info"] = connect_info
+        # Use hardcoded connection_info if specified
+        connection_info = connect_info
+        if challenge.get("connection_info"):
+            click.secho(
+                "Using connection_info hardcoded in challenge.yml", fg="yellow",
+            )
+            connect_info = challenge.get("connection_info")
+
+        challenge["connection_info"] = connection_info
 
         if status:
             # Search for challenge
