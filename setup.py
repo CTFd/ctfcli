@@ -37,7 +37,7 @@ setup(
         "click==7.0",
         "fire==0.2.1",
         "pyyaml>=6.0.1",
-        "Pygments==2.7.4",
+        "Pygments==2.15.0",
         "requests==2.28.1",
         "colorama==0.4.6",
         "appdirs==1.4.3",
