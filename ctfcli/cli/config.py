@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 
@@ -6,28 +7,44 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import IniLexer, JsonLexer
 
-from ctfcli.utils.config import get_config_path, preview_config
+from ctfcli.core.config import Config
+
+log = logging.getLogger("ctfcli.cli.config")
 
 
-class Config(object):
+class ConfigCommand:
     def edit(self):
+        log.debug("edit")
         editor = os.getenv("EDITOR", "vi")
-        command = editor, get_config_path()
-        subprocess.call(command)
+
+        log.debug(f"call(['{editor}', '{Config.get_config_path()}'])")
+        subprocess.call([editor, Config.get_config_path()])
 
     def path(self):
-        click.echo(get_config_path())
+        log.debug("path")
+        click.echo(Config.get_config_path())
+
+    def show(self, color=True, json=False):
+        # alias for the view command
+        log.debug(f"show (color={color}, json={json})")
+        self.view(color=color, json=json)
 
     def view(self, color=True, json=False):
-        config = get_config_path()
-        with open(config) as f:
-            if json is True:
-                config = preview_config(as_string=True)
-                if color:
-                    config = highlight(config, JsonLexer(), TerminalFormatter())
-            else:
-                config = f.read()
-                if color:
-                    config = highlight(config, IniLexer(), TerminalFormatter())
+        log.debug(f"view (color={color}, json={json})")
+        config = Config()
 
-            print(config)
+        if json:
+            config_json = config.as_json(pretty=True)
+
+            if color:
+                return click.echo(highlight(config_json, JsonLexer(), TerminalFormatter()))
+
+            return click.echo(config_json)
+
+        with open(config.get_config_path(), "r") as config_file:
+            config_ini = config_file.read()
+
+            if color:
+                return click.echo(highlight(config_ini, IniLexer(), TerminalFormatter()))
+
+            return click.echo(config_ini)

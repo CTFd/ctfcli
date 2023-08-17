@@ -3,3 +3,4 @@ include README.md
 recursive-include ctfcli/templates *
 recursive-include ctfcli/utils *
 recursive-include ctfcli/spec *
+recursive-exclude tests *

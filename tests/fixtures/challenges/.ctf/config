@@ -1,0 +1,10 @@
+[config]
+url = https://example.com/
+access_token = deadbeef
+
+[challenges]
+test-challenge-minimal = user@host:example/test-challenge-minimal.git
+test-challenge-full = user@host:example/test-challenge-full.git
+test-challenge-files = user@host:example/test-challenge-files.git
+test-challenge-dockerfile = user@host:example/test-challenge-dockerfile.git
+

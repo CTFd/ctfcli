@@ -1,9 +1,15 @@
 lint:
-	ruff check --ignore=E402,E501,E712,I002 --exclude=ctfcli/templates --exclude=build .
-	black --check --exclude=ctfcli/templates .
+	black --check .
+	isort --check .
+	ruff check .
 
 format:
-	black --exclude=ctfcli/templates .
+	black .
+	isort .
+	ruff --fix .
+
+test:
+	green tests -r
 
 install:
 	python3 setup.py install
@@ -15,6 +21,8 @@ clean:
 	rm -rf build/
 	rm -rf dist/
 	rm -rf ctfcli.egg-info/
+	rm -rf .ruff_cache
+	rm -f .coverage
 
 publish-test:
 	@echo "Publishing to TestPyPI"
