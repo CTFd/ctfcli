@@ -34,9 +34,6 @@ class API(Session):
         # Handle Authorization
         self.headers.update({"Authorization": f"Token {self.access_token}"})
 
-        # Default to application/json for all API requests
-        self.headers.update({"Content-Type": "application/json"})
-
         # Handle cookies section in config
         if "cookies" in config:
             self.cookies.update(dict(config["cookies"]))
@@ -46,14 +43,15 @@ class API(Session):
         # considering the appended / on the prefix_url
         url = urljoin(self.prefix_url, url.lstrip("/"))
 
-        kwargs_copy = {**kwargs}
+        # if data= is present, do not modify the content-type
+        if kwargs.get("data", None) is not None:
+            return super(API, self).request(method, url, *args, **kwargs)
 
-        # if data kwarg is utilized, then files are transferred, we need to set the Content-Type to multipart/form-data
-        # (otherwise Content-Type will be application/json as set in the API constructor)
-        if kwargs_copy.get("data", None) is not None:
-            if kwargs_copy.get("headers", None) is None:
-                kwargs_copy["headers"] = {}
+        # otherwise set the content-type to application/json for all API requests
+        # modify the headers here instead of using self.headers because we don't want to
+        # override the multipart/form-data case above
+        if kwargs.get("headers", None) is None:
+            kwargs["headers"] = {}
 
-            kwargs_copy["headers"]["Content-Type"] = "multipart/form-data"
-
-        return super(API, self).request(method, url, *args, **kwargs_copy)
+        kwargs["headers"]["Content-Type"] = "application/json"
+        return super(API, self).request(method, url, *args, **kwargs)
