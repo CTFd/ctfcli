@@ -468,8 +468,10 @@ class ChallengeCommand:
 
         return 1
 
-    def install(self, challenge: str = None, force: bool = False, ignore: str | tuple[str] = ()) -> int:
-        log.debug(f"install: (challenge={challenge}, force={force}, ignore={ignore})")
+    def install(
+        self, challenge: str = None, force: bool = False, hidden: bool = False, ignore: str | tuple[str] = ()
+    ) -> int:
+        log.debug(f"install: (challenge={challenge}, force={force}, hidden={hidden}, ignore={ignore})")
         config = Config()
 
         challenge_keys = [challenge]
@@ -483,50 +485,56 @@ class ChallengeCommand:
             ignore = (ignore,)
 
         failed_installs = []
-        for challenge_key in challenge_keys:
-            challenge_path = config.project_path / Path(challenge_key)
+        with click.progressbar(challenge_keys, label="Installing challenges") as challenges:
+            for challenge_key in challenges:
+                click.echo()  # echo a new line as a separator
+                challenge_path = config.project_path / Path(challenge_key)
 
-            # if the challenge key does not end with .yml - then assume the default challenge.yml location
-            # otherwise - treat it as a full path
-            if not challenge_path.name.endswith(".yml"):
-                challenge_path = challenge_path / "challenge.yml"
+                # if the challenge key does not end with .yml - then assume the default challenge.yml location
+                # otherwise - treat it as a full path
+                if not challenge_path.name.endswith(".yml"):
+                    challenge_path = challenge_path / "challenge.yml"
 
-            try:
-                challenge = Challenge(challenge_path)
-            except ChallengeException as e:
-                click.secho(str(e), fg="red")
-                failed_installs.append(challenge_key)
-                continue
+                try:
+                    challenge = Challenge(challenge_path)
+                    if hidden:
+                        challenge["state"] = "hidden"
 
-            click.secho(f"Loaded '{challenge['name']}'", fg="blue")
-
-            installed_challenges = challenge.load_installed_challenges()
-            found_duplicate = False
-            for c in installed_challenges:
-                if c["name"] == challenge["name"]:
-                    click.secho(
-                        f"Found already existing challenge with the same name ({challenge['name']}). "
-                        "Perhaps you meant sync instead of install?",
-                        fg="red",
-                    )
-                    found_duplicate = True
-
-            if found_duplicate:
-                if not force:
+                except ChallengeException as e:
+                    click.secho(str(e), fg="red")
                     failed_installs.append(challenge_key)
                     continue
 
-                click.secho("Ignoring existing challenge because of --force", fg="yellow")
+                click.secho(
+                    f"Installing '{challenge['name']}' ({challenge_path.relative_to(config.project_path)}) ...",
+                    fg="blue",
+                )
 
-            # If we don't break because of duplicated challenge names - continue the installation
-            click.secho(f"Installing '{challenge['name']}'", fg="blue")
+                installed_challenges = challenge.load_installed_challenges()
+                found_duplicate = False
+                for c in installed_challenges:
+                    if c["name"] == challenge["name"]:
+                        click.secho(
+                            f"Found already existing challenge with the same name ({challenge['name']}). "
+                            "Perhaps you meant sync instead of install?",
+                            fg="red",
+                        )
+                        found_duplicate = True
 
-            try:
-                challenge.create(ignore=ignore)
-            except ChallengeException as e:
-                click.secho("Failed to install challenge", fg="red")
-                click.secho(str(e), fg="red")
-                failed_installs.append(challenge_key)
+                if found_duplicate:
+                    if not force:
+                        failed_installs.append(challenge_key)
+                        continue
+
+                    click.secho("Ignoring existing challenge because of --force", fg="yellow")
+
+                # If we don't break because of duplicated challenge names - continue the installation
+                try:
+                    challenge.create(ignore=ignore)
+                except ChallengeException as e:
+                    click.secho("Failed to install challenge", fg="red")
+                    click.secho(str(e), fg="red")
+                    failed_installs.append(challenge_key)
 
         if len(failed_installs) == 0:
             click.secho("Success! All challenges installed!", fg="green")
@@ -552,40 +560,44 @@ class ChallengeCommand:
             ignore = (ignore,)
 
         failed_syncs = []
-        for challenge_key in challenge_keys:
-            challenge_path = config.project_path / Path(challenge_key)
+        with click.progressbar(challenge_keys, label="Syncing challenges") as challenges:
+            for challenge_key in challenges:
+                click.echo()  # echo a new line as a separator
+                challenge_path = config.project_path / Path(challenge_key)
 
-            # if the challenge key does not end with .yml - then assume the default challenge.yml location
-            # otherwise - treat it as a full path
-            if not challenge_path.name.endswith(".yml"):
-                challenge_path = challenge_path / "challenge.yml"
+                # if the challenge key does not end with .yml - then assume the default challenge.yml location
+                # otherwise - treat it as a full path
+                if not challenge_path.name.endswith(".yml"):
+                    challenge_path = challenge_path / "challenge.yml"
 
-            try:
-                challenge = Challenge(challenge_path)
-            except ChallengeException as e:
-                click.secho(str(e), fg="red")
-                failed_syncs.append(challenge_key)
-                continue
+                try:
+                    challenge = Challenge(challenge_path)
+                except ChallengeException as e:
+                    click.secho(str(e), fg="red")
+                    failed_syncs.append(challenge_key)
+                    continue
 
-            click.secho(f"Loaded {challenge['name']}", fg="blue")
-            installed_challenges = challenge.load_installed_challenges()
+                installed_challenges = challenge.load_installed_challenges()
 
-            if not any(c["name"] == challenge["name"] for c in installed_challenges):
+                if not any(c["name"] == challenge["name"] for c in installed_challenges):
+                    click.secho(
+                        f"Could not find existing challenge {challenge['name']}. "
+                        f"Perhaps you meant install instead of sync?",
+                        fg="red",
+                    )
+                    failed_syncs.append(challenge_key)
+                    continue
+
                 click.secho(
-                    f"Could not find existing challenge {challenge['name']}. "
-                    f"Perhaps you meant install instead of sync?",
-                    fg="red",
+                    f"Syncing '{challenge['name']}' ({challenge_path.relative_to(config.project_path)}) ...",
+                    fg="blue",
                 )
-                failed_syncs.append(challenge_key)
-                continue
-
-            click.secho(f"Syncing {challenge['name']}", fg="blue")
-            try:
-                challenge.sync(ignore=ignore)
-            except ChallengeException as e:
-                click.secho("Failed to install challenge", fg="red")
-                click.secho(str(e), fg="red")
-                failed_syncs.append(challenge_key)
+                try:
+                    challenge.sync(ignore=ignore)
+                except ChallengeException as e:
+                    click.secho("Failed to install challenge", fg="red")
+                    click.secho(str(e), fg="red")
+                    failed_syncs.append(challenge_key)
 
         if len(failed_syncs) == 0:
             click.secho("Success! All challenges synced!", fg="green")
@@ -612,6 +624,9 @@ class ChallengeCommand:
             challenge_keys = config.challenges.keys()
 
         failed_deployments, failed_syncs = [], []
+
+        # get challenges which can be deployed (have an image)
+        deployable_challenges = []
         for challenge_key in challenge_keys:
             challenge_path = config.project_path / Path(challenge_key)
 
@@ -620,109 +635,110 @@ class ChallengeCommand:
 
             try:
                 challenge = Challenge(challenge_path)
+                if challenge.get("image"):
+                    deployable_challenges.append(challenge)
+
             except ChallengeException as e:
                 click.secho(str(e), fg="red")
                 failed_deployments.append(challenge_key)
                 continue
 
-            challenge_name = challenge.get("name")
-            challenge_image = challenge.get("image")
-            if not challenge_image:
-                click.secho(
-                    f"Skipping deployment of challenge service '{challenge_name}' "
-                    f"because it does not provide an image",
-                    fg="yellow",
+        with click.progressbar(deployable_challenges, label="Deploying challenges") as challenges:
+            for challenge in challenges:
+                click.echo()  # echo a new line as a separator
+
+                challenge_name = challenge.get("name")
+                challenge_key = challenge.challenge_file_path.parent
+                target_host = host or challenge.get("host")
+
+                # Default to cloud deployment if host is not specified
+                scheme = "cloud"
+                if bool(target_host):
+                    url = urlparse(target_host)
+                    if not bool(url.netloc):
+                        click.secho(
+                            f"Host for challenge service '{challenge_name}' has no URI scheme - {target_host}. "
+                            "Provide a URI scheme like ssh:// or registry://",
+                            fg="red",
+                        )
+                        continue
+
+                    scheme = url.scheme
+
+                deployment_handler = get_deployment_handler(scheme)(
+                    challenge, host=host, protocol=challenge.get("protocol")
                 )
-                continue
+                click.secho(
+                    f"Deploying challenge service '{challenge_name}' "
+                    f"({challenge.challenge_file_path.relative_to(config.project_path)}) "
+                    f"with {deployment_handler.__class__.__name__} ...",
+                    fg="blue",
+                )
+                deployment_result = deployment_handler.deploy(skip_login=skip_login)
 
-            target_host = host or challenge.get("host")
+                # Use hardcoded connection_info if specified
+                if challenge.get("connection_info"):
+                    click.secho("Using connection_info hardcoded in challenge.yml", fg="yellow")
 
-            # Default to cloud deployment if host is not specified
-            scheme = "cloud"
-            if bool(target_host):
-                url = urlparse(target_host)
-                if not bool(url.netloc):
-                    click.secho(
-                        f"Host for challenge service '{challenge_name}' has no URI scheme - {target_host}. "
-                        "Provide a URI scheme like ssh:// or registry://",
-                        fg="red",
-                    )
+                # Otherwise, use connection_info from the deployment result if provided
+                elif deployment_result.connection_info:
+                    challenge["connection_info"] = deployment_result.connection_info
+
+                # Finally if no connection_info was provided in the challenge and the
+                # deployment didn't result in one either, just ensure it's not present
+                else:
+                    challenge["connection_info"] = None
+
+                if not deployment_result.success:
+                    click.secho("An error occurred during service deployment!", fg="red")
+                    failed_deployments.append(challenge_key)
                     continue
 
-                scheme = url.scheme
-
-            deployment_handler = get_deployment_handler(scheme)(
-                challenge, host=host, protocol=challenge.get("protocol")
-            )
-            click.secho(
-                f"Deploying challenge service '{challenge_name}' with {deployment_handler.__class__.__name__}",
-                fg="blue",
-            )
-            deployment_result = deployment_handler.deploy(skip_login=skip_login)
-
-            # Use hardcoded connection_info if specified
-            if challenge.get("connection_info"):
-                click.secho("Using connection_info hardcoded in challenge.yml", fg="yellow")
-
-            # Otherwise, use connection_info from the deployment result if provided
-            elif deployment_result.connection_info:
-                challenge["connection_info"] = deployment_result.connection_info
-
-            # Finally if no connection_info was provided in the challenge and the
-            # deployment didn't result in one either, just ensure it's not present
-            else:
-                challenge["connection_info"] = None
-
-            if not deployment_result.success:
-                click.secho("An error occurred during service deployment!", fg="red")
-                failed_deployments.append(challenge_key)
-                continue
-
-            installed_challenges = challenge.load_installed_challenges()
-            existing_challenge = next(
-                (c for c in installed_challenges if c["name"] == challenge["name"]),
-                None,
-            )
-
-            if challenge["connection_info"]:
-                click.secho(
-                    f"Challenge service deployed at: {challenge['connection_info']}",
-                    fg="green",
-                )
-            else:
-                click.secho(
-                    "Could not resolve a connection_info for the deployed service.\nIf your DeploymentHandler does not "
-                    "return a connection_info, make sure to provide one in the challenge.yml file.",
-                    fg="yellow",
+                installed_challenges = challenge.load_installed_challenges()
+                existing_challenge = next(
+                    (c for c in installed_challenges if c["name"] == challenge["name"]),
+                    None,
                 )
 
-            try:
-                if existing_challenge:
-                    click.secho(f"Updating challenge '{challenge_name}'", fg="blue")
-                    challenge.sync(
-                        ignore=[
-                            "flags",
-                            "topics",
-                            "tags",
-                            "files",
-                            "hints",
-                            "requirements",
-                        ]
+                if challenge["connection_info"]:
+                    click.secho(
+                        f"Challenge service deployed at: {challenge['connection_info']}",
+                        fg="green",
                     )
                 else:
-                    click.secho(f"Creating challenge '{challenge_name}'", fg="blue")
-                    challenge.create()
+                    click.secho(
+                        "Could not resolve a connection_info for the deployed service.\nIf your DeploymentHandler "
+                        "does not return a connection_info, make sure to provide one in the challenge.yml file.",
+                        fg="yellow",
+                    )
 
-            except ChallengeException as e:
-                click.secho(
-                    "Challenge service has been deployed, however the challenge could not be "
-                    f"{'synced' if existing_challenge else 'created'}",
-                    fg="red",
-                )
-                click.secho(str(e), fg="red")
-                failed_syncs.append(challenge_key)
+                try:
+                    if existing_challenge:
+                        click.secho(f"Updating challenge '{challenge_name}'", fg="blue")
+                        challenge.sync(
+                            ignore=[
+                                "flags",
+                                "topics",
+                                "tags",
+                                "files",
+                                "hints",
+                                "requirements",
+                            ]
+                        )
+                    else:
+                        click.secho(f"Creating challenge '{challenge_name}'", fg="blue")
+                        challenge.create()
 
-            click.secho("Success!\n", fg="green")
+                except ChallengeException as e:
+                    click.secho(
+                        "Challenge service has been deployed, however the challenge could not be "
+                        f"{'synced' if existing_challenge else 'created'}",
+                        fg="red",
+                    )
+                    click.secho(str(e), fg="red")
+                    failed_syncs.append(challenge_key)
+
+                click.secho("Success!\n", fg="green")
 
         if len(failed_deployments) == 0 and len(failed_syncs) == 0:
             click.secho(
