@@ -16,8 +16,6 @@ from ctfcli.core.exceptions import (
 from ctfcli.core.image import Image
 from ctfcli.utils.tools import strings
 
-# TODO: Extract creating resources to separate methods, but leave deleting inside sync only
-
 
 class Challenge(dict):
     @staticmethod
@@ -127,6 +125,144 @@ class Challenge(dict):
 
         return challenge_payload
 
+    # Flag delete/create
+    def _delete_existing_flags(self):
+        remote_flags = self.api.get("/api/v1/flags").json()["data"]
+        for flag in remote_flags:
+            if flag["challenge_id"] == self.challenge_id:
+                r = self.api.delete(f"/api/v1/flags/{flag['id']}")
+                r.raise_for_status()
+
+    def _create_flags(self):
+        for flag in self["flags"]:
+            if type(flag) == str:
+                flag_payload = {
+                    "content": flag,
+                    "type": "static",
+                    "challenge_id": self.challenge_id,
+                }
+            else:
+                flag_payload = {**flag, "challenge_id": self.challenge_id}
+
+            r = self.api.post("/api/v1/flags", json=flag_payload)
+            r.raise_for_status()
+
+    # Topic delete/create
+    def _delete_existing_topics(self):
+        remote_topics = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics").json()["data"]
+        for topic in remote_topics:
+            r = self.api.delete(f"/api/v1/topics?type=challenge&target_id={topic['id']}")
+            r.raise_for_status()
+
+    def _create_topics(self):
+        for topic in self["topics"]:
+            r = self.api.post(
+                "/api/v1/topics",
+                json={
+                    "value": topic,
+                    "type": "challenge",
+                    "challenge_id": self.challenge_id,
+                },
+            )
+            r.raise_for_status()
+
+    # Tag delete/create
+    def _delete_existing_tags(self):
+        remote_tags = self.api.get("/api/v1/tags").json()["data"]
+        for tag in remote_tags:
+            if tag["challenge_id"] == self.challenge_id:
+                r = self.api.delete(f"/api/v1/tags/{tag['id']}")
+                r.raise_for_status()
+
+    def _create_tags(self):
+        for tag in self["tags"]:
+            r = self.api.post(
+                "/api/v1/tags",
+                json={"challenge_id": self.challenge_id, "value": tag},
+            )
+            r.raise_for_status()
+
+    # File delete/create
+    def _delete_existing_files(self):
+        remote_challenge = self.load_installed_challenge(self.challenge_id)
+        remote_files = self.api.get("/api/v1/files?type=challenge").json()["data"]
+
+        for remote_file in remote_files:
+            for utilized_file in remote_challenge["files"]:
+                if remote_file["location"] in utilized_file:
+                    r = self.api.delete(f"/api/v1/files/{remote_file['id']}")
+                    r.raise_for_status()
+
+    def _create_files(self):
+        new_files = []
+        for challenge_file in self["files"]:
+            new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))
+
+        files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
+        # Specifically use data= here instead of json= to send multipart/form-data
+        r = self.api.post("/api/v1/files", files=new_files, data=files_payload)
+        r.raise_for_status()
+
+        for file_payload in new_files:
+            file_payload[1].close()
+
+    # Hint delete/create
+    def _delete_existing_hints(self):
+        remote_hints = self.api.get("/api/v1/hints").json()["data"]
+        for hint in remote_hints:
+            if hint["challenge_id"] == self.challenge_id:
+                r = self.api.delete(f"/api/v1/hints/{hint['id']}")
+                r.raise_for_status()
+
+    def _create_hints(self):
+        for hint in self["hints"]:
+            if type(hint) == str:
+                hint_payload = {
+                    "content": hint,
+                    "cost": 0,
+                    "challenge_id": self.challenge_id,
+                }
+            else:
+                hint_payload = {
+                    "content": hint["content"],
+                    "cost": hint["cost"],
+                    "challenge_id": self.challenge_id,
+                }
+
+            r = self.api.post("/api/v1/hints", json=hint_payload)
+            r.raise_for_status()
+
+    # Required challenges
+    def _set_required_challenges(self):
+        remote_challenges = self.load_installed_challenges()
+        required_challenges = []
+
+        for required_challenge in self["requirements"]:
+            if type(required_challenge) == str:
+                # requirement by name
+                # find the challenge id from installed challenges
+                for remote_challenge in remote_challenges:
+                    if remote_challenge["name"] == required_challenge:
+                        required_challenges.append(remote_challenge["id"])
+
+            elif type(required_challenge) == int:
+                # requirement by challenge id
+                # trust it and use it directly
+                required_challenges.append(required_challenge)
+
+        required_challenge_ids = list(set(required_challenges))
+
+        if self.challenge_id in required_challenge_ids:
+            click.secho(
+                "Challenge cannot require itself. Skipping invalid requirement.",
+                fg="yellow",
+            )
+            required_challenges.remove(self.challenge_id)
+
+        requirements_payload = {"requirements": {"prerequisites": required_challenges}}
+        r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
+        r.raise_for_status()
+
     def sync(self, ignore=()) -> None:
         # alias self as challenge for accessing internal dict data
         challenge = self
@@ -176,141 +312,39 @@ class Challenge(dict):
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=challenge_payload)
         r.raise_for_status()
 
-        # Create new flags
-        if challenge.get("flags") and "flags" not in ignore:
-            # Delete existing flags
-            remote_flags = self.api.get("/api/v1/flags").json()["data"]
-            for flag in remote_flags:
-                if flag["challenge_id"] == self.challenge_id:
-                    r = self.api.delete(f"/api/v1/flags/{flag['id']}")
-                    r.raise_for_status()
-
-            for flag in challenge["flags"]:
-                if type(flag) == str:
-                    flag_payload = {
-                        "content": flag,
-                        "type": "static",
-                        "challenge_id": self.challenge_id,
-                    }
-                else:
-                    flag_payload = {**flag, "challenge_id": self.challenge_id}
-
-                r = self.api.post("/api/v1/flags", json=flag_payload)
-                r.raise_for_status()
+        # Update flags
+        if "flags" not in ignore:
+            self._delete_existing_flags()
+            if challenge.get("flags"):
+                self._create_flags()
 
         # Update topics
-        if challenge.get("topics") and "topics" not in ignore:
-            # Delete existing challenge topics
-            remote_topics = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics").json()["data"]
-            for topic in remote_topics:
-                r = self.api.delete(f"/api/v1/topics?type=challenge&target_id={topic['id']}")
-                r.raise_for_status()
-
-            # Add new challenge topics
-            for topic in challenge["topics"]:
-                r = self.api.post(
-                    "/api/v1/topics",
-                    json={
-                        "value": topic,
-                        "type": "challenge",
-                        "challenge_id": self.challenge_id,
-                    },
-                )
-                r.raise_for_status()
+        if "topics" not in ignore:
+            self._delete_existing_topics()
+            if challenge.get("topics"):
+                self._create_topics()
 
         # Update tags
-        if challenge.get("tags") and "tags" not in ignore:
-            # Delete existing tags
-            remote_tags = self.api.get("/api/v1/tags").json()["data"]
-            for tag in remote_tags:
-                if tag["challenge_id"] == self.challenge_id:
-                    r = self.api.delete(f"/api/v1/tags/{tag['id']}")
-                    r.raise_for_status()
+        if "tags" not in ignore:
+            self._delete_existing_tags()
+            if challenge.get("tags"):
+                self._create_tags()
 
-            for tag in challenge["tags"]:
-                r = self.api.post(
-                    "/api/v1/tags",
-                    json={"challenge_id": self.challenge_id, "value": tag},
-                )
-                r.raise_for_status()
+        # Create / Upload files
+        if "files" not in ignore:
+            self._delete_existing_files()
+            if challenge.get("files"):
+                self._create_files()
 
-        # Upload files
-        if challenge.get("files") and "files" not in ignore:
-            # Prepare new files for upload, to check if they still exist and to not delete old files in case they don't
-            new_files = []
-            for challenge_file in challenge["files"]:
-                new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))
-
-            # Delete existing files
-            remote_files = self.api.get("/api/v1/files?type=challenge").json()["data"]
-            for remote_file in remote_files:
-                for utilized_file in remote_challenge["files"]:
-                    if remote_file["location"] in utilized_file:
-                        r = self.api.delete(f"/api/v1/files/{remote_file['id']}")
-                        r.raise_for_status()
-
-            files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
-            # Specifically use data= here instead of json= to send multipart/form-data
-            r = self.api.post("/api/v1/files", files=new_files, data=files_payload)
-            r.raise_for_status()
-
-            for file_payload in new_files:
-                file_payload[1].close()
-
-        # Create hints
-        if challenge.get("hints") and "hints" not in ignore:
-            # Delete existing hints
-            remote_hints = self.api.get("/api/v1/hints").json()["data"]
-            for hint in remote_hints:
-                if hint["challenge_id"] == self.challenge_id:
-                    r = self.api.delete(f"/api/v1/hints/{hint['id']}")
-                    r.raise_for_status()
-
-            for hint in challenge["hints"]:
-                if type(hint) == str:
-                    hint_payload = {
-                        "content": hint,
-                        "cost": 0,
-                        "challenge_id": self.challenge_id,
-                    }
-                else:
-                    hint_payload = {
-                        "content": hint["content"],
-                        "cost": hint["cost"],
-                        "challenge_id": self.challenge_id,
-                    }
-
-                r = self.api.post("/api/v1/hints", json=hint_payload)
-                r.raise_for_status()
+        # Update hints
+        if "hints" not in ignore:
+            self._delete_existing_hints()
+            if challenge.get("hints"):
+                self._create_hints()
 
         # Update requirements
         if challenge.get("requirements") and "requirements" not in ignore:
-            required_challenges = []
-            for required_challenge in challenge["requirements"]:
-                if type(required_challenge) == str:
-                    # requirement by name
-                    # find the challenge id from installed challenges
-                    for remote_challenge in remote_challenges:
-                        if remote_challenge["name"] == required_challenge:
-                            required_challenges.append(remote_challenge["id"])
-
-                elif type(required_challenge) == int:
-                    # requirement by challenge id
-                    # trust it and use it directly
-                    required_challenges.append(required_challenge)
-
-            required_challenge_ids = list(set(required_challenges))
-
-            if self.challenge_id in required_challenge_ids:
-                click.secho(
-                    "Challenge cannot require itself. Skipping invalid requirement.",
-                    fg="yellow",
-                )
-                required_challenges.remove(self.challenge_id)
-
-            requirements_payload = {"requirements": {"prerequisites": required_challenges}}
-            r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
-            r.raise_for_status()
+            self._set_required_challenges()
 
         # Bring back the challenge to be visible if:
         # 1. State is not ignored and set to visible
@@ -364,108 +398,27 @@ class Challenge(dict):
 
         # Create flags
         if challenge.get("flags") and "flags" not in ignore:
-            for flag in challenge["flags"]:
-                if type(flag) == str:
-                    flag_payload = {
-                        "content": flag,
-                        "type": "static",
-                        "challenge_id": self.challenge_id,
-                    }
-                else:
-                    flag_payload = {**flag, "challenge_id": self.challenge_id}
-
-                r = self.api.post("/api/v1/flags", json=flag_payload)
-                r.raise_for_status()
+            self._create_flags()
 
         # Create topics
         if challenge.get("topics") and "topics" not in ignore:
-            for topic in challenge["topics"]:
-                r = self.api.post(
-                    "/api/v1/topics",
-                    json={
-                        "value": topic,
-                        "type": "challenge",
-                        "challenge_id": self.challenge_id,
-                    },
-                )
-                r.raise_for_status()
+            self._create_topics()
 
         # Create tags
         if challenge.get("tags") and "tags" not in ignore:
-            for tag in challenge["tags"]:
-                r = self.api.post(
-                    "/api/v1/tags",
-                    json={"challenge_id": self.challenge_id, "value": tag},
-                )
-                r.raise_for_status()
+            self._create_tags()
 
         # Upload files
         if challenge.get("files") and "files" not in ignore:
-            files = []
-            for challenge_file in challenge["files"]:
-                files.append(
-                    (
-                        "file",
-                        open((self.challenge_directory / challenge_file), mode="rb"),
-                    )
-                )
-
-            files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
-            # Specifically use data= here instead of json= to send multipart/form-data
-            r = self.api.post("/api/v1/files", files=files, data=files_payload)
-            r.raise_for_status()
-
-            for file_payload in files:
-                file_payload[1].close()
+            self._create_files()
 
         # Add hints
         if challenge.get("hints") and "hints" not in ignore:
-            for hint in challenge["hints"]:
-                if type(hint) == str:
-                    hint_payload = {
-                        "content": hint,
-                        "cost": 0,
-                        "challenge_id": self.challenge_id,
-                    }
-                else:
-                    hint_payload = {
-                        "content": hint["content"],
-                        "cost": hint["cost"],
-                        "challenge_id": self.challenge_id,
-                    }
-
-                r = self.api.post("/api/v1/hints", json=hint_payload)
-                r.raise_for_status()
+            self._create_hints()
 
         # Add requirements
         if challenge.get("requirements") and "requirements" not in ignore:
-            remote_challenges = self.load_installed_challenges()
-            required_challenges = []
-            for required_challenge in challenge["requirements"]:
-                if type(required_challenge) == str:
-                    # requirement by name
-                    # find the challenge id from installed challenges
-                    for remote_challenge in remote_challenges:
-                        if remote_challenge["name"] == required_challenge:
-                            required_challenges.append(remote_challenge["id"])
-
-                elif type(required_challenge) == int:
-                    # requirement by challenge id
-                    # trust it and use it directly
-                    required_challenges.append(required_challenge)
-
-            required_challenge_ids = list(set(required_challenges))
-
-            if self.challenge_id in required_challenge_ids:
-                click.secho(
-                    "Challenge cannot require itself. Skipping invalid requirement.",
-                    fg="yellow",
-                )
-                required_challenges.remove(self.challenge_id)
-
-            requirements_payload = {"requirements": {"prerequisites": required_challenges}}
-            r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
-            r.raise_for_status()
+            self._set_required_challenges()
 
         # Bring back the challenge if it's supposed to be visible
         # Either explicitly, or by assuming the default value (possibly because the state is ignored)

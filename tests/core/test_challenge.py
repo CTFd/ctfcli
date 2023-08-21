@@ -157,7 +157,18 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api: MagicMock = mock_api_constructor.return_value
         challenge.sync()
 
-        mock_api.get.assert_called_once_with("/api/v1/challenges/1")
+        # expect GET calls loading existing resources to check if something needs to be deleted
+        mock_api.get.assert_has_calls(
+            [
+                call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/files?type=challenge"),
+                call("/api/v1/hints"),
+            ],
+            any_order=True,
+        )
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
@@ -189,7 +200,17 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api: MagicMock = mock_api_constructor.return_value
         challenge.sync()
 
-        mock_api.get.assert_called_once_with("/api/v1/challenges/1")
+        mock_api.get.assert_has_calls(
+            [
+                call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/files?type=challenge"),
+                call("/api/v1/hints"),
+            ],
+            any_order=True,
+        )
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
@@ -227,7 +248,17 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api: MagicMock = mock_api_constructor.return_value
         challenge.sync()
 
-        mock_api.get.assert_called_once_with("/api/v1/challenges/1")
+        mock_api.get.assert_has_calls(
+            [
+                call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/files?type=challenge"),
+                call("/api/v1/hints"),
+            ],
+            any_order=True,
+        )
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
@@ -287,12 +318,15 @@ class TestSyncChallenge(unittest.TestCase):
             ],
         }
 
-        challenge.sync()
+        challenge.sync(ignore=["files"])
 
         mock_api.get.assert_has_calls(
             [
                 call("/api/v1/challenges/1"),
                 call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/hints"),
             ],
             any_order=True,
         )
@@ -365,12 +399,15 @@ class TestSyncChallenge(unittest.TestCase):
             ],
         }
 
-        challenge.sync()
+        challenge.sync(ignore=["files"])
 
         mock_api.get.assert_has_calls(
             [
                 call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/hints"),
             ],
             any_order=True,
         )
@@ -422,12 +459,15 @@ class TestSyncChallenge(unittest.TestCase):
             ],
         }
 
-        challenge.sync()
+        challenge.sync(ignore=["files"])
 
         mock_api.get.assert_has_calls(
             [
                 call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
+                call("/api/v1/hints"),
             ],
             any_order=True,
         )
@@ -502,8 +542,13 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.get.assert_has_calls(
             [
                 call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
                 call("/api/v1/files?type=challenge"),
-            ]
+                call("/api/v1/hints"),
+            ],
+            any_order=True,
         )
 
         mock_api.patch.assert_has_calls(
@@ -578,11 +623,14 @@ class TestSyncChallenge(unittest.TestCase):
             ],
         }
 
-        challenge.sync()
+        challenge.sync(ignore=["files"])
 
         mock_api.get.assert_has_calls(
             [
                 call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
                 call("/api/v1/hints"),
             ],
             any_order=True,
@@ -732,7 +780,17 @@ class TestSyncChallenge(unittest.TestCase):
 
         challenge.sync()
 
-        mock_api.get.assert_called_once_with("/api/v1/challenges/1")
+        mock_api.get.assert_has_calls(
+            [
+                call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/files?type=challenge"),
+                call("/api/v1/hints"),
+            ],
+            any_order=True,
+        )
         mock_api.patch.assert_has_calls(
             [call("/api/v1/challenges/1", json=expected_challenge_payload), call().raise_for_status()]
         )
@@ -762,7 +820,17 @@ class TestSyncChallenge(unittest.TestCase):
 
         challenge.sync()
 
-        mock_api.get.assert_called_once_with("/api/v1/challenges/1")
+        mock_api.get.assert_has_calls(
+            [
+                call("/api/v1/challenges/1"),
+                call("/api/v1/flags"),
+                call("/api/v1/challenges/1/topics"),
+                call("/api/v1/tags"),
+                call("/api/v1/files?type=challenge"),
+                call("/api/v1/hints"),
+            ],
+            any_order=True,
+        )
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
@@ -983,7 +1051,7 @@ class TestSyncChallenge(unittest.TestCase):
                 challenge.sync(ignore=[p])
 
                 mock_api: MagicMock = mock_api_constructor.return_value
-                mock_load_installed_challenge.assert_called_once_with(1)
+                mock_load_installed_challenge.assert_has_calls([call(1)])
                 mock_load_installed_challenges.assert_called_once_with()
                 mock_api.patch.assert_has_calls(
                     [
