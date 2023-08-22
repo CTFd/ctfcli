@@ -526,7 +526,15 @@ class ChallengeCommand:
                         failed_installs.append(challenge_key)
                         continue
 
-                    click.secho("Ignoring existing challenge because of --force", fg="yellow")
+                    click.secho("Syncing existing challenge instead (because of --force)", fg="yellow")
+                    try:
+                        challenge.sync(ignore=ignore)
+                    except ChallengeException as e:
+                        click.secho("Failed to sync challenge", fg="red")
+                        click.secho(str(e), fg="red")
+                        failed_installs.append(challenge_key)
+
+                    continue
 
                 # If we don't break because of duplicated challenge names - continue the installation
                 try:
@@ -595,7 +603,7 @@ class ChallengeCommand:
                 try:
                     challenge.sync(ignore=ignore)
                 except ChallengeException as e:
-                    click.secho("Failed to install challenge", fg="red")
+                    click.secho("Failed to sync challenge", fg="red")
                     click.secho(str(e), fg="red")
                     failed_syncs.append(challenge_key)
 
