@@ -9,7 +9,7 @@ format:
 	ruff --fix .
 
 test:
-	green tests -r
+	pytest --cov=ctfcli tests
 
 install:
 	python3 setup.py install

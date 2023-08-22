@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "ctfcli"
-version = "0.0.14"
-description = ""
+version = "0.1.0"
+description = "ctfcli is a tool to manage Capture The Flag events and challenges"
 authors = ["Kevin Chung <kchung@ctfd.io>", "Miłosz Skaza <milosz.skaza@ctfd.io>"]
 readme = "README.md"
 
@@ -10,7 +10,7 @@ python = "^3.10"
 python-frontmatter = "^1.0.0"
 requests = "^2.31.0"
 pyyaml = "^6.0.1"
-click = "^8.1.6"
+click = "^8.1.7"
 cookiecutter = "^2.3.0"
 appdirs = "^1.4.4"
 colorama = "^0.4.6"
@@ -21,7 +21,9 @@ typing-extensions = "^4.7.1"
 black = "^23.7.0"
 ruff = "^0.0.284"
 isort = "^5.12.0"
-green = "^3.4.3"
+pytest = "^7.4.0"
+pytest-sugar = "^0.9.7"
+pytest-cov = "^4.1.0"
 
 [tool.ruff]
 line-length = 120
