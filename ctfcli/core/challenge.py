@@ -346,14 +346,19 @@ class Challenge(dict):
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
 
+        make_challenge_visible = False
+
         # Bring back the challenge to be visible if:
-        # 1. State is not ignored and set to visible
+        # 1. State is not ignored and set to visible, or defaults to visible
+        if "state" not in ignore:
+            if challenge.get("state", "visible") == "visible":
+                make_challenge_visible = True
         # 2. State is ignored, but regardless of the local value, the remote state was visible
-        if (
-            challenge.get("state", "visible") == "visible"
-            or "state" in ignore
-            and remote_challenge.get("state") == "visible"
-        ):
+        else:
+            if remote_challenge.get("state") == "visible":
+                make_challenge_visible = True
+
+        if make_challenge_visible:
             r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json={"state": "visible"})
             r.raise_for_status()
 
