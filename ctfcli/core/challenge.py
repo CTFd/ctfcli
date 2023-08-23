@@ -1,7 +1,7 @@
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union, Dict, List
+from typing import Dict, List, Optional, Union
 
 import click
 import yaml

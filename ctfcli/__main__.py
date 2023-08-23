@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Union, Any
+from typing import Optional, Union
 
 import click
 import fire

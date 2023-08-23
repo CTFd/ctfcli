@@ -1,7 +1,7 @@
 import logging
 import subprocess
 import time
-from typing import Optional, Dict
+from typing import Dict, Optional
 from urllib.parse import urlparse
 
 import click

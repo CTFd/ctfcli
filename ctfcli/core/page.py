@@ -1,12 +1,11 @@
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union, List, Dict
+from typing import Dict, List, Optional, Union
 
 try:
     from typing import Self
 except ImportError:
     from typing_extensions import Self
-
 
 import click
 import frontmatter

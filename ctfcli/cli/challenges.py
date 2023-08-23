@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Tuple, Union
 from urllib.parse import urlparse
 
 import click

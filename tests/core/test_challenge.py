@@ -1029,7 +1029,8 @@ class TestSyncChallenge(unittest.TestCase):
                             expected_challenge_payload[p] = remote_installed_challenge[p]
                             challenge[p] = "new-value"
 
-                        # expect these are just not modified (not included in the payload or not modified with requests):
+                        # expect these are just not modified
+                        # (not included in the payload or not modified with requests):
                         # in case of attempts and connection_info we have to explicitly delete them from the payload
                         # as they are  expected to be present in their default value with all other requests
                         if p == "attempts":
@@ -1238,7 +1239,8 @@ class TestCreateChallenge(unittest.TestCase):
                             challenge[p] = "new-value"
                             expected_challenge_payload[p] = ""
 
-                        # expect these are just not modified (not included in the payload or not modified with requests):
+                        # expect these are just not modified
+                        # (not included in the payload or not modified with requests):
                         if p == "attempts":
                             challenge["attempts"] = 5
                             del expected_challenge_payload["max_attempts"]
