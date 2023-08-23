@@ -35,7 +35,7 @@ jobs:
 
       # Build wheels
       - name: Build wheels
-        run: python setup.py sdist bdist_wheel
+        run: poetry run python setup.py sdist bdist_wheel
 
       - uses: actions/upload-artifact@v2
         with:
