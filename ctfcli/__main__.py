@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional, Union, Any
 
 import click
 import fire
@@ -26,7 +27,7 @@ log = logging.getLogger("ctfcli.main")
 class CTFCLI:
     @staticmethod
     def init(
-        directory: str | os.PathLike[str] | None = None,
+        directory: Optional[Union[str, os.PathLike]] = None,
         no_git: bool = False,
         no_commit: bool = False,
     ):
@@ -129,9 +130,14 @@ def main():
 
     # Load CLI
     try:
-        # provide a custom serializer to always return None and avoid printing return codes
-        return_code = fire.Fire(CTFCLI, serialize=lambda x: None)
-        sys.exit(return_code)
+        # if the command returns an int, then we serialize it as none to prevent fire from printing it
+        # (this does not change the actual return value, so it's still good to use as an exit code)
+        # everything else is returned as is, so fire can print help messages
+        ret = fire.Fire(CTFCLI, serialize=lambda r: None if isinstance(r, int) else r)
+
+        if isinstance(ret, int):
+            sys.exit(ret)
+
     except ProjectNotInitialized:
         if click.confirm(
             "Outside of a ctfcli project, would you like to start a new project in this directory?",

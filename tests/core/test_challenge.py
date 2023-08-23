@@ -988,81 +988,82 @@ class TestSyncChallenge(unittest.TestCase):
             "connection_info": None,
         }
 
+        # This nightmare is necessary because on python 3.8 for whatever reason "with" with multiple context managers
+        # doesn't work
         for p in properties:
-            with (
-                mock.patch("ctfcli.core.challenge.API") as mock_api_constructor,
-                mock.patch(
+            with mock.patch("ctfcli.core.challenge.API") as mock_api_constructor:
+                with mock.patch(
                     "ctfcli.core.challenge.Challenge.load_installed_challenge", return_value=remote_installed_challenge
-                ) as mock_load_installed_challenge,
-                mock.patch(
-                    "ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=self.installed_challenges
-                ) as mock_load_installed_challenges,
-            ):
-                challenge = Challenge(
-                    self.minimal_challenge,
-                    {
-                        "state": "visible",
-                    },
-                )
+                ) as mock_load_installed_challenge:
+                    with mock.patch(
+                        "ctfcli.core.challenge.Challenge.load_installed_challenges",
+                        return_value=self.installed_challenges,
+                    ) as mock_load_installed_challenges:
+                        challenge = Challenge(
+                            self.minimal_challenge,
+                            {
+                                "state": "visible",
+                            },
+                        )
 
-                expected_challenge_payload = {
-                    "name": "Test Challenge",
-                    "category": "New Test",
-                    "description": "New Test Description",
-                    "type": "standard",
-                    "value": 150,
-                    "state": "hidden",
-                    "max_attempts": 0,
-                    "connection_info": None,
-                }
+                        expected_challenge_payload = {
+                            "name": "Test Challenge",
+                            "category": "New Test",
+                            "description": "New Test Description",
+                            "type": "standard",
+                            "value": 150,
+                            "state": "hidden",
+                            "max_attempts": 0,
+                            "connection_info": None,
+                        }
 
-                # expect the payload to modify values with new ones from challenge.yml
-                # except the ignored property
-                match p:
-                    # expect these to be in the payload, with the values as on the remote (unchanged):
-                    case "value":
-                        expected_challenge_payload["value"] = remote_installed_challenge["value"]
-                        challenge["value"] = 200
+                        # expect the payload to modify values with new ones from challenge.yml
+                        # except the ignored property
 
-                    case "category" | "description" | "type":
-                        expected_challenge_payload[p] = remote_installed_challenge[p]
-                        challenge[p] = "new-value"
+                        # expect these to be in the payload, with the values as on the remote (unchanged):
+                        if p == "value":
+                            expected_challenge_payload["value"] = remote_installed_challenge["value"]
+                            challenge["value"] = 200
 
-                    # expect these are just not modified (not included in the payload or not modified with requests):
-                    # in case of attempts and connection_info we have to explicitly delete them from the payload
-                    # as they are  expected to be present in their default value with all other requests
-                    case "attempts":
-                        challenge["attempts"] = 5
-                        del expected_challenge_payload["max_attempts"]
+                        if p in ["category", "description", "type"]:
+                            expected_challenge_payload[p] = remote_installed_challenge[p]
+                            challenge[p] = "new-value"
 
-                    case "connection_info":
-                        challenge["connection_info"] = "https://example.com"
-                        del expected_challenge_payload["connection_info"]
+                        # expect these are just not modified (not included in the payload or not modified with requests):
+                        # in case of attempts and connection_info we have to explicitly delete them from the payload
+                        # as they are  expected to be present in their default value with all other requests
+                        if p == "attempts":
+                            challenge["attempts"] = 5
+                            del expected_challenge_payload["max_attempts"]
 
-                    case "state":
-                        challenge[p] = "new-value"
+                        if p == "connection_info":
+                            challenge["connection_info"] = "https://example.com"
+                            del expected_challenge_payload["connection_info"]
 
-                    case "extra":
-                        challenge["extra"] = {"new-value": "new-value"}
+                        if p == "state":
+                            challenge[p] = "new-value"
 
-                    case "flags" | "topics" | "tags" | "files" | "hints" | "requirements":
-                        challenge[p] = ["new-value"]
+                        if p == "extra":
+                            challenge["extra"] = {"new-value": "new-value"}
 
-                challenge.sync(ignore=[p])
+                        if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
+                            challenge[p] = ["new-value"]
 
-                mock_api: MagicMock = mock_api_constructor.return_value
-                mock_load_installed_challenge.assert_has_calls([call(1)])
-                mock_load_installed_challenges.assert_called_once_with()
-                mock_api.patch.assert_has_calls(
-                    [
-                        call("/api/v1/challenges/1", json=expected_challenge_payload),
-                        call().raise_for_status(),
-                        call("/api/v1/challenges/1", json={"state": "visible"}),
-                        call().raise_for_status(),
-                    ]
-                )
-                mock_api.post.assert_not_called()
-                mock_api.delete.assert_not_called()
+                        challenge.sync(ignore=[p])
+
+                        mock_api: MagicMock = mock_api_constructor.return_value
+                        mock_load_installed_challenge.assert_has_calls([call(1)])
+                        mock_load_installed_challenges.assert_called_once_with()
+                        mock_api.patch.assert_has_calls(
+                            [
+                                call("/api/v1/challenges/1", json=expected_challenge_payload),
+                                call().raise_for_status(),
+                                call("/api/v1/challenges/1", json={"state": "visible"}),
+                                call().raise_for_status(),
+                            ]
+                        )
+                        mock_api.post.assert_not_called()
+                        mock_api.delete.assert_not_called()
 
 
 class TestCreateChallenge(unittest.TestCase):
@@ -1201,88 +1202,87 @@ class TestCreateChallenge(unittest.TestCase):
         # fmt:on
 
         for p in properties:
-            with (
-                mock.patch("ctfcli.core.challenge.API") as mock_api_constructor,
-                mock.patch("ctfcli.core.challenge.click.secho") as mock_secho,
-                mock.patch(
-                    "ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=self.installed_challenges
-                ),
-            ):
-                challenge = Challenge(self.minimal_challenge, {"state": "visible"})
+            with mock.patch("ctfcli.core.challenge.API") as mock_api_constructor:
+                with mock.patch("ctfcli.core.challenge.click.secho") as mock_secho:
+                    with mock.patch(
+                        "ctfcli.core.challenge.Challenge.load_installed_challenges",
+                        return_value=self.installed_challenges,
+                    ):
+                        challenge = Challenge(self.minimal_challenge, {"state": "visible"})
 
-                expected_challenge_payload = {
-                    "name": "Test Challenge",
-                    "category": "New Test",
-                    "description": "New Test Description",
-                    "type": "standard",
-                    "value": 150,
-                    "state": "hidden",
-                    "max_attempts": 0,
-                    "connection_info": None,
-                }
+                        expected_challenge_payload = {
+                            "name": "Test Challenge",
+                            "category": "New Test",
+                            "description": "New Test Description",
+                            "type": "standard",
+                            "value": 150,
+                            "state": "hidden",
+                            "max_attempts": 0,
+                            "connection_info": None,
+                        }
 
-                # add a property that should be defined but ignored
-                match p:
-                    # expect a warning, and to disobey the ignore directive
-                    case "value":
-                        challenge["value"] = 200
-                        expected_challenge_payload["value"] = 200
+                        # add a property that should be defined but ignored
 
-                    # expect a warning, and to disobey the ignore directive
-                    case "type":
-                        challenge["type"] = "custom-type"
-                        expected_challenge_payload[p] = "custom-type"
+                        # expect a warning, and to disobey the ignore directive
+                        if p == "value":
+                            challenge["value"] = 200
+                            expected_challenge_payload["value"] = 200
 
-                    # expect these to be in the payload, with the defaults or empty:
-                    case "category" | "description":
-                        challenge[p] = "new-value"
-                        expected_challenge_payload[p] = ""
+                        # expect a warning, and to disobey the ignore directive
+                        if p == "type":
+                            challenge["type"] = "custom-type"
+                            expected_challenge_payload[p] = "custom-type"
 
-                    # expect these are just not modified (not included in the payload or not modified with requests):
-                    case "attempts":
-                        challenge["attempts"] = 5
-                        del expected_challenge_payload["max_attempts"]
+                        # expect these to be in the payload, with the defaults or empty:
+                        if p in ["category", "description"]:
+                            challenge[p] = "new-value"
+                            expected_challenge_payload[p] = ""
 
-                    case "connection_info":
-                        challenge["connection_info"] = "https://example.com"
-                        del expected_challenge_payload["connection_info"]
+                        # expect these are just not modified (not included in the payload or not modified with requests):
+                        if p == "attempts":
+                            challenge["attempts"] = 5
+                            del expected_challenge_payload["max_attempts"]
 
-                    case "state":
-                        challenge[p] = "new-value"
+                        if p == "connection_info":
+                            challenge["connection_info"] = "https://example.com"
+                            del expected_challenge_payload["connection_info"]
 
-                    case "extra":
-                        challenge["extra"] = {"new-value": "new-value"}
+                        if p == "state":
+                            challenge[p] = "new-value"
 
-                    case "flags" | "topics" | "tags" | "files" | "hints" | "requirements":
-                        challenge[p] = ["new-value"]
+                        if p == "extra":
+                            challenge["extra"] = {"new-value": "new-value"}
 
-                def mock_post(*args, **kwargs):
-                    path = args[0]
+                        if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
+                            challenge[p] = ["new-value"]
 
-                    if path == "/api/v1/challenges":
-                        mock_response = MagicMock()
-                        mock_response.json.return_value = {"success": True, "data": {"id": 3}}
-                        return mock_response
+                        def mock_post(*args, **kwargs):
+                            path = args[0]
 
-                    return MagicMock()
+                            if path == "/api/v1/challenges":
+                                mock_response = MagicMock()
+                                mock_response.json.return_value = {"success": True, "data": {"id": 3}}
+                                return mock_response
 
-                mock_api: MagicMock = mock_api_constructor.return_value
-                mock_api.post.side_effect = mock_post
+                            return MagicMock()
 
-                challenge.create(ignore=[p])
+                        mock_api: MagicMock = mock_api_constructor.return_value
+                        mock_api.post.side_effect = mock_post
 
-                if p == "value" or p == "type":
-                    mock_secho.assert_called_once_with(
-                        f"Attribute '{p}' cannot be ignored when creating a challenge", fg="yellow"
-                    )
+                        challenge.create(ignore=[p])
 
-                # if the state is ignored, expect to default to visible and un-hide the challenge
-                mock_api.patch.assert_has_calls(
-                    [call("/api/v1/challenges/3", json={"state": "visible"}), call().raise_for_status()]
-                )
-                mock_api.post.assert_called_once_with("/api/v1/challenges", json=expected_challenge_payload)
-                mock_api.get.assert_not_called()
-                mock_api.delete.assert_not_called()
+                        if p == "value" or p == "type":
+                            mock_secho.assert_called_once_with(
+                                f"Attribute '{p}' cannot be ignored when creating a challenge", fg="yellow"
+                            )
+
+                        # if the state is ignored, expect to default to visible and un-hide the challenge
+                        mock_api.patch.assert_has_calls(
+                            [call("/api/v1/challenges/3", json={"state": "visible"}), call().raise_for_status()]
+                        )
+                        mock_api.post.assert_called_once_with("/api/v1/challenges", json=expected_challenge_payload)
+                        mock_api.get.assert_not_called()
+                        mock_api.delete.assert_not_called()
 
 
 class TestLintChallenge(unittest.TestCase):

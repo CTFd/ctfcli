@@ -3,15 +3,16 @@ import subprocess
 import tempfile
 from os import PathLike
 from pathlib import Path
+from typing import Optional, Union
 
 
 class Image:
-    def __init__(self, name: str, build_path: str | PathLike[str]):
+    def __init__(self, name: str, build_path: Union[str, PathLike]):
         self.name = name
         self.build_path = Path(build_path)
         self.built = False
 
-    def build(self) -> str | None:
+    def build(self) -> Optional[str]:
         docker_build = subprocess.call(["docker", "build", "-t", self.name, "."], cwd=self.build_path.absolute())
         if docker_build != 0:
             return
@@ -19,7 +20,7 @@ class Image:
         self.built = True
         return self.name
 
-    def push(self, location: str) -> str | None:
+    def push(self, location: str) -> Optional[str]:
         if not self.built:
             self.build()
 
@@ -31,7 +32,7 @@ class Image:
 
         return location
 
-    def export(self) -> str | None:
+    def export(self) -> Optional[str]:
         if not self.built:
             self.build()
 
@@ -43,7 +44,7 @@ class Image:
 
         return image_tar.name
 
-    def get_exposed_port(self) -> str | None:
+    def get_exposed_port(self) -> Optional[str]:
         if not self.built:
             self.build()
 

@@ -1,6 +1,7 @@
 import subprocess
 from os import PathLike
 from pathlib import Path
+from typing import Optional, Union, Dict, List
 
 import click
 import yaml
@@ -19,7 +20,7 @@ from ctfcli.utils.tools import strings
 
 class Challenge(dict):
     @staticmethod
-    def load_installed_challenge(challenge_id) -> dict | None:
+    def load_installed_challenge(challenge_id) -> Optional[Dict]:
         api = API()
         r = api.get(f"/api/v1/challenges/{challenge_id}")
 
@@ -33,7 +34,7 @@ class Challenge(dict):
         return installed_challenge
 
     @staticmethod
-    def load_installed_challenges() -> list:
+    def load_installed_challenges() -> List:
         api = API()
         r = api.get("/api/v1/challenges?view=admin")
 
@@ -48,7 +49,7 @@ class Challenge(dict):
 
     # __init__ expects an absolute path to challenge_yml, or a relative one from the cwd
     # it does not join that path with the project_path
-    def __init__(self, challenge_yml: str | PathLike[str], overrides=None):
+    def __init__(self, challenge_yml: Union[str, PathLike], overrides=None):
         if overrides is None:
             overrides = {}
 
@@ -92,7 +93,7 @@ class Challenge(dict):
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 
-    def _get_initial_challenge_payload(self, ignore=()) -> dict:
+    def _get_initial_challenge_payload(self, ignore=()) -> Dict:
         # alias self as challenge for accessing internal dict data
         challenge = self
         challenge_payload = {

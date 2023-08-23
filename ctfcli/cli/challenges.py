@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
+from typing import Union, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -469,7 +470,7 @@ class ChallengeCommand:
         return 1
 
     def install(
-        self, challenge: str = None, force: bool = False, hidden: bool = False, ignore: str | tuple[str] = ()
+        self, challenge: str = None, force: bool = False, hidden: bool = False, ignore: Union[str, Tuple[str]] = ()
     ) -> int:
         log.debug(f"install: (challenge={challenge}, force={force}, hidden={hidden}, ignore={ignore})")
         config = Config()
@@ -554,7 +555,7 @@ class ChallengeCommand:
 
         return 1
 
-    def sync(self, challenge: str = None, ignore: str | tuple[str] = ()) -> int:
+    def sync(self, challenge: str = None, ignore: Union[str, Tuple[str]] = ()) -> int:
         log.debug(f"sync: (challenge={challenge}, ignore={ignore})")
         config = Config()
         challenge_keys = [challenge]

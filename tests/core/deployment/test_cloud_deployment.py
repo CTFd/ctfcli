@@ -90,18 +90,13 @@ class TestCloudDeployment(unittest.TestCase):
         mock_api.access_token = "deadbeef"
 
         def mock_get(*args, **kwargs):
-            path = args[0]
-
-            match path:
-                # mock existing image
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [],
-                    }
-                    return mock_response
+            mock_response = MagicMock()
+            mock_response.ok = True
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [],
+            }
+            return mock_response
 
         mock_api.get.side_effect = mock_get
 
@@ -145,18 +140,13 @@ class TestCloudDeployment(unittest.TestCase):
         mock_api: MagicMock = mock_api_constructor.return_value
 
         def mock_get(*args, **kwargs):
-            path = args[0]
-
-            match path:
-                # mock existing image
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [],
-                    }
-                    return mock_response
+            mock_response = MagicMock()
+            mock_response.ok = True
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [],
+            }
+            return mock_response
 
         mock_api.get.side_effect = mock_get
 
@@ -220,33 +210,29 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                # mock existing image
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [],
-                    }
-                    return mock_response
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [],
+                }
+                return mock_response
 
-                # mock existing service
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [],
-                    }
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [],
+                }
+                return mock_response
 
-                # mock user data
-                case "/api/v1/users/me":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = self.mock_user_response
-                    return mock_response
+            if path == "/api/v1/users/me":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = self.mock_user_response
+                return mock_response
 
         mock_api.get.side_effect = mock_get
 
@@ -304,33 +290,29 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                # mock existing image
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [],
-                    }
-                    return mock_response
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [],
+                }
+                return mock_response
 
-                # mock existing service
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [],
-                    }
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [],
+                }
+                return mock_response
 
-                # mock user data
-                case "/api/v1/users/me":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = self.mock_user_response
-                    return mock_response
+            if path == "/api/v1/users/me":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = self.mock_user_response
+                return mock_response
 
         mock_api.get.side_effect = mock_get
 
@@ -391,81 +373,74 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                # mock existing image
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [
-                            {
-                                "id": 1,
-                                "name": "test-challenge",
-                                "status": "pushed",
-                                "location": "registry.ctfd.io/example-project/test-challenge",
-                            }
-                        ],
-                    }
-                    return mock_response
-
-                # mock existing service
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [{"id": 1, "name": "test-challenge", "status": "deployed"}],
-                    }
-                    return mock_response
-
-                # mock existing service status
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [
+                        {
                             "id": 1,
                             "name": "test-challenge",
-                            "status": "deployed",
-                            "scale": 1,
-                            "hostname": "example-project-test-challenge.chals.io",
-                            "internal_port": "80",
-                            "image": "registry.ctfd.io/example-project/test-challenge:latest",
-                            "tcp_hostname": None,
-                            "tcp_port": None,
-                            "memory_limit": "256 MB",
-                        },
-                    }
-                    return mock_response
+                            "status": "pushed",
+                            "location": "registry.ctfd.io/example-project/test-challenge",
+                        }
+                    ],
+                }
+                return mock_response
+
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 1, "name": "test-challenge", "status": "deployed"}],
+                }
+                return mock_response
+
+            if path == "/api/v1/services/1":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "deployed",
+                        "scale": 1,
+                        "hostname": "example-project-test-challenge.chals.io",
+                        "internal_port": "80",
+                        "image": "registry.ctfd.io/example-project/test-challenge:latest",
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": "256 MB",
+                    },
+                }
+                return mock_response
 
         def mock_patch(*args, **kwargs):
-            path = args[0]
-            new_image = kwargs.get("json").get("image")
+            new_image = kwargs.get("json", {}).get("image", None)
 
-            match path:
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [
-                            {
-                                "id": 1,
-                                "name": "test-challenge",
-                                "status": "deployed",
-                                "scale": 1,
-                                "hostname": "example-project-test-challenge.chals.io",
-                                "internal_port": "80",
-                                "image": new_image,
-                                "tcp_hostname": None,
-                                "tcp_port": None,
-                                "memory_limit": "256 MB",
-                            }
-                        ],
+            mock_response = MagicMock()
+            mock_response.ok = True
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [
+                    {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "deployed",
+                        "scale": 1,
+                        "hostname": "example-project-test-challenge.chals.io",
+                        "internal_port": "80",
+                        "image": new_image,
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": "256 MB",
                     }
-                    return mock_response
+                ],
+            }
+            return mock_response
 
         mock_api.get.side_effect = mock_get
         mock_api.patch.side_effect = mock_patch
@@ -530,88 +505,80 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                # mock existing image
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [
-                            {
-                                "id": 1,
-                                "name": "test-challenge",
-                                "status": "pushed",
-                                "location": "registry.ctfd.io/example-project/test-challenge",
-                            }
-                        ],
-                    }
-                    return mock_response
-
-                # mock existing service
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [{"id": 1, "name": "test-challenge", "status": "deployed"}],
-                    }
-                    return mock_response
-
-                # mock existing service status
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [
+                        {
                             "id": 1,
                             "name": "test-challenge",
-                            "status": "deployed",
-                            "scale": 1,
-                            "hostname": "example-project-test-challenge.chals.io",
-                            "internal_port": "80",
-                            "image": "registry.ctfd.io/example-project/test-challenge:latest",
-                            "tcp_hostname": None,
-                            "tcp_port": None,
-                            "memory_limit": "256 MB",
-                        },
-                    }
-                    return mock_response
+                            "status": "pushed",
+                            "location": "registry.ctfd.io/example-project/test-challenge",
+                        }
+                    ],
+                }
+                return mock_response
 
-                # mock user data
-                case "/api/v1/users/me":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = self.mock_user_response
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 1, "name": "test-challenge", "status": "deployed"}],
+                }
+                return mock_response
+
+            if path == "/api/v1/services/1":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "deployed",
+                        "scale": 1,
+                        "hostname": "example-project-test-challenge.chals.io",
+                        "internal_port": "80",
+                        "image": "registry.ctfd.io/example-project/test-challenge:latest",
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": "256 MB",
+                    },
+                }
+                return mock_response
+
+            if path == "/api/v1/users/me":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = self.mock_user_response
+                return mock_response
 
         def mock_patch(*args, **kwargs):
-            path = args[0]
-            new_image = kwargs.get("json").get("image")
+            new_image = kwargs.get("json", {}).get("image", None)
 
-            match path:
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [
-                            {
-                                "id": 1,
-                                "name": "test-challenge",
-                                "status": "deployed",
-                                "scale": 1,
-                                "hostname": "example-project-test-challenge.chals.io",
-                                "internal_port": "80",
-                                "image": new_image,
-                                "tcp_hostname": None,
-                                "tcp_port": None,
-                                "memory_limit": "256 MB",
-                            }
-                        ],
+            mock_response = MagicMock()
+            mock_response.ok = True
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [
+                    {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "deployed",
+                        "scale": 1,
+                        "hostname": "example-project-test-challenge.chals.io",
+                        "internal_port": "80",
+                        "image": new_image,
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": "256 MB",
                     }
-                    return mock_response
+                ],
+            }
+            return mock_response
 
         mock_api.get.side_effect = mock_get
         mock_api.patch.side_effect = mock_patch
@@ -729,72 +696,66 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                # assume no other images
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {"success": True, "data": []}
-                    return mock_response
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
 
-                # assume no other services
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {"success": True, "data": []}
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
 
-                # mock new service deployment status = will deploy on 3rd check
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = service_status_responses.pop(0)
-                    return mock_response
+            if path == "/api/v1/services/1":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = service_status_responses.pop(0)
+                return mock_response
 
-                # mock user data
-                case "/api/v1/users/me":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = self.mock_user_response
-                    return mock_response
+            if path == "/api/v1/users/me":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = self.mock_user_response
+                return mock_response
 
         def mock_post(*args, **kwargs):
             path = args[0]
 
-            match path:
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
-                            "id": 1,
-                            "name": "test-challenge",
-                            "status": None,
-                            "location": "registry.ctfd.io/example-project/test-challenge",
-                        },
-                    }
-                    return mock_response
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": None,
+                        "location": "registry.ctfd.io/example-project/test-challenge",
+                    },
+                }
+                return mock_response
 
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
-                            "id": 1,
-                            "name": "test-challenge",
-                            "status": "built",
-                            "scale": None,
-                            "hostname": None,
-                            "internal_port": None,
-                            "image": None,
-                            "tcp_hostname": None,
-                            "tcp_port": None,
-                            "memory_limit": None,
-                        },
-                    }
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "built",
+                        "scale": None,
+                        "hostname": None,
+                        "internal_port": None,
+                        "image": None,
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": None,
+                    },
+                }
+                return mock_response
 
         mock_api.get.side_effect = mock_get
         mock_api.post.side_effect = mock_post
@@ -879,83 +840,80 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {"success": True, "data": []}
-                    return mock_response
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
 
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {"success": True, "data": []}
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
 
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
-                            "id": 1,
-                            "name": "test-challenge",
-                            "status": "built",
-                            "scale": None,
-                            "hostname": None,
-                            "internal_port": None,
-                            "image": None,
-                            "tcp_hostname": None,
-                            "tcp_port": None,
-                            "memory_limit": None,
-                        },
-                    }
-                    return mock_response
+            if path == "/api/v1/services/1":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "built",
+                        "scale": None,
+                        "hostname": None,
+                        "internal_port": None,
+                        "image": None,
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": None,
+                    },
+                }
+                return mock_response
 
-                # mock user data
-                case "/api/v1/users/me":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = self.mock_user_response
-                    return mock_response
+            if path == "/api/v1/users/me":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = self.mock_user_response
+                return mock_response
 
         def mock_post(*args, **kwargs):
             path = args[0]
 
-            match path:
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
-                            "id": 1,
-                            "name": "test-challenge",
-                            "status": None,
-                            "location": "registry.ctfd.io/example-project/test-challenge",
-                        },
-                    }
-                    return mock_response
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": None,
+                        "location": "registry.ctfd.io/example-project/test-challenge",
+                    },
+                }
+                return mock_response
 
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
-                            "id": 1,
-                            "name": "test-challenge",
-                            "status": "built",
-                            "scale": None,
-                            "hostname": None,
-                            "internal_port": None,
-                            "image": None,
-                            "tcp_hostname": None,
-                            "tcp_port": None,
-                            "memory_limit": None,
-                        },
-                    }
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 1,
+                        "name": "test-challenge",
+                        "status": "built",
+                        "scale": None,
+                        "hostname": None,
+                        "internal_port": None,
+                        "image": None,
+                        "tcp_hostname": None,
+                        "tcp_port": None,
+                        "memory_limit": None,
+                    },
+                }
+                return mock_response
 
         mock_api.get.side_effect = mock_get
         mock_api.post.side_effect = mock_post
@@ -1104,70 +1062,66 @@ class TestCloudDeployment(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            match path:
-                case "/api/v1/images":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [
-                            {
-                                "id": 1,
-                                "name": "test-challenge",
-                                "status": "pushed",
-                                "location": "registry.ctfd.io/example-project/test-challenge",
-                            }
-                        ],
-                    }
-                    return mock_response
-
-                case "/api/v1/services":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": [{"id": 1, "name": "test-challenge", "status": "deployed"}],
-                    }
-                    return mock_response
-
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-
-                    mock_response.json.return_value = service_status_responses.pop(0)
-                    return mock_response
-
-                case "/api/v1/users/me":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = self.mock_user_response
-                    return mock_response
-
-        def mock_patch(*args, **kwargs):
-            path = args[0]
-            new_image = kwargs.get("json").get("image")
-
-            match path:
-                case "/api/v1/services/1":
-                    mock_response = MagicMock()
-                    mock_response.ok = True
-                    mock_response.json.return_value = {
-                        "success": True,
-                        "data": {
+            if path == "/api/v1/images":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [
+                        {
                             "id": 1,
                             "name": "test-challenge",
-                            "status": "deployed",
-                            "scale": 1,
-                            "hostname": "example-project-test-challenge.chals.io",
-                            "internal_port": "80",
-                            "image": new_image,
-                            "tcp_hostname": None,
-                            "tcp_port": None,
-                            "memory_limit": "256 MB",
-                        },
-                    }
+                            "status": "pushed",
+                            "location": "registry.ctfd.io/example-project/test-challenge",
+                        }
+                    ],
+                }
+                return mock_response
 
-                    return mock_response
+            if path == "/api/v1/services":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 1, "name": "test-challenge", "status": "deployed"}],
+                }
+                return mock_response
+
+            if path == "/api/v1/services/1":
+                mock_response = MagicMock()
+                mock_response.ok = True
+
+                mock_response.json.return_value = service_status_responses.pop(0)
+                return mock_response
+
+            if path == "/api/v1/users/me":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = self.mock_user_response
+                return mock_response
+
+        def mock_patch(*args, **kwargs):
+            new_image = kwargs.get("json").get("image")
+
+            mock_response = MagicMock()
+            mock_response.ok = True
+            mock_response.json.return_value = {
+                "success": True,
+                "data": {
+                    "id": 1,
+                    "name": "test-challenge",
+                    "status": "deployed",
+                    "scale": 1,
+                    "hostname": "example-project-test-challenge.chals.io",
+                    "internal_port": "80",
+                    "image": new_image,
+                    "tcp_hostname": None,
+                    "tcp_port": None,
+                    "memory_limit": "256 MB",
+                },
+            }
+
+            return mock_response
 
         mock_api.get.side_effect = mock_get
         mock_api.patch.side_effect = mock_patch

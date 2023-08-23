@@ -1,8 +1,9 @@
 import subprocess
 from os import PathLike
+from typing import Optional, Union
 
 
-def get_git_repo_head_branch(repo: str) -> str | None:
+def get_git_repo_head_branch(repo: str) -> Optional[str]:
     """
     A helper method to get the reference of the HEAD branch of a git remote repo.
     https://stackoverflow.com/a/41925348
@@ -25,7 +26,7 @@ def get_git_repo_head_branch(repo: str) -> str | None:
         return head_branch_line[11:]
 
 
-def check_if_dir_is_inside_git_repo(cwd: str | PathLike[str] | None = None) -> bool:
+def check_if_dir_is_inside_git_repo(cwd: Optional[Union[str, PathLike]] = None) -> bool:
     """
     Checks whether a given directory is inside a git repo.
     """

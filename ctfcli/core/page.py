@@ -1,5 +1,6 @@
 from os import PathLike
 from pathlib import Path
+from typing import Optional, Union, List, Dict
 
 try:
     from typing import Self
@@ -34,10 +35,10 @@ PAGE_FORMATS = {
 
 
 class Page:
-    _remote_pages: list[Self] | None = None
-    _remote_page_ids: dict[str, int] | None = None
+    _remote_pages: Optional[List[Self]] = None
+    _remote_page_ids: Optional[Dict[str, int]] = None
 
-    def __init__(self, page_path: str | PathLike[str] | None = None, page_id: int | None = None):
+    def __init__(self, page_path: Optional[Union[str, PathLike]] = None, page_id: Optional[int] = None):
         # single page object can only be created as either local or remote at the moment
         # this can be changed later to allow a merge-like behavior
         if not page_path and not page_id or page_path and page_id:
@@ -79,7 +80,7 @@ class Page:
     def __str__(self):
         return self.page_file_path
 
-    def _get_data_by_path(self) -> dict | None:
+    def _get_data_by_path(self) -> Optional[Dict]:
         if not self.page_path.exists():
             return
 
@@ -88,7 +89,7 @@ class Page:
 
             return {**page_data.metadata, "content": page_data.content}
 
-    def _get_data_by_id(self) -> dict | None:
+    def _get_data_by_id(self) -> Optional[Dict]:
         r = self.api.get(f"/api/v1/pages/{self.page_id}")
 
         if not r.ok:
@@ -180,7 +181,7 @@ class Page:
         raise InvalidPageFormat
 
     @classmethod
-    def get_remote_pages(cls) -> list[Self]:
+    def get_remote_pages(cls) -> List[Self]:
         # if we find a saved list of remote pages we can use it
         if cls._remote_pages:
             return cls._remote_pages
@@ -197,7 +198,7 @@ class Page:
         return pages
 
     @classmethod
-    def get_remote_page_id(cls, route: str) -> int | None:
+    def get_remote_page_id(cls, route: str) -> Optional[int]:
         # if we find a saved cache, and the route has a page_id associated - we can return it
         if cls._remote_page_ids and route in cls._remote_page_ids:
             return cls._remote_page_ids[route]
@@ -223,7 +224,7 @@ class Page:
         return cls._remote_page_ids.get(route, None)
 
     @classmethod
-    def get_local_pages(cls) -> list[Self]:
+    def get_local_pages(cls) -> List[Self]:
         config = Config()
         pages_dir = config.get_pages_path()
 

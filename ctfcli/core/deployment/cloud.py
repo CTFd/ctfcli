@@ -1,6 +1,7 @@
 import logging
 import subprocess
 import time
+from typing import Optional, Dict
 from urllib.parse import urlparse
 
 import click
@@ -115,7 +116,7 @@ class CloudDeploymentHandler(DeploymentHandler):
         # Create the service if it doesn't exist
         return self.api.post("/api/v1/services", json={"name": self.image_name, "image": image_location}).json()["data"]
 
-    def _await_service_deployment(self, service_data, interval=10, timeout=180) -> dict | None:
+    def _await_service_deployment(self, service_data, interval=10, timeout=180) -> Optional[Dict]:
         service_id = service_data["id"]
 
         base_timeout = timeout
@@ -181,8 +182,8 @@ class CloudDeploymentHandler(DeploymentHandler):
     def _get_connection_info(
         self,
         hostname: str,
-        tcp_hostname: str | None = None,
-        tcp_port: str | None = None,
+        tcp_hostname: Optional[str] = None,
+        tcp_port: Optional[str] = None,
     ) -> str:
         # if protocol is http(s) - return an URL
         if self.protocol and self.protocol.startswith("http"):

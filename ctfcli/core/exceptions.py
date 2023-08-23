@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 import click
 
 
@@ -22,7 +24,7 @@ class RemoteChallengeNotFound(ChallengeException):
 
 
 class LintException(Exception):
-    def __init__(self, *args, issues: dict[str, list[str]] = None):
+    def __init__(self, *args, issues: Dict[str, List[str]] = None):
         self.issues = issues if issues else {}
         super(LintException, self).__init__(*args)
 

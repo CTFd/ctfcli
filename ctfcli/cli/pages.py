@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 import click
 
@@ -28,7 +29,7 @@ class PagesCommand:
             click.secho(str(e), fg="red")
             return 1
 
-    def push(self, page: str | None = None) -> int:
+    def push(self, page: Optional[str] = None) -> int:
         pages = Page.get_local_pages()
 
         if page:
@@ -51,7 +52,7 @@ class PagesCommand:
 
         return return_code
 
-    def sync(self, page: str | None = None) -> int:
+    def sync(self, page: Optional[str] = None) -> int:
         pages = Page.get_local_pages()
 
         if page:
@@ -74,7 +75,7 @@ class PagesCommand:
 
         return return_code
 
-    def pull(self, route: str | None = None, force=False) -> int:
+    def pull(self, route: Optional[str] = None, force=False) -> int:
         if route:
             page_id = Page.get_remote_page_id(route)
             if not page_id:

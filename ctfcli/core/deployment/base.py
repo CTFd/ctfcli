@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ctfcli.core.challenge import Challenge
 
 
@@ -5,9 +7,9 @@ class DeploymentResult:
     def __init__(
         self,
         success: bool,
-        domain: str | None = None,
-        port: str | None = None,
-        connection_info: str | None = None,
+        domain: Optional[str] = None,
+        port: Optional[str] = None,
+        connection_info: Optional[str] = None,
     ):
         self.success = success
         self.domain = domain
@@ -16,7 +18,7 @@ class DeploymentResult:
 
 
 class DeploymentHandler:
-    def __init__(self, challenge: Challenge, host: str | None = None, protocol: str | None = None):
+    def __init__(self, challenge: Challenge, host: Optional[str] = None, protocol: Optional[str] = None):
         self.challenge = challenge
         self.host = host if host else challenge.get("host", None)
         self.protocol = protocol if protocol else challenge.get("protocol", None)
