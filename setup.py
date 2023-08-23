@@ -3,9 +3,9 @@ import os
 import re
 
 try:
-    from setuptools import setup, find_packages
+    from setuptools import find_packages, setup
 except ImportError:
-    from distutils.core import setup, find_packages
+    from distutils.core import find_packages, setup
 
 
 with open("ctfcli/__init__.py") as f:
@@ -33,17 +33,17 @@ setup(
     classifiers=[],
     zip_safe=False,
     install_requires=[
-        "cookiecutter==2.1.1",
-        "click==7.0",
-        "fire==0.2.1",
-        "pyyaml>=6.0.1",
-        "Pygments==2.7.4",
-        "requests==2.28.1",
+        "cookiecutter==2.3.0",
+        "click==8.1.6",
+        "fire==0.5.0",
+        "pyyaml==6.0.1",
+        "Pygments==2.16.1",
+        "requests==2.31.0",
         "colorama==0.4.6",
-        "appdirs==1.4.3",
+        "appdirs==1.4.4",
         "python-frontmatter==1.0.0",
     ],
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     include_package_data=True,
     entry_points={"console_scripts": ["ctf = ctfcli.__main__:main"]},
 )

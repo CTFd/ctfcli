@@ -1,0 +1,42 @@
+name: Test Challenge
+category: Test
+description: Test Description
+value: 150
+author: Test
+type: standard
+state: visible
+attempts: 5
+connection_info: https://example.com
+
+flags:
+    - "flag{test-flag}"
+    - type: static
+      content: "flag{test-static}"
+      data: case_insensitive
+    - type: regex
+      content: "flag{test-regex-.*}"
+      data: case_insensitive
+
+topics:
+  - topic-1
+  - topic-2
+
+tags:
+  - tag-1
+  - tag-2
+
+files:
+  - files/test.png
+  - files/test.pdf
+
+hints:
+  - free hint
+  - content: paid hint
+    cost: 100
+
+requirements:
+  - 1
+  - Other Test Challenge
+
+extra:
+  extra_property: extra_property_value

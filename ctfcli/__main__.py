@@ -1,68 +1,102 @@
 import configparser
+import logging
+import os
 import subprocess
-
+import sys
 from pathlib import Path
+from typing import Optional, Union
 
 import click
 import fire
 
-from ctfcli.cli.challenges import Challenge
-from ctfcli.cli.config import Config
-from ctfcli.cli.plugins import Plugins
-from ctfcli.cli.templates import Templates
-from ctfcli.cli.pages import Pages
-from ctfcli.utils.plugins import load_plugins
+from ctfcli.cli.challenges import ChallengeCommand
+from ctfcli.cli.config import ConfigCommand
+from ctfcli.cli.pages import PagesCommand
+from ctfcli.cli.plugins import PluginsCommand
+from ctfcli.cli.templates import TemplatesCommand
+from ctfcli.core.exceptions import ProjectNotInitialized
+from ctfcli.core.plugins import load_plugins
 from ctfcli.utils.git import check_if_dir_is_inside_git_repo
 
+# Init logging
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO").upper())
 
-class CTFCLI(object):
-    def init(self, directory=None, no_config=False, no_git=False):
-        # Create our event directory if requested and use it as our base directory
+log = logging.getLogger("ctfcli.main")
+
+
+class CTFCLI:
+    @staticmethod
+    def init(
+        directory: Optional[Union[str, os.PathLike]] = None,
+        no_git: bool = False,
+        no_commit: bool = False,
+    ):
+        log.debug(f"init: (directory={directory}, no_git={no_git}, no_commit={no_commit})")
+        project_path = Path.cwd()
+
+        # Create our project directory if requested
         if directory:
-            path = Path(directory)
-            path.mkdir()
-            click.secho(f"Created empty directory in {path.absolute()}", fg="green")
-        else:
-            path = Path(".")
+            project_path = Path(directory)
 
-        # Get variables from user
-        ctf_url = click.prompt(
-            "Please enter CTFd instance URL", default="", show_default=False
-        )
-        ctf_token = click.prompt(
-            "Please enter CTFd Admin Access Token", default="", show_default=False
-        )
-        # Confirm information with user
-        if (
-            click.confirm(f"Do you want to continue with {ctf_url} and {ctf_token}")
-            is False
-        ):
-            click.echo("Aborted!")
-            return
+            if not project_path.exists():
+                project_path.mkdir(parents=True)
+                click.secho(f"Created empty directory in {project_path.absolute()}", fg="green")
 
         # Avoid colliding with existing .ctf directory
-        if (path / ".ctf").exists():
+        if (project_path / ".ctf").exists():
             click.secho(".ctf/ folder already exists. Aborting!", fg="red")
             return
 
+        log.debug(f"project_path: {project_path}")
+
         # Create .ctf directory
-        (path / ".ctf").mkdir()
+        (project_path / ".ctf").mkdir()
+
+        # Get variables from user
+        ctf_url = click.prompt("Please enter CTFd instance URL", default="", show_default=False)
+
+        ctf_token = click.prompt("Please enter CTFd Admin Access Token", default="", show_default=False)
+
+        # Confirm information with user
+        if not click.confirm(f"Do you want to continue with {ctf_url} and {ctf_token}", default=True):
+            click.echo("Aborted!")
+            return
 
         # Create initial .ctf/config file
         config = configparser.ConfigParser()
         config["config"] = {"url": ctf_url, "access_token": ctf_token}
         config["challenges"] = {}
-        with (path / ".ctf" / "config").open(mode="a+") as f:
-            config.write(f)
+        with (project_path / ".ctf" / "config").open(mode="a+") as config_file:
+            config.write(config_file)
 
-        # Create a git repo in the event folder
-        if check_if_dir_is_inside_git_repo(dir=path.absolute()) is True:
-            click.secho("Already in git repo. Skipping git init.", fg="yellow")
-        elif no_git is True:
+        # if git init is to be skipped we can return
+        if no_git:
             click.secho("Skipping git init.", fg="yellow")
-        else:
-            click.secho(f"Creating git repo in {path.absolute()}", fg="green")
-            subprocess.call(["git", "init", str(path)])
+            return
+
+        # also skip git init if git is already initialized
+        if check_if_dir_is_inside_git_repo(cwd=project_path):
+            click.secho("Already in a git repo. Skipping git init.", fg="yellow")
+
+            # is git commit is to be skipped we can return
+            if no_commit:
+                click.secho("Skipping git commit.", fg="yellow")
+                return
+
+            subprocess.call(["git", "add", ".ctf/config"], cwd=project_path)
+            subprocess.call(["git", "commit", "-m", "init ctfcli project"], cwd=project_path)
+            return
+
+        # Create a git repo in the project folder
+        click.secho(f"Creating a git repo in {project_path}", fg="green")
+        subprocess.call(["git", "init", str(project_path)])
+
+        if no_commit:
+            click.secho("Skipping git commit.", fg="yellow")
+            return
+
+        subprocess.call(["git", "add", ".ctf/config"], cwd=project_path)
+        subprocess.call(["git", "commit", "-m", "init ctfcli project"], cwd=project_path)
 
     def config(self):
         return COMMANDS.get("config")
@@ -81,21 +115,38 @@ class CTFCLI(object):
 
 
 COMMANDS = {
-    "challenge": Challenge(),
-    "config": Config(),
-    "pages": Pages(),
-    "plugins": Plugins(),
-    "templates": Templates(),
+    "challenge": ChallengeCommand(),
+    "config": ConfigCommand(),
+    "pages": PagesCommand(),
+    "plugins": PluginsCommand(),
+    "templates": TemplatesCommand(),
     "cli": CTFCLI(),
 }
 
 
 def main():
-    # load plugins
+    # Load plugins
     load_plugins(COMMANDS)
 
     # Load CLI
-    fire.Fire(CTFCLI)
+    try:
+        # if the command returns an int, then we serialize it as none to prevent fire from printing it
+        # (this does not change the actual return value, so it's still good to use as an exit code)
+        # everything else is returned as is, so fire can print help messages
+        ret = fire.Fire(CTFCLI, serialize=lambda r: None if isinstance(r, int) else r)
+
+        if isinstance(ret, int):
+            sys.exit(ret)
+
+    except ProjectNotInitialized:
+        if click.confirm(
+            "Outside of a ctfcli project, would you like to start a new project in this directory?",
+            default=False,
+        ):
+            CTFCLI.init()
+    except KeyboardInterrupt:
+        click.secho("\n[Ctrl-C] Aborting.", fg="red")
+        sys.exit(2)
 
 
 if __name__ == "__main__":

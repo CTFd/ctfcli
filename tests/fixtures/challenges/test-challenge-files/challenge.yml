@@ -1,0 +1,11 @@
+name: Test Challenge
+category: New Test
+description: New Test Description
+value: 150
+author: Test
+type: standard
+state: hidden
+
+files:
+  - files/test.png
+  - files/test.pdf

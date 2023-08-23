@@ -3,9 +3,8 @@ import functools
 
 from flask import Flask, redirect, render_template, request, session, url_for
 from flask_bootstrap import Bootstrap
-from sqlalchemy.exc import IntegrityError
-
 from models import Users, db, hash_password, verify_password
+from sqlalchemy.exc import IntegrityError
 
 app = Flask(__name__)
 app.config.from_object("config.Config")

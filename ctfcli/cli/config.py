@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 
@@ -6,28 +7,50 @@ from pygments import highlight
 from pygments.formatters import TerminalFormatter
 from pygments.lexers import IniLexer, JsonLexer
 
-from ctfcli.utils.config import get_config_path, preview_config
+from ctfcli.core.config import Config
+
+log = logging.getLogger("ctfcli.cli.config")
 
 
-class Config(object):
-    def edit(self):
+class ConfigCommand:
+    def edit(self) -> int:
+        log.debug("edit")
         editor = os.getenv("EDITOR", "vi")
-        command = editor, get_config_path()
-        subprocess.call(command)
 
-    def path(self):
-        click.echo(get_config_path())
+        log.debug(f"call(['{editor}', '{Config.get_config_path()}'])")
+        subprocess.call([editor, Config.get_config_path()])
+        return 0
 
-    def view(self, color=True, json=False):
-        config = get_config_path()
-        with open(config) as f:
-            if json is True:
-                config = preview_config(as_string=True)
-                if color:
-                    config = highlight(config, JsonLexer(), TerminalFormatter())
-            else:
-                config = f.read()
-                if color:
-                    config = highlight(config, IniLexer(), TerminalFormatter())
+    def path(self) -> int:
+        log.debug("path")
+        click.echo(Config.get_config_path())
+        return 0
 
-            print(config)
+    def show(self, color=True, json=False) -> int:
+        # alias for the view command
+        log.debug(f"show (color={color}, json={json})")
+        return self.view(color=color, json=json)
+
+    def view(self, color=True, json=False) -> int:
+        log.debug(f"view (color={color}, json={json})")
+        config = Config()
+
+        if json:
+            config_json = config.as_json(pretty=True)
+
+            if color:
+                click.echo(highlight(config_json, JsonLexer(), TerminalFormatter()))
+                return 0
+
+            click.echo(config_json)
+            return 0
+
+        with open(config.get_config_path(), "r") as config_file:
+            config_ini = config_file.read()
+
+            if color:
+                click.echo(highlight(config_ini, IniLexer(), TerminalFormatter()))
+                return 0
+
+            click.echo(config_ini)
+            return 0
