@@ -10,7 +10,13 @@
 
 # Installation and Usage
 
-ctfcli can be installed with `pip install ctfcli`
+ctfcli can be installed with [`pipx`](https://github.com/pypa/pipx) as an executable command:
+
+`pipx install ctfcli`
+
+Alternatively, you can always install it with `pip` as a python module:
+
+`pip install ctfcli`
 
 ## 1. Create an Event
 
