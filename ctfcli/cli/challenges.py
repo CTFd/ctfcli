@@ -724,16 +724,7 @@ class ChallengeCommand:
                 try:
                     if existing_challenge:
                         click.secho(f"Updating challenge '{challenge_name}'", fg="blue")
-                        challenge.sync(
-                            ignore=[
-                                "flags",
-                                "topics",
-                                "tags",
-                                "files",
-                                "hints",
-                                "requirements",
-                            ]
-                        )
+                        challenge.sync(ignore=["flags", "topics", "tags", "files", "hints", "requirements", "state"])
                     else:
                         click.secho(f"Creating challenge '{challenge_name}'", fg="blue")
                         challenge.create()
