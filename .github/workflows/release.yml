@@ -1,4 +1,5 @@
-name: Build wheels
+---
+name: Build and Publish
 
 on:
   release:
@@ -6,9 +7,7 @@ on:
   pull_request:
     types: [opened, reopened, edited, synchronize]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -21,31 +20,28 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
-      # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
-      # Install dependencies
       - name: Install dependencies
         run: |
             pip install poetry
             poetry install
 
-      # Build wheels
-      - name: Build wheels
-        run: poetry run python setup.py sdist bdist_wheel
+      - name: Build package
+        run: poetry build
 
       - uses: actions/upload-artifact@v2
         with:
           path: |
            ./dist/*.tar.gz
 
-      # Publish to pypi
-      - name: Publish to pypi
+      - name: Publish to PYPI
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-        if: ${{ github.event_name == 'release' && env.TWINE_USERNAME != null }}
-        run: twine upload --repository pypi dist/*
+          PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
+        if: ${{ github.event_name == 'release' && env.PYPI_TOKEN != null }}
+        run: |
+          poetry config pypi-token.pypi "$PYPI_TOKEN"
+          poetry publish
