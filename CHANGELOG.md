@@ -1,5 +1,13 @@
 # Changelog
 
+# 0.1.0 / 2023-10-03
+
+### Added
+
+### Fixed
+
+### Changed
+
 # 0.0.13 / 2023-07-29
 
 ### Added
