@@ -1,5 +1,41 @@
 # Changelog
 
+# 0.1.0 / 2023-10-03
+
+### Added
+
+- ctfcli has been separated into two main modules `cli` and `core`. The `core` module now packages logic previously found inside `utils`, wrapped into classes.
+- The classes in the `core` module will only print out warnings instead of interrupting the whole process. Everything else will throw exceptions which can be caught and handled however desired
+- `cli` and `core` internal modules have type hints
+- Improved error messages
+- Unit tests have been added for the entire `core` module
+- ctfcli will now ask to initialize a new project if one does not exist
+- Added `--hidden` to `ctf challenge install` which will deploy the challenge / challenges in a hidden state regardless of their `challenge.yml` value.
+- Added `ctf challenge edit <name>` and `ctf challenge edit <name> --dockerfile` to open challenge.yml or Dockerfile for that challenge
+- Added aliases under `ctf templates` and `ctf plugins` for `dir` (`path`) and for `view` (`show`)
+- Progress bars for `ctf challenge deploy` / `ctf challenge install` / `ctf challenge sync`
+- `ctf challenge deploy` will now deploy ALL deployable challenges if a specific challenge is not specified
+  - For the SSH and Registry deployments, to facilitate this behaviour the challenge name will be automatically appended. So the host should be for example: `registry://registry.example.com/example-project` and the challenge name will be appended for a full location.
+- `ctf challenge deploy` will now also automatically login to the registry with Cloud and Registry deployments.
+  - For cloud deployments the instance url must be ctfd assigned (e.g. example.ctfd.io) - this is because to log-in to the registry we require a username like `admin@example.ctfd.io`. The deployment will use the access token as the password.
+  - For registry deployment it will look for the `username` and `password` keys inside a `[registry]` section in the project config file.
+- ctfcli will read a `LOGLEVEL` environment variable to enable DEBUG logging has been added
+
+### Fixed
+
+- When syncing a challenge to a remote instance, state specified in challenge.yml will now be ignored to prevent accidental challenge leaking
+- The CLI will now exit with a 0 if everything went right, and 1 if something went wrong.
+  - With `install`/`sync`/`deploy` - exit code will be 1 if ANY of the challenges failed to `install`/`sync`/`deploy`.
+
+### Changed
+
+- Built using poetry and `pyproject.toml`
+- `python-fire` has been updated to 0.5.0
+
+### Removed
+
+- Removed the `ctf challenge finalize` command
+
 # 0.0.13 / 2023-07-29
 
 ### Added
