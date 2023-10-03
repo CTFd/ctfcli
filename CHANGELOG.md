@@ -4,9 +4,16 @@
 
 ### Added
 
+- Significant changes and restructuring of ctfcli
+  - Seperation of internal core functionality and cli codeI
+
 ### Fixed
 
+- When syncing a challenge to a remote instance, state specified in challenge.yml will now be ignored to prevent accidental challenge leaking
+
 ### Changed
+
+- Built using poetry instead of twine
 
 # 0.0.13 / 2023-07-29
 
