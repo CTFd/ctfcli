@@ -2,7 +2,7 @@ import re
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import yaml
@@ -568,7 +568,7 @@ class Challenge(dict):
     # Note: files won't be included for two reasons:
     # 1. To avoid downloading them unnecessarily, e.g., when they are ignored
     # 2. Because it's dependent on the implementation whether to save them (mirror) or just compare (verify)
-    def _normalize_challenge(self, challenge_data: dict[str, Any]):
+    def _normalize_challenge(self, challenge_data: Dict[str, Any]):
         challenge = {}
 
         copy_keys = ["name", "category", "value", "type", "state", "connection_info"]
@@ -699,7 +699,7 @@ class Challenge(dict):
 
         # Handle a special case for files, unless they are ignored
         if "files" not in ignore:
-            local_files = {Path(f).name: f for f in challenge["files"]}
+            local_files = {Path(f).name: f for f in challenge.get("files", [])}
             remote_files = {f.split("/")[-1].split("?token=")[0]: f for f in remote_challenge["files"]}
 
             # Check if there are no extra local files

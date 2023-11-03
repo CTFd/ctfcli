@@ -862,7 +862,7 @@ class ChallengeCommand:
         click.secho("Success! Challenge passed the healthcheck.", fg="green")
         return 0
 
-    def mirror(self, challenge: str = None, ignore: Union[str, Tuple[str]] = ()) -> int:
+    def mirror(self, challenge: str = None, files_directory: str = "dist", ignore: Union[str, Tuple[str]] = ()) -> int:
         config = Config()
         challenge_keys = [challenge]
 
@@ -910,7 +910,7 @@ class ChallengeCommand:
             for challenge in challenges:
                 try:
                     if not challenge.verify(ignore=ignore):
-                        challenge.mirror(ignore=ignore)
+                        challenge.mirror(files_directory_name=files_directory, ignore=ignore)
                     else:
                         click.secho(
                             f"Challenge '{challenge['name']}' is already in sync. Skipping mirroring.",
