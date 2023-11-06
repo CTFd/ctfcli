@@ -1,7 +1,11 @@
+import re
 import unittest
 from pathlib import Path
+from typing import List
 from unittest import mock
-from unittest.mock import ANY, MagicMock, call
+from unittest.mock import ANY, MagicMock, call, mock_open
+
+import yaml
 
 from ctfcli.core.challenge import Challenge
 from ctfcli.core.exceptions import (
@@ -1425,3 +1429,371 @@ class TestLintChallenge(unittest.TestCase):
         }
 
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+
+class TestVerifyMirrorChallenge(unittest.TestCase):
+    installed_challenges = [
+        {
+            "id": 1,
+            "type": "standard",
+            "name": "First Test Challenge",
+            "value": 150,
+            "solves": 0,
+            "solved_by_me": False,
+            "category": "test",
+            "tags": [],
+            "template": "view.html",
+            "script": "view.js",
+        },
+        {
+            "id": 2,
+            "type": "standard",
+            "name": "Other Test Challenge",
+            "value": 200,
+            "solves": 0,
+            "solved_by_me": False,
+            "category": "test",
+            "tags": [],
+            "template": "view.html",
+            "script": "view.js",
+        },
+        {
+            "id": 3,
+            "type": "standard",
+            "name": "Test Challenge",
+            "value": 150,
+            "solves": 0,
+            "solved_by_me": False,
+            "category": "Test",
+            "tags": [],
+            "template": "view.html",
+            "script": "view.js",
+        },
+    ]
+
+    minimal_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+    full_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-full" / "challenge.yml"
+
+    def mock_get(self, *args, **kwargs):
+        path = args[0]
+
+        if path == "/api/v1/challenges?view=admin" or path == "/api/v1/challenges":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"success": True, "data": self.installed_challenges}
+            return mock_response
+
+        if path == "/api/v1/challenges/3":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {
+                "success": True,
+                "data": {
+                    "id": 3,
+                    "name": "Test Challenge",
+                    "value": 150,
+                    "description": "Test Description",
+                    "connection_info": "https://example.com",
+                    "next_id": None,
+                    "category": "Test",
+                    "state": "visible",
+                    "max_attempts": 5,
+                    "type": "standard",
+                    "files": [
+                        "/files/6cccd16e23d7a7dd13f2ec4368be682b/test.png?token=jwt",
+                        "/files/543543fd1697214513f241241212efaa/test.pdf?token=jwt",
+                    ],
+                    "tags": ["tag-1", "tag-2"],
+                    "hints": [{"id": 1, "cost": 0}, {"id": 2, "cost": 100}],
+                    "type_data": {
+                        "id": "standard",
+                        "name": "standard",
+                        "templates": {
+                            "create": "/plugins/challenges/assets/create.html",
+                            "update": "/plugins/challenges/assets/update.html",
+                            "view": "/plugins/challenges/assets/view.html",
+                        },
+                        "scripts": {
+                            "create": "/plugins/challenges/assets/create.js",
+                            "update": "/plugins/challenges/assets/update.js",
+                            "view": "/plugins/challenges/assets/view.js",
+                        },
+                    },
+                    "solves": 0,
+                    "solved_by_me": False,
+                    "attempts": 0,
+                    "view": "html view",
+                },
+            }
+            return mock_response
+
+        if path == "/api/v1/challenges/3/flags":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [
+                    {
+                        "type": "static",
+                        "challenge": 1,
+                        "id": 1,
+                        "content": "flag{test-flag}",
+                        "data": None,
+                        "challenge_id": 1,
+                    },
+                    {
+                        "type": "static",
+                        "challenge": 1,
+                        "id": 2,
+                        "content": "flag{test-static}",
+                        "data": "case_insensitive",
+                        "challenge_id": 1,
+                    },
+                    {
+                        "type": "regex",
+                        "challenge": 1,
+                        "id": 3,
+                        "content": "flag{test-regex-.*}",
+                        "data": "case_insensitive",
+                        "challenge_id": 1,
+                    },
+                ],
+            }
+
+            return mock_response
+
+        if path == "/api/v1/challenges/3/tags":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [
+                    {
+                        "id": 1,
+                        "challenge_id": 1,
+                        "value": "tag-1",
+                    },
+                    {
+                        "id": 2,
+                        "challenge_id": 1,
+                        "value": "tag-2",
+                    },
+                ],
+            }
+
+            return mock_response
+
+        if path == "/api/v1/challenges/3/topics":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [
+                    {
+                        "id": 1,
+                        "challenge_id": 1,
+                        "value": "topic-1",
+                        "topic_id": 1,
+                    },
+                    {
+                        "id": 2,
+                        "challenge_id": 1,
+                        "value": "topic-2",
+                        "topic_id": 2,
+                    },
+                ],
+            }
+
+            return mock_response
+
+        if path == "/api/v1/challenges/3/hints":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {
+                "success": True,
+                "data": [
+                    {
+                        "type": "standard",
+                        "challenge": 1,
+                        "id": 1,
+                        "content": "free hint",
+                        "cost": 0,
+                        "challenge_id": 1,
+                        "requirements": {"prerequisites": []},
+                    },
+                    {
+                        "type": "standard",
+                        "challenge": 1,
+                        "id": 2,
+                        "content": "paid hint",
+                        "cost": 100,
+                        "challenge_id": 1,
+                        "requirements": {"prerequisites": []},
+                    },
+                ],
+            }
+
+            return mock_response
+
+        if path == "/api/v1/challenges/3/requirements":
+            mock_response = MagicMock()
+            mock_response.json.return_value = {"success": True, "data": {"prerequisites": [1, 2]}}
+
+            return mock_response
+
+        return MagicMock()
+
+    maxDiff = 1000
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_normalize_fetches_and_normalizes_challenge(self, mock_api_constructor: MagicMock):
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = self.mock_get
+
+        # does not matter in this test
+        challenge = Challenge(self.full_challenge)
+        challenge.challenge_id = 3
+
+        mock_challenge_data = {
+            "name": "Test Challenge",
+            "category": "Test",
+            "description": "Test Description",
+            "value": 150,
+            "max_attempts": 5,
+            "type": "standard",
+            "connection_info": "https://example.com",
+            "state": "hidden",
+            "initial": 100,
+            "decay": 10,
+            "minimum": 10,
+            # not including flags, tags, topics, hints, requirements as they are fetched separately (see mock_get)
+            # so, there's no need to place them in the mock data
+        }
+
+        normalized_data = challenge._normalize_challenge(mock_challenge_data)
+        self.assertDictEqual(
+            {
+                "name": "Test Challenge",
+                "category": "Test",
+                "value": 150,
+                "type": "standard",
+                "state": "hidden",
+                "connection_info": "https://example.com",
+                "description": "Test Description",
+                "attempts": 5,
+                "flags": [
+                    "flag{test-flag}",
+                    {"content": "flag{test-static}", "type": "static", "data": "case_insensitive"},
+                    {"content": "flag{test-regex-.*}", "type": "regex", "data": "case_insensitive"},
+                ],
+                "tags": ["tag-1", "tag-2"],
+                "hints": ["free hint", {"content": "paid hint", "cost": 100}],
+                "topics": ["topic-1", "topic-2"],
+                "requirements": ["First Test Challenge", "Other Test Challenge"],
+                "extra": {
+                    "initial": 100,
+                    "decay": 10,
+                    "minimum": 10,
+                },
+            },
+            normalized_data,
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_verify_checks_if_challenge_is_the_same(self, mock_api_constructor: MagicMock):
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = self.mock_get
+
+        challenge = Challenge(self.full_challenge)
+
+        # pop keys with default values to see if they are ignored
+        for p in ["type", "state"]:
+            challenge.pop(p)
+
+        challenge.challenge_id = 3
+        self.assertTrue(challenge.verify(ignore=["files"]))
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_verify_checks_if_challenge_differs(self, mock_api_constructor: MagicMock):
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = self.mock_get
+
+        challenge = Challenge(self.full_challenge, {"value": 200})
+        challenge.challenge_id = 3
+        self.assertFalse(challenge.verify(ignore=["files"]))
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_mirror_challenge(self, mock_api_constructor: MagicMock):
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = self.mock_get
+
+        challenge = Challenge(
+            self.full_challenge,
+            {
+                "value": 200,
+                "description": "other description",
+                "connection_info": "https://other.example.com",
+                "flags": ["flag{other-flag}", "other-flag"],
+                "topics": ["other-topic-1", "other-topic-2"],
+                "tags": ["other-tag-1", "other-tag-2"],
+                "hints": ["other-free hint", {"content": "other-paid hint", "cost": 100}],
+                "requirements": ["Other Test Challenge"],
+            },
+        )
+        challenge.challenge_id = 3
+
+        with mock.patch("builtins.open", new_callable=mock_open()) as mock_open_file:
+            challenge.mirror(ignore=["files"])
+            dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
+
+        # adjust requirements for the test only, because they can be referenced as an ID and name,
+        # and ctfcli will update them to use the name
+        expected_challenge = Challenge(
+            self.full_challenge,
+            {"requirements": ["First Test Challenge", "Other Test Challenge"]},
+        )
+        loaded_data = yaml.safe_load(dumped_data)
+        self.assertDictEqual(expected_challenge, loaded_data)
+
+
+class TestSaveChallenge(unittest.TestCase):
+    full_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-full" / "challenge.yml"
+
+    def test_saved_content_is_valid(self):
+        challenge = Challenge(self.full_challenge)
+
+        with mock.patch("builtins.open", new_callable=mock_open()) as mock_open_file:
+            challenge.save()
+            dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
+
+        loaded_data = yaml.safe_load(dumped_data)
+        self.assertDictEqual(challenge, loaded_data)
+
+    def test_key_order_is_preserved(self):
+        challenge = Challenge(self.full_challenge)
+
+        with mock.patch("builtins.open", new_callable=mock_open()) as mock_open_file:
+            challenge.save()
+            dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
+
+        def check_order(yml: str, order: List[str]):
+            indices = {}
+            for key in order:
+                match = re.search(r"\b" + re.escape(key) + r"\b", yml)
+
+                if match:
+                    indices[key] = match.start()
+                else:
+                    continue
+
+            sorted_indices = sorted(indices.values())
+            if sorted_indices == list(indices.values()):
+                return True
+            else:
+                return False
+
+        self.assertTrue(check_order(dumped_data, challenge.key_order))
+
+    def test_additional_keys_are_appended(self):
+        challenge = Challenge(self.full_challenge, {"new-property": "some-value"})
+
+        with mock.patch("builtins.open", new_callable=mock_open()) as mock_open_file:
+            challenge.save()
+            dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
+
+        loaded_data = yaml.safe_load(dumped_data)
+        self.assertDictEqual(challenge, loaded_data)
