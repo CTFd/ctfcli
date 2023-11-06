@@ -562,6 +562,24 @@ class Challenge(dict):
 
         return True
 
+    def _compare_challenge_requirements(self, r1: List[Union[str, int]], r2: List[Union[str, int]]) -> bool:
+        remote_challenges = self.load_installed_challenges()
+
+        def normalize_requirements(requirements):
+            normalized = []
+            for r in requirements:
+                if type(r) == int:
+                    for remote_challenge in remote_challenges:
+                        if remote_challenge["id"] == r:
+                            normalized.append(remote_challenge["name"])
+                            break
+                else:
+                    normalized.append(r)
+
+            return normalized
+
+        return normalize_requirements(r1) == normalize_requirements(r2)
+
     # Normalize challenge data from the API response to match challenge.yml
     # It will remove any extra fields from the remote, as well as expand external references
     # that have to be fetched separately (e.g., files, flags, hints, etc.)
@@ -573,7 +591,8 @@ class Challenge(dict):
 
         copy_keys = ["name", "category", "value", "type", "state", "connection_info"]
         for key in copy_keys:
-            challenge[key] = challenge_data[key]
+            if key in challenge_data:
+                challenge[key] = challenge_data[key]
 
         challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
         challenge["attempts"] = challenge_data["max_attempts"]
@@ -695,6 +714,10 @@ class Challenge(dict):
                 return False
 
             if challenge[key] != normalized_challenge[key]:
+                if key == "requirements":
+                    if self._compare_challenge_requirements(challenge[key], normalized_challenge[key]):
+                        continue
+
                 return False
 
         # Handle a special case for files, unless they are ignored
@@ -732,7 +755,7 @@ class Challenge(dict):
         # if there are any additional keys append them at the end
         unknown_keys = set(challenge_dict) - set(self.key_order)
         for k in unknown_keys:
-            sorted_challenge_dict[k] = sorted_challenge_dict[k]
+            sorted_challenge_dict[k] = challenge_dict[k]
 
         try:
             challenge_yml = yaml.safe_dump(sorted_challenge_dict, sort_keys=False, allow_unicode=True)
