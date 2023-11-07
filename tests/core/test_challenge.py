@@ -1746,6 +1746,11 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
             self.full_challenge,
             {"requirements": ["First Test Challenge", "Other Test Challenge"]},
         )
+
+        # pop keys with default values as they should not be in the loaded data
+        for k in ["state", "type"]:
+            expected_challenge.pop(k)
+
         loaded_data = yaml.safe_load(dumped_data)
         self.assertDictEqual(expected_challenge, loaded_data)
 
@@ -1761,6 +1766,11 @@ class TestSaveChallenge(unittest.TestCase):
             dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
 
         loaded_data = yaml.safe_load(dumped_data)
+
+        # pop keys with default values as they should not be in the loaded data
+        for k in ["state", "type"]:
+            challenge.pop(k)
+
         self.assertDictEqual(challenge, loaded_data)
 
     def test_key_order_is_preserved(self):
@@ -1786,7 +1796,11 @@ class TestSaveChallenge(unittest.TestCase):
             else:
                 return False
 
-        self.assertTrue(check_order(dumped_data, challenge.key_order))
+        key_order = challenge.key_order.copy()
+        for k in ["state", "type"]:
+            key_order.remove(k)
+
+        self.assertTrue(check_order(dumped_data, key_order))
 
     def test_additional_keys_are_appended(self):
         challenge = Challenge(self.full_challenge, {"new-property": "some-value"})
@@ -1794,6 +1808,10 @@ class TestSaveChallenge(unittest.TestCase):
         with mock.patch("builtins.open", new_callable=mock_open()) as mock_open_file:
             challenge.save()
             dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
+
+        # pop keys with default values as they should not be in the loaded data
+        for k in ["state", "type"]:
+            challenge.pop(k)
 
         loaded_data = yaml.safe_load(dumped_data)
         self.assertDictEqual(challenge, loaded_data)
