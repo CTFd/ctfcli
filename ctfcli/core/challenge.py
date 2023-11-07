@@ -562,6 +562,7 @@ class Challenge(dict):
 
         return True
 
+    # Compare challenge requirements, will resolve all IDs to names
     def _compare_challenge_requirements(self, r1: List[Union[str, int]], r2: List[Union[str, int]]) -> bool:
         remote_challenges = self.load_installed_challenges()
 
@@ -750,7 +751,12 @@ class Challenge(dict):
         challenge_dict = dict(self)
 
         # sort the challenge dict by the key order defined from the spec
-        sorted_challenge_dict = {k: challenge_dict[k] for k in self.key_order if k in challenge_dict}
+        # also strip any default values
+        sorted_challenge_dict = {
+            k: challenge_dict[k]
+            for k in self.key_order
+            if k in challenge_dict and not self.is_default_challenge_property(k, challenge_dict[k])
+        }
 
         # if there are any additional keys append them at the end
         unknown_keys = set(challenge_dict) - set(self.key_order)

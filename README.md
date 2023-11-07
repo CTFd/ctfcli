@@ -20,48 +20,55 @@ Alternatively, you can always install it with `pip` as a python module:
 
 ## 1. Create an Event
 
-ctfcli turns the current folder into a CTF event git repo. It asks for the base url of the CTFd instance you're working with and an access token.
+Ctfcli turns the current folder into a CTF event git repo. 
+It asks for the base url of the CTFd instance you're working with and an access token.
 
 ```
 ❯ ctf init
 Please enter CTFd instance URL: https://demo.ctfd.io
 Please enter CTFd Admin Access Token: d41d8cd98f00b204e9800998ecf8427e
-Do you want to continue with https://demo.ctfd.io and d41d8cd98f00b204e9800998ecf8427e [y/N]: y
+Do you want to continue with https://demo.ctfd.io and d41d8cd98f00b204e9800998ecf8427e [Y/n]: y
 Initialized empty Git repository in /Users/user/Downloads/event/.git/
 ```
 
-This will create the `.ctf` folder with the `config` file that will specify the URL, access token, and keep a record of all the challenges dedicated for this event.
+This will create the `.ctf` folder with the `config` file that will specify the URL, access token, and keep a record of
+all the challenges dedicated for this event.
 
 ## 2. Add challenges
 
-Events are made up of challenges. Challenges can be made from a subdirectory or pulled from another repository. Remote challenges are pulled into the event repo and a reference is kept in the `.ctf/config` file.
+Events are made up of challenges.
+Challenges can be made from a subdirectory or pulled from another repository.
+GIT-enabled challenges are pulled into the event repo, and a reference is kept in the `.ctf/config` file.
 
 ```
 ❯ ctf challenge add [REPO | FOLDER]
 ```
 
+##### Local folder:
 ```
 ❯ ctf challenge add crypto/stuff
 ```
 
+##### GIT repository:
 ```
 ❯ ctf challenge add https://github.com/challenge.git
-challenge
 Cloning into 'challenge'...
-remote: Enumerating objects: 624, done.
-remote: Counting objects: 100% (624/624), done.
-remote: Compressing objects: 100% (540/540), done.
-remote: Total 624 (delta 109), reused 335 (delta 45), pack-reused 0
-Receiving objects: 100% (624/624), 6.49 MiB | 21.31 MiB/s, done.
-Resolving deltas: 100% (109/109), done.
+[...]
+```
+
+##### GIT repository to a specific subfolder:
+```
+❯ ctf challenge add https://github.com/challenge.git crypto
+Cloning into 'crypto/challenge'...
+[...]
 ```
 
 ## 3. Install challenges
 
-Installing a challenge will automatically create the challenge in your CTFd instance using the API.
+Installing a challenge will create the challenge in your CTFd instance using the API.
 
 ```
-❯ ctf challenge install [challenge.yml | DIRECTORY]
+❯ ctf challenge install [challenge]
 ```
 
 ```
@@ -72,12 +79,13 @@ Installing buffer_overflow
 Success!
 ```
 
-## 4. Update challenges
+## 4. Sync challenges
 
-Syncing a challenge will automatically update the challenge in your CTFd instance using the API. Any changes made in the `challenge.yml` file will be reflected in your instance.
+Syncing a challenge will update the challenge in your CTFd instance using the API. 
+Any changes made in the `challenge.yml` file will be reflected in your instance.
 
 ```
-❯ ctf challenge sync [challenge.yml | DIRECTORY]
+❯ ctf challenge sync [challenge]
 ```
 
 ```
@@ -87,6 +95,70 @@ Loaded buffer_overflow
 Syncing buffer_overflow
 Success!
 ```
+
+## 5. Deploy services
+
+Deploying a challenge will automatically create the challenge service (by default in your CTFd instance).
+You can also use a different deployment handler to deploy the service via SSH to your own server, 
+or a separate docker registry.
+
+The challenge will also be automatically installed or synced.
+Obtained connection info will be added to your `challenge.yml` file.
+```
+❯ ctf challenge deploy [challenge]
+```
+
+```
+❯ ctf challenge deploy web-1
+Deploying challenge service 'web-1' (web-1/challenge.yml) with CloudDeploymentHandler ...
+Challenge service deployed at: https://web-1-example-instance.chals.io
+Updating challenge 'web-1'
+Success!
+```
+
+## 6. Verify challenges
+
+Verifying a challenge will check if the local version of the challenge is the same as one installed in your CTFd instance.
+
+```
+❯ ctf challenge verify [challenge]
+```
+
+```
+❯ ctf challenge verify buffer_overflow
+Verifying challenges  [------------------------------------]    0%
+Verifying challenges  [####################################]  100%
+Success! All challenges verified!
+Challenges in sync:
+ - buffer_overflow
+```
+
+## 7. Mirror changes
+
+Mirroring a challenge is the reverse operation to syncing.
+It will update the local version of the challenge with details of the one installed in your CTFd instance.
+It will also issue a warning if you have any remote challenges that are not tracked locally.
+
+```
+❯ ctf challenge mirror [challenge]
+```
+
+```
+❯ ctf challenge verify buffer_overflow
+Mirorring challenges  [------------------------------------]    0%
+Mirorring challenges  [####################################]  100%
+Success! All challenges mirrored!
+```
+
+## Operations on all challenges
+
+You can perform operations on all challenges defined in your config by simply skipping the challenge parameter.
+
+- `ctf challenge install`
+- `ctf challenge sync`
+- `ctf challenge deploy`
+- `ctf challenge verify`
+- `ctf challenge mirror`
 
 # Challenge Templates
 
@@ -126,6 +198,6 @@ The specification format has already been tested and used with CTFd in productio
 
 # Plugins
 
-`ctfcli` plugins are essentially additions to to the command line interface via dynamic class modifications. See the [plugin documentation page](docs/plugins.md) for a simple example.
+`ctfcli` plugins are essentially additions to the command line interface via dynamic class modifications. See the [plugin documentation page](docs/plugins.md) for a simple example.
 
 *`ctfcli` is an alpha project! The plugin interface is likely to change!*

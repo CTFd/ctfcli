@@ -714,6 +714,8 @@ class ChallengeCommand:
                         f"Challenge service deployed at: {challenge['connection_info']}",
                         fg="green",
                     )
+
+                    challenge.save()  # Save the challenge with the new connection_info
                 else:
                     click.secho(
                         "Could not resolve a connection_info for the deployed service.\nIf your DeploymentHandler "
@@ -862,7 +864,13 @@ class ChallengeCommand:
         click.secho("Success! Challenge passed the healthcheck.", fg="green")
         return 0
 
-    def mirror(self, challenge: str = None, files_directory: str = "dist", ignore: Union[str, Tuple[str]] = ()) -> int:
+    def mirror(
+        self,
+        challenge: str = None,
+        files_directory: str = "dist",
+        skip_verify: bool = False,
+        ignore: Union[str, Tuple[str]] = (),
+    ) -> int:
         config = Config()
         challenge_keys = [challenge]
 
@@ -909,13 +917,14 @@ class ChallengeCommand:
         with click.progressbar(local_challenges, label="Mirroring challenges") as challenges:
             for challenge in challenges:
                 try:
-                    if not challenge.verify(ignore=ignore):
-                        challenge.mirror(files_directory_name=files_directory, ignore=ignore)
-                    else:
+                    if not skip_verify and challenge.verify(ignore=ignore):
                         click.secho(
                             f"Challenge '{challenge['name']}' is already in sync. Skipping mirroring.",
                             fg="blue",
                         )
+                    else:
+                        # if skip_verify is True or challenge.verify(ignore=ignore) is False
+                        challenge.mirror(files_directory_name=files_directory, ignore=ignore)
 
                 except ChallengeException as e:
                     click.secho(str(e), fg="red")
@@ -1007,6 +1016,40 @@ class ChallengeCommand:
 
         click.secho("Verification failed for:", fg="red")
         for challenge in failed_verifications:
+            click.echo(f" - {challenge}")
+
+        return 1
+
+    def format(self, challenge: str = None) -> int:
+        config = Config()
+        challenge_keys = [challenge]
+
+        # Get all local challenges if not specifying a challenge
+        if challenge is None:
+            challenge_keys = config.challenges.keys()
+
+        failed_formats = []
+        for challenge_key in challenge_keys:
+            challenge_path = config.project_path / Path(challenge_key)
+
+            if not challenge_path.name.endswith(".yml"):
+                challenge_path = challenge_path / "challenge.yml"
+
+            try:
+                # load the challenge and save it without changes
+                Challenge(challenge_path).save()
+
+            except ChallengeException as e:
+                click.secho(str(e), fg="red")
+                failed_formats.append(challenge_key)
+                continue
+
+        if len(failed_formats) == 0:
+            click.secho("Success! All challenges formatted!", fg="green")
+            return 0
+
+        click.secho("Format failed for:", fg="red")
+        for challenge in failed_formats:
             click.echo(f" - {challenge}")
 
         return 1
