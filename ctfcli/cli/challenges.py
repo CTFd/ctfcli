@@ -693,7 +693,7 @@ class ChallengeCommand:
                 elif deployment_result.connection_info:
                     challenge["connection_info"] = deployment_result.connection_info
 
-                # Finally if no connection_info was provided in the challenge and the
+                # Finally, if no connection_info was provided in the challenge and the
                 # deployment didn't result in one either, just ensure it's not present
                 else:
                     challenge["connection_info"] = None
@@ -714,6 +714,8 @@ class ChallengeCommand:
                         f"Challenge service deployed at: {challenge['connection_info']}",
                         fg="green",
                     )
+
+                    challenge.save()  # Save the challenge with the new connection_info
                 else:
                     click.secho(
                         "Could not resolve a connection_info for the deployed service.\nIf your DeploymentHandler "
@@ -793,8 +795,8 @@ class ChallengeCommand:
         click.secho("Success! Lint didn't find any issues!", fg="green")
         return 0
 
-    def healthcheck(self, challenge: str = None):
-        log.debug(f"lint: (challenge={challenge})")
+    def healthcheck(self, challenge: str = None) -> int:
+        log.debug(f"healthcheck: (challenge={challenge})")
         config = Config()
         challenge_path = Path.cwd()
 
@@ -861,3 +863,193 @@ class ChallengeCommand:
 
         click.secho("Success! Challenge passed the healthcheck.", fg="green")
         return 0
+
+    def mirror(
+        self,
+        challenge: str = None,
+        files_directory: str = "dist",
+        skip_verify: bool = False,
+        ignore: Union[str, Tuple[str]] = (),
+    ) -> int:
+        config = Config()
+        challenge_keys = [challenge]
+
+        # Get all local challenges if not specifying a challenge
+        if challenge is None:
+            challenge_keys = config.challenges.keys()
+
+        # Check if there are attributes to be ignored, and if there's only one cast it to a tuple
+        if isinstance(ignore, str):
+            ignore = (ignore,)
+
+        # Load local challenges
+        local_challenges, failed_mirrors = [], []
+        for challenge_key in challenge_keys:
+            challenge_path = config.project_path / Path(challenge_key)
+
+            if not challenge_path.name.endswith(".yml"):
+                challenge_path = challenge_path / "challenge.yml"
+
+            try:
+                local_challenges.append(Challenge(challenge_path))
+
+            except ChallengeException as e:
+                click.secho(str(e), fg="red")
+                failed_mirrors.append(challenge_key)
+                continue
+
+        remote_challenges = Challenge.load_installed_challenges()
+
+        if len(challenge_keys) > 1:
+            # When mirroring all challenges - issue a warning if there are extra challenges on the remote
+            # that do not have a local version
+            local_challenge_names = [c["name"] for c in local_challenges]
+
+            for remote_challenge in remote_challenges:
+                if remote_challenge["name"] not in local_challenge_names:
+                    click.secho(
+                        f"Found challenge '{remote_challenge['name']}' in CTFd, but not in .ctf/config\n"
+                        "Mirroring does not create new local challenges\n"
+                        "Please add the local challenge if you wish to manage it with ctfcli\n",
+                        fg="yellow",
+                    )
+
+        with click.progressbar(local_challenges, label="Mirroring challenges") as challenges:
+            for challenge in challenges:
+                try:
+                    if not skip_verify and challenge.verify(ignore=ignore):
+                        click.secho(
+                            f"Challenge '{challenge['name']}' is already in sync. Skipping mirroring.",
+                            fg="blue",
+                        )
+                    else:
+                        # if skip_verify is True or challenge.verify(ignore=ignore) is False
+                        challenge.mirror(files_directory_name=files_directory, ignore=ignore)
+
+                except ChallengeException as e:
+                    click.secho(str(e), fg="red")
+                    failed_mirrors.append(challenge["name"])
+
+        if len(failed_mirrors) == 0:
+            click.secho("Success! All challenges mirrored!", fg="green")
+            return 0
+
+        click.secho("Mirror failed for:", fg="red")
+        for challenge in failed_mirrors:
+            click.echo(f" - {challenge}")
+
+        return 1
+
+    def verify(self, challenge: str = None, ignore: Tuple[str] = ()) -> int:
+        config = Config()
+        challenge_keys = [challenge]
+
+        # Get all local challenges if not specifying a challenge
+        if challenge is None:
+            challenge_keys = config.challenges.keys()
+
+        # Check if there are attributes to be ignored, and if there's only one cast it to a tuple
+        if isinstance(ignore, str):
+            ignore = (ignore,)
+
+        # Load local challenges
+        local_challenges, failed_verifications = [], []
+        for challenge_key in challenge_keys:
+            challenge_path = config.project_path / Path(challenge_key)
+
+            if not challenge_path.name.endswith(".yml"):
+                challenge_path = challenge_path / "challenge.yml"
+
+            try:
+                local_challenges.append(Challenge(challenge_path))
+
+            except ChallengeException as e:
+                click.secho(str(e), fg="red")
+                failed_verifications.append(challenge_key)
+                continue
+
+        remote_challenges = Challenge.load_installed_challenges()
+
+        if len(challenge_keys) > 1:
+            # When verifying all challenges - issue a warning if there are extra challenges on the remote
+            # that do not have a local version
+            local_challenge_names = [c["name"] for c in local_challenges]
+
+            for remote_challenge in remote_challenges:
+                if remote_challenge["name"] not in local_challenge_names:
+                    click.secho(
+                        f"Found challenge '{remote_challenge['name']}' in CTFd, but not in .ctf/config\n"
+                        "Please add the local challenge if you wish to manage it with ctfcli\n",
+                        fg="yellow",
+                    )
+
+        challenges_in_sync, challenges_out_of_sync = [], []
+        with click.progressbar(local_challenges, label="Verifying challenges") as challenges:
+            for challenge in challenges:
+                try:
+                    if not challenge.verify(ignore=ignore):
+                        challenges_out_of_sync.append(challenge["name"])
+                    else:
+                        challenges_in_sync.append(challenge["name"])
+
+                except ChallengeException as e:
+                    click.secho(str(e), fg="red")
+                    failed_verifications.append(challenge["name"])
+
+        if len(failed_verifications) == 0:
+            click.secho("Success! All challenges verified!", fg="green")
+
+            if len(challenges_in_sync) > 0:
+                click.secho("Challenges in sync:", fg="green")
+                for challenge in challenges_in_sync:
+                    click.echo(f" - {challenge}")
+
+            if len(challenges_out_of_sync) > 0:
+                click.secho("Challenges out of sync:", fg="yellow")
+                for challenge in challenges_out_of_sync:
+                    click.echo(f" - {challenge}")
+
+            if len(challenges_out_of_sync) > 1:
+                return 2
+
+            return 1
+
+        click.secho("Verification failed for:", fg="red")
+        for challenge in failed_verifications:
+            click.echo(f" - {challenge}")
+
+        return 1
+
+    def format(self, challenge: str = None) -> int:
+        config = Config()
+        challenge_keys = [challenge]
+
+        # Get all local challenges if not specifying a challenge
+        if challenge is None:
+            challenge_keys = config.challenges.keys()
+
+        failed_formats = []
+        for challenge_key in challenge_keys:
+            challenge_path = config.project_path / Path(challenge_key)
+
+            if not challenge_path.name.endswith(".yml"):
+                challenge_path = challenge_path / "challenge.yml"
+
+            try:
+                # load the challenge and save it without changes
+                Challenge(challenge_path).save()
+
+            except ChallengeException as e:
+                click.secho(str(e), fg="red")
+                failed_formats.append(challenge_key)
+                continue
+
+        if len(failed_formats) == 0:
+            click.secho("Success! All challenges formatted!", fg="green")
+            return 0
+
+        click.secho("Format failed for:", fg="red")
+        for challenge in failed_formats:
+            click.echo(f" - {challenge}")
+
+        return 1
