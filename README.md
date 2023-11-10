@@ -18,6 +18,10 @@ Alternatively, you can always install it with `pip` as a python module:
 
 `pip install ctfcli`
 
+To install the development version of ctfcli directly from the repository you can use:
+
+`pip install git+https://github.com/CTFd/ctfcli.git`
+
 ## 1. Create an Event
 
 Ctfcli turns the current folder into a CTF event git repo. 
