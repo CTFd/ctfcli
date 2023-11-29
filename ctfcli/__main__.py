@@ -133,7 +133,7 @@ def main():
         # if the command returns an int, then we serialize it as none to prevent fire from printing it
         # (this does not change the actual return value, so it's still good to use as an exit code)
         # everything else is returned as is, so fire can print help messages
-        ret = fire.Fire(CTFCLI, serialize=lambda r: None if isinstance(r, int) else r)
+        ret = fire.Fire(COMMANDS["cli"], serialize=lambda r: None if isinstance(r, int) else r)
 
         if isinstance(ret, int):
             sys.exit(ret)

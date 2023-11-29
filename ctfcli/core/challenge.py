@@ -146,6 +146,9 @@ class Challenge(dict):
         if self.get("image"):
             self.image = Image(slugify(self["name"]), self.challenge_directory / self["image"])
 
+    def __str__(self):
+        return self["name"]
+
     def _load_challenge_id(self):
         remote_challenges = self.load_installed_challenges()
         if not remote_challenges:
