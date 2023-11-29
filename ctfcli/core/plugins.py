@@ -13,6 +13,9 @@ def load_plugins(commands: Dict):
     sys.path.insert(0, str(plugins_path.absolute()))
 
     for plugin in sorted(plugins_path.iterdir()):
+        if plugin.name.startswith("_"):
+            continue
+            
         plugin_path = plugins_path / plugin / "__init__.py"
 
         log.debug(f"Loading plugin '{plugin}' from '{plugin_path}'")
