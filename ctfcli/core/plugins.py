@@ -13,7 +13,7 @@ def load_plugins(commands: Dict):
     sys.path.insert(0, str(plugins_path.absolute()))
 
     for plugin in sorted(plugins_path.iterdir()):
-        if plugin.name.startswith("_"):
+        if plugin.name.startswith("_") or plugin.name.startswith("."):
             continue
 
         plugin_path = plugins_path / plugin / "__init__.py"

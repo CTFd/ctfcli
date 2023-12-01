@@ -62,7 +62,7 @@ class ChallengeCommand:
     def edit(self, challenge: str, dockerfile: bool = False) -> int:
         log.debug(f"edit: {challenge} (dockerfile={dockerfile})")
 
-        challenge_instance = self.resolve_single_challenge(challenge)
+        challenge_instance = self._resolve_single_challenge(challenge)
         if not challenge_instance:
             return 1
 
@@ -94,7 +94,7 @@ class ChallengeCommand:
     def view(self, challenge: str, color=True) -> int:
         log.debug(f"view: {challenge} (color={color})")
 
-        challenge_instance = self.resolve_single_challenge(challenge)
+        challenge_instance = self._resolve_single_challenge(challenge)
         if not challenge_instance:
             return 1
 
@@ -450,13 +450,13 @@ class ChallengeCommand:
         log.debug(f"install: (challenge={challenge}, force={force}, hidden={hidden}, ignore={ignore})")
 
         if challenge:
-            challenge_instance = self.resolve_single_challenge(challenge)
+            challenge_instance = self._resolve_single_challenge(challenge)
             if not challenge_instance:
                 return 1
 
             local_challenges = [challenge_instance]
         else:
-            local_challenges = self.resolve_all_challenges()
+            local_challenges = self._resolve_all_challenges()
 
         if isinstance(ignore, str):
             ignore = (ignore,)
@@ -527,13 +527,13 @@ class ChallengeCommand:
         log.debug(f"sync: (challenge={challenge}, ignore={ignore})")
 
         if challenge:
-            challenge_instance = self.resolve_single_challenge(challenge)
+            challenge_instance = self._resolve_single_challenge(challenge)
             if not challenge_instance:
                 return 1
 
             local_challenges = [challenge_instance]
         else:
-            local_challenges = self.resolve_all_challenges()
+            local_challenges = self._resolve_all_challenges()
 
         if isinstance(ignore, str):
             ignore = (ignore,)
@@ -588,13 +588,13 @@ class ChallengeCommand:
         log.debug(f"deploy: (challenge={challenge}, host={host}, skip_login={skip_login})")
 
         if challenge:
-            challenge_instance = self.resolve_single_challenge(challenge)
+            challenge_instance = self._resolve_single_challenge(challenge)
             if not challenge_instance:
                 return 1
 
             challenges = [challenge_instance]
         else:
-            challenges = self.resolve_all_challenges()
+            challenges = self._resolve_all_challenges()
 
         deployable_challenges, failed_deployments, failed_syncs = [], [], []
 
@@ -727,7 +727,7 @@ class ChallengeCommand:
     ) -> int:
         log.debug(f"lint: (challenge={challenge}, skip_hadolint={skip_hadolint}, flag_format='{flag_format}')")
 
-        challenge_instance = self.resolve_single_challenge(challenge)
+        challenge_instance = self._resolve_single_challenge(challenge)
         if not challenge_instance:
             return 1
 
@@ -745,7 +745,7 @@ class ChallengeCommand:
     def healthcheck(self, challenge: Optional[str] = None) -> int:
         log.debug(f"healthcheck: (challenge={challenge})")
 
-        challenge_instance = self.resolve_single_challenge(challenge)
+        challenge_instance = self._resolve_single_challenge(challenge)
         if not challenge_instance:
             return 1
 
@@ -817,13 +817,13 @@ class ChallengeCommand:
         )
 
         if challenge:
-            challenge_instance = self.resolve_single_challenge(challenge)
+            challenge_instance = self._resolve_single_challenge(challenge)
             if not challenge_instance:
                 return 1
 
             local_challenges = [challenge_instance]
         else:
-            local_challenges = self.resolve_all_challenges()
+            local_challenges = self._resolve_all_challenges()
 
         if isinstance(ignore, str):
             ignore = (ignore,)
@@ -873,13 +873,13 @@ class ChallengeCommand:
         log.debug(f"verify: (challenge={challenge}, ignore={ignore})")
 
         if challenge:
-            challenge_instance = self.resolve_single_challenge(challenge)
+            challenge_instance = self._resolve_single_challenge(challenge)
             if not challenge_instance:
                 return 1
 
             local_challenges = [challenge_instance]
         else:
-            local_challenges = self.resolve_all_challenges()
+            local_challenges = self._resolve_all_challenges()
 
         if isinstance(ignore, str):
             ignore = (ignore,)
@@ -938,13 +938,13 @@ class ChallengeCommand:
         log.debug(f"format: (challenge={challenge})")
 
         if challenge:
-            challenge_instance = self.resolve_single_challenge(challenge)
+            challenge_instance = self._resolve_single_challenge(challenge)
             if not challenge_instance:
                 return 1
 
             challenges = [challenge_instance]
         else:
-            challenges = self.resolve_all_challenges()
+            challenges = self._resolve_all_challenges()
 
         failed_formats = []
         for challenge_instance in challenges:
@@ -968,7 +968,7 @@ class ChallengeCommand:
         return 1
 
     @staticmethod
-    def resolve_single_challenge(challenge: Optional[str] = None) -> Optional[Challenge]:
+    def _resolve_single_challenge(challenge: Optional[str] = None) -> Optional[Challenge]:
         # if a challenge is specified
         if challenge:
             # check if it's a path to challenge.yml, or the current directory
@@ -994,7 +994,7 @@ class ChallengeCommand:
             return
 
     @staticmethod
-    def resolve_all_challenges() -> List[Challenge]:
+    def _resolve_all_challenges() -> List[Challenge]:
         config = Config()
         challenge_keys = config.challenges.keys()
 
