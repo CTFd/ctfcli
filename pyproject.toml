@@ -8,6 +8,11 @@ readme = "README.md"
 [tool.poetry.scripts]
 ctf = "ctfcli.__main__:main"
 
+[tool.poetry.build]
+# I don't understand why poetry doesn't seem to be following symlinks. 
+# This script resolves the symlinks in the templates to the example challenge spec
+script = "preprocess.py"
+
 [tool.poetry.dependencies]
 python = "^3.8"
 python-frontmatter = "^1.0.0"
