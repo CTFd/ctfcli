@@ -1,5 +1,19 @@
 # Changelog
 
+# 0.1.1 / 2023-12-11
+
+### Added
+
+- Added `ctf challenge mirror` command to pull changes from the remote CTFd instance into the local project
+
+### Fixed
+
+- Properly include challenge.yml when generating a challenge from a template
+
+### Changed
+
+- No longer require a ctfcli project to run all `ctf challenge` (e.g. `new`, `format`, `lint`)
+
 # 0.1.0 / 2023-10-03
 
 ### Added
