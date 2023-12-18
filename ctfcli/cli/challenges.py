@@ -869,6 +869,90 @@ class ChallengeCommand:
 
         return 1
 
+    def clone(
+        self,
+        challenge: str = None,
+        files_directory: str = "dist",
+        ignore: Union[str, Tuple[str]] = (),
+    ) -> int:
+        log.debug(
+            f"clone: (challenge={challenge}, files_directory={files_directory}, "
+            f"ignore={ignore})"
+        )
+
+        if isinstance(ignore, str):
+            ignore = (ignore,)
+
+        local_challenges = self._resolve_all_challenges()
+        # Construct dictionary mapping challenge names to local challenge instances
+        local_challenges_by_name = dict([(challenge_instance['name'], challenge_instance) for challenge_instance in local_challenges])
+        
+        # Load remote challenges, filter out challenges if requested (challenge parameter)
+        remote_challenges = list(filter(lambda remote_challenge: (not challenge or remote_challenge['name'] == challenge), 
+                                        Challenge.load_installed_challenges()))
+        # TODO check if challenge not found with filter
+
+        failed_clones = []
+        with click.progressbar(remote_challenges, label="Cloning challenges") as challenges:
+            for remote_challenge in challenges:
+                try: # TODO more intermediate error catching
+                    name = remote_challenge['name']
+
+                    if name in local_challenges_by_name:
+                        # We already have this challenge locally, juts verify and mirror it if needed
+                        challenge_instance = local_challenges_by_name[name]
+
+                        if challenge_instance.verify(ignore=ignore):
+                            # Challenge is still up-to-date, doesn't need mirroring
+                            click.secho(
+                                f"Challenge '{challenge_instance}' is already in sync. Skipping mirroring.",
+                                fg="blue",
+                            )
+                        else:
+                            # Local challenge version is outdated, update it
+                            challenge_instance.mirror(files_directory_name=files_directory, ignore=ignore)
+                    else:
+                        # First, generate a name for the challenge directory
+                        # TODO better automatic name, chall name may contain special chars, maybe include category
+                        default_challenge_dir_name = name
+                        challenge_dir_name = click.prompt(
+                            click.style(f'Please enter directory name for challenge {name}', fg='red'), 
+                            default=default_challenge_dir_name)
+
+                        # Create an blank/empty challenge, with only the challenge.yml containing the challenge name
+                        template_path = Config.get_base_path() / "templates" / "blank" / "empty"
+                        cookiecutter(
+                            str(template_path),
+                            output_dir='.',
+                            no_input=True,
+                            extra_context={'dirname': challenge_dir_name, 
+                                           'name': name}
+                        )
+                        
+                        # Add the newly created local challenge to the config file
+                        config = Config()
+                        config["challenges"][challenge_dir_name] = challenge_dir_name
+                        with open(config.config_path, "w+") as f:
+                            config.write(f)
+
+                        # Create the Challenge instance, and mirror it
+                        challenge_instance = self._resolve_single_challenge(challenge_dir_name)
+                        challenge_instance.mirror(files_directory_name=files_directory, ignore=ignore)
+
+                except ChallengeException as e:
+                    click.secho(str(e), fg="red")
+                    failed_clones.append(remote_challenge)
+
+        if len(failed_clones) == 0:
+            click.secho("Success! All challenges cloned!", fg="green")
+            return 0
+
+        click.secho("Clone failed for:", fg="red")
+        for remote_challenge in failed_clones:
+            click.echo(f" - {remote_challenge['name']}")
+
+        return 1
+
     def verify(self, challenge: str = None, ignore: Tuple[str] = ()) -> int:
         log.debug(f"verify: (challenge={challenge}, ignore={ignore})")
 
