@@ -154,6 +154,27 @@ Mirorring challenges  [####################################]  100%
 Success! All challenges mirrored!
 ```
 
+## 8. Clone challenges
+
+Cloning a challenge will add a challenge from your CTFd instance to your local environment, creating it if needed.
+If the local challenge exists, it will update it.
+
+```
+❯ ctf challenge clone [challenge]
+```
+
+```
+❯ ctf challenge clone RSA
+Cloning challenges  [------------------------------------]    0%Please enter directory name for challenge 'RSA' [rsa]: 
+Cloning challenges  [####################################]  100%
+Success! All challenges cloned!
+
+❯ ctf challenge clone --prompt_dir_name=False RSA
+Cloning challenges  [------------------------------------]    0%
+Cloning challenges  [####################################]  100%
+Success! All challenges cloned!
+```
+
 ## Operations on all challenges
 
 You can perform operations on all challenges defined in your config by simply skipping the challenge parameter.
@@ -163,6 +184,7 @@ You can perform operations on all challenges defined in your config by simply sk
 - `ctf challenge deploy`
 - `ctf challenge verify`
 - `ctf challenge mirror`
+- `ctf challenge clone`
 
 # Challenge Templates
 

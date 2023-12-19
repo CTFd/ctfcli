@@ -879,7 +879,7 @@ class ChallengeCommand:
     ) -> int:
         log.debug(
             f"clone: (challenge={challenge}, files_directory={files_directory}, "
-            f"ignore={ignore})"
+            f"ignore={ignore}, prompt_dir_name={prompt_dir_name})"
         )
 
         if isinstance(ignore, str):
