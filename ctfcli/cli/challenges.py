@@ -924,8 +924,11 @@ class ChallengeCommand:
                         # First, generate a name for the challenge directory
                         challenge_dir_name = slugify(name)
                         if prompt_dir_name:
+                            category = remote_challenge.get('category', None)
+                            category_suffix = '' if category == None else f' from category \'{category}\''
+                            
                             challenge_dir_name = click.prompt(
-                                click.style(f'Please enter directory name for challenge \'{name}\'', fg='blue'), 
+                                click.style(f'Please enter directory name for challenge \'{name}\'{category_suffix}', fg='blue'), 
                                 default=challenge_dir_name)
 
                         if Path(challenge_dir_name).exists():

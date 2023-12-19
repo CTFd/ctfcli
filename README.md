@@ -165,7 +165,7 @@ If the local challenge exists, it will update it.
 
 ```
 ❯ ctf challenge clone RSA
-Cloning challenges  [------------------------------------]    0%Please enter directory name for challenge 'RSA' [rsa]: 
+Cloning challenges  [------------------------------------]    0%Please enter directory name for challenge 'RSA'  from category 'crypto' [rsa]: 
 Cloning challenges  [####################################]  100%
 Success! All challenges cloned!
 
