@@ -875,7 +875,7 @@ class ChallengeCommand:
         challenge: str = None,
         files_directory: str = "dist",
         ignore: Union[str, Tuple[str]] = (),
-        default_dir_names: bool = False,
+        prompt_dir_name: bool = True,
     ) -> int:
         log.debug(
             f"clone: (challenge={challenge}, files_directory={files_directory}, "
@@ -901,8 +901,11 @@ class ChallengeCommand:
         failed_clones = []
         with click.progressbar(remote_challenges, label="Cloning challenges") as challenges:
             for remote_challenge in challenges:
-                try: # TODO more intermediate error catching
+                try:
                     name = remote_challenge['name']
+
+                    if name == None:
+                        raise ChallengeException(f'Could not get name of remote challenge with id {remote_challenge["id"]}')
 
                     if name in local_challenges_by_name:
                         # We already have this challenge locally, juts verify and mirror it if needed
@@ -920,11 +923,13 @@ class ChallengeCommand:
                     else:
                         # First, generate a name for the challenge directory
                         challenge_dir_name = slugify(name)
-                        if not default_dir_names:
+                        if prompt_dir_name:
                             challenge_dir_name = click.prompt(
-                                click.style(f'Please enter directory name for challenge {name}', fg='red'), 
+                                click.style(f'Please enter directory name for challenge \'{name}\'', fg='blue'), 
                                 default=challenge_dir_name)
-                        # TODO check if dir exists
+
+                        if Path(challenge_dir_name).exists():
+                            raise ChallengeException(f'Challenge directory \'{challenge_dir_name}\' for challenge \'{name}\' already exists')
 
                         # Create an blank/empty challenge, with only the challenge.yml containing the challenge name
                         template_path = Config.get_base_path() / "templates" / "blank" / "empty"
@@ -935,6 +940,9 @@ class ChallengeCommand:
                             extra_context={'dirname': challenge_dir_name, 
                                            'name': name}
                         )
+
+                        if not Path(challenge_dir_name).exists():
+                            raise ChallengeException(f'Could not create challenge directory \'{challenge_dir_name}\' for \'{name}\'')
                         
                         # Add the newly created local challenge to the config file
                         config = Config()
@@ -944,6 +952,9 @@ class ChallengeCommand:
 
                         # Create the Challenge instance, and mirror it
                         challenge_instance = self._resolve_single_challenge(challenge_dir_name)
+                        if challenge_instance == None:
+                            raise ChallengeException(f'Could not create challenge directory \'{challenge_dir_name}\' for challenge \'{name}\'')
+                        
                         challenge_instance.mirror(files_directory_name=files_directory, ignore=ignore)
 
                 except ChallengeException as e:
