@@ -10,6 +10,7 @@ from cookiecutter.main import cookiecutter
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import YamlLexer
+from slugify import slugify
 
 from ctfcli.core.challenge import Challenge
 from ctfcli.core.config import Config
@@ -874,6 +875,7 @@ class ChallengeCommand:
         challenge: str = None,
         files_directory: str = "dist",
         ignore: Union[str, Tuple[str]] = (),
+        default_dir_names: bool = False,
     ) -> int:
         log.debug(
             f"clone: (challenge={challenge}, files_directory={files_directory}, "
@@ -888,9 +890,13 @@ class ChallengeCommand:
         local_challenges_by_name = dict([(challenge_instance['name'], challenge_instance) for challenge_instance in local_challenges])
         
         # Load remote challenges, filter out challenges if requested (challenge parameter)
+        all_remote_challenges = Challenge.load_installed_challenges()
         remote_challenges = list(filter(lambda remote_challenge: (not challenge or remote_challenge['name'] == challenge), 
-                                        Challenge.load_installed_challenges()))
-        # TODO check if challenge not found with filter
+                                        all_remote_challenges))
+        
+        if len(all_remote_challenges) > 0 and len(remote_challenges) == 0:
+            click.secho(f"Could not find remote challenge with name '{challenge}'", fg="red")
+            return 1
 
         failed_clones = []
         with click.progressbar(remote_challenges, label="Cloning challenges") as challenges:
@@ -913,11 +919,12 @@ class ChallengeCommand:
                             challenge_instance.mirror(files_directory_name=files_directory, ignore=ignore)
                     else:
                         # First, generate a name for the challenge directory
-                        # TODO better automatic name, chall name may contain special chars, maybe include category
-                        default_challenge_dir_name = name
-                        challenge_dir_name = click.prompt(
-                            click.style(f'Please enter directory name for challenge {name}', fg='red'), 
-                            default=default_challenge_dir_name)
+                        challenge_dir_name = slugify(name)
+                        if not default_dir_names:
+                            challenge_dir_name = click.prompt(
+                                click.style(f'Please enter directory name for challenge {name}', fg='red'), 
+                                default=challenge_dir_name)
+                        # TODO check if dir exists
 
                         # Create an blank/empty challenge, with only the challenge.yml containing the challenge name
                         template_path = Config.get_base_path() / "templates" / "blank" / "empty"
