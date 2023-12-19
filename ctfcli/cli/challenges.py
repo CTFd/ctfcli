@@ -875,7 +875,7 @@ class ChallengeCommand:
         challenge: str = None,
         files_directory: str = "dist",
         ignore: Union[str, Tuple[str]] = (),
-        prompt_dir_name: bool = True,
+        prompt_dir_name: bool = False,
     ) -> int:
         log.debug(
             f"clone: (challenge={challenge}, files_directory={files_directory}, "
@@ -922,9 +922,13 @@ class ChallengeCommand:
                             challenge_instance.mirror(files_directory_name=files_directory, ignore=ignore)
                     else:
                         # First, generate a name for the challenge directory
+                        category = remote_challenge.get('category', None)
                         challenge_dir_name = slugify(name)
+                        if category != None:
+                            challenge_dir_name = str(Path(slugify(category)) / challenge_dir_name)
+                        
                         if prompt_dir_name:
-                            category = remote_challenge.get('category', None)
+                            
                             category_suffix = '' if category == None else f' from category \'{category}\''
                             
                             challenge_dir_name = click.prompt(
