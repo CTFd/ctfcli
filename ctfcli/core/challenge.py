@@ -17,6 +17,7 @@ from ctfcli.core.exceptions import (
 )
 from ctfcli.core.image import Image
 from ctfcli.utils.tools import strings
+from ctfcli.utils.hashing import hash_file
 
 
 def str_presenter(dumper, data):
@@ -53,16 +54,16 @@ class Challenge(dict):
     ]
 
     @staticmethod
-    def load_installed_challenge(challenge_id) -> Optional[Dict]:
+    def load_installed_challenge(challenge_id) -> Dict:
         api = API()
         r = api.get(f"/api/v1/challenges/{challenge_id}")
 
         if not r.ok:
-            return
+            raise RemoteChallengeNotFound(f"Could not load challenge with id={challenge_id}")
 
         installed_challenge = r.json().get("data", None)
         if not installed_challenge:
-            return
+            raise RemoteChallengeNotFound(f"Could not load challenge with id={challenge_id}")
 
         return installed_challenge
 
@@ -202,7 +203,6 @@ class Challenge(dict):
 
         return challenge_payload
 
-    # Flag delete/create
     def _delete_existing_flags(self):
         remote_flags = self.api.get("/api/v1/flags").json()["data"]
         for flag in remote_flags:
@@ -224,7 +224,6 @@ class Challenge(dict):
             r = self.api.post("/api/v1/flags", json=flag_payload)
             r.raise_for_status()
 
-    # Topic delete/create
     def _delete_existing_topics(self):
         remote_topics = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics").json()["data"]
         for topic in remote_topics:
@@ -243,7 +242,6 @@ class Challenge(dict):
             )
             r.raise_for_status()
 
-    # Tag delete/create
     def _delete_existing_tags(self):
         remote_tags = self.api.get("/api/v1/tags").json()["data"]
         for tag in remote_tags:
@@ -259,31 +257,40 @@ class Challenge(dict):
             )
             r.raise_for_status()
 
-    # File delete/create
-    def _delete_existing_files(self):
-        remote_challenge = self.load_installed_challenge(self.challenge_id)
+    def _delete_file(self, remote_location: str):
         remote_files = self.api.get("/api/v1/files?type=challenge").json()["data"]
 
         for remote_file in remote_files:
-            for utilized_file in remote_challenge["files"]:
-                if remote_file["location"] in utilized_file:
-                    r = self.api.delete(f"/api/v1/files/{remote_file['id']}")
-                    r.raise_for_status()
+            if remote_file["location"] == remote_location:
+                r = self.api.delete(f"/api/v1/files/{remote_file['id']}")
+                r.raise_for_status()
 
-    def _create_files(self):
+    def _create_file(self, local_path: Path):
+        new_file = ("file", open(local_path, mode="rb"))
+        file_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
+
+        # Specifically use data= here to send multipart/form-data
+        r = self.api.post("/api/v1/files", files=[new_file], data=file_payload)
+        r.raise_for_status()
+
+        # Close the file handle
+        new_file[1].close()
+
+    def _create_all_files(self):
         new_files = []
         for challenge_file in self["files"]:
             new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))
 
         files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
+
         # Specifically use data= here to send multipart/form-data
         r = self.api.post("/api/v1/files", files=new_files, data=files_payload)
         r.raise_for_status()
 
+        # Close the file handles
         for file_payload in new_files:
             file_payload[1].close()
 
-    # Hint delete/create
     def _delete_existing_hints(self):
         remote_hints = self.api.get("/api/v1/hints").json()["data"]
         for hint in remote_hints:
@@ -309,7 +316,6 @@ class Challenge(dict):
             r = self.api.post("/api/v1/hints", json=hint_payload)
             r.raise_for_status()
 
-    # Required challenges
     def _set_required_challenges(self):
         remote_challenges = self.load_installed_challenges()
         required_challenges = []
@@ -339,6 +345,109 @@ class Challenge(dict):
         requirements_payload = {"requirements": {"prerequisites": required_challenges}}
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
         r.raise_for_status()
+
+    # Compare challenge requirements, will resolve all IDs to names
+    def _compare_challenge_requirements(self, r1: List[Union[str, int]], r2: List[Union[str, int]]) -> bool:
+        remote_challenges = self.load_installed_challenges()
+
+        def normalize_requirements(requirements):
+            normalized = []
+            for r in requirements:
+                if type(r) == int:
+                    for remote_challenge in remote_challenges:
+                        if remote_challenge["id"] == r:
+                            normalized.append(remote_challenge["name"])
+                            break
+                else:
+                    normalized.append(r)
+
+            return normalized
+
+        return normalize_requirements(r1) == normalize_requirements(r2)
+
+    # Normalize challenge data from the API response to match challenge.yml
+    # It will remove any extra fields from the remote, as well as expand external references
+    # that have to be fetched separately (e.g., files, flags, hints, etc.)
+    # Note: files won't be included for two reasons:
+    # 1. To avoid downloading them unnecessarily, e.g., when they are ignored
+    # 2. Because it's dependent on the implementation whether to save them (mirror) or just compare (verify)
+    def _normalize_challenge(self, challenge_data: Dict[str, Any]):
+        challenge = {}
+
+        copy_keys = ["name", "category", "value", "type", "state", "connection_info"]
+        for key in copy_keys:
+            if key in challenge_data:
+                challenge[key] = challenge_data[key]
+
+        challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
+        challenge["attempts"] = challenge_data["max_attempts"]
+
+        for key in ["initial", "decay", "minimum"]:
+            if key in challenge_data:
+                if "extra" not in challenge:
+                    challenge["extra"] = {}
+
+                challenge["extra"][key] = challenge_data[key]
+
+        # Add flags
+        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/flags")
+        r.raise_for_status()
+        flags = r.json()["data"]
+        challenge["flags"] = [
+            f["content"]
+            if f["type"] == "static" and (f["data"] is None or f["data"] == "")
+            else {"content": f["content"].strip().replace("\r\n", "\n"), "type": f["type"], "data": f["data"]}
+            for f in flags
+        ]
+
+        # Add tags
+        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/tags")
+        r.raise_for_status()
+        tags = r.json()["data"]
+        challenge["tags"] = [t["value"] for t in tags]
+
+        # Add hints
+        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/hints")
+        r.raise_for_status()
+        hints = r.json()["data"]
+        # skipping pre-requisites for hints because they are not supported in ctfcli
+        challenge["hints"] = [
+            {"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"] for h in hints
+        ]
+
+        # Add topics
+        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics")
+        r.raise_for_status()
+        topics = r.json()["data"]
+        challenge["topics"] = [t["value"] for t in topics]
+
+        # Add requirements
+        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/requirements")
+        r.raise_for_status()
+        requirements = (r.json().get("data") or {}).get("prerequisites", [])
+        if len(requirements) > 0:
+            # Prefer challenge names over IDs
+            r = self.api.get("/api/v1/challenges")
+            r.raise_for_status()
+            challenges = r.json()["data"]
+            challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
+
+        return challenge
+
+    # Create a dictionary of remote files in { basename: {"url": "", "location": ""} } format
+    def _normalize_remote_files(self, remote_files: List[str]) -> Dict[str, Dict[str, str]]:
+        normalized = {}
+        for f in remote_files:
+            file_parts = f.split("?token=")[0].split("/")
+            normalized[file_parts[-1]] = {"url": f, "location": f"{file_parts[-2]}/{file_parts[-1]}"}
+
+        return normalized
+
+    # Create a dictionary of sha1sums in { location: sha1sum } format
+    def _get_files_sha1sums(self) -> Dict[str, str]:
+        r = self.api.get("/api/v1/files?type=challenge")
+        r.raise_for_status()
+        return {f["location"]: f.get("sha1sum", None) for f in r.json()["data"]}
 
     def sync(self, ignore: Tuple[str] = ()) -> None:
         challenge = self
@@ -391,9 +500,37 @@ class Challenge(dict):
 
         # Create / Upload files
         if "files" not in ignore:
-            self._delete_existing_files()
-            if challenge.get("files"):
-                self._create_files()
+            # Get basenames of local files to compare against remote files
+            local_files = {f.split("/")[-1]: f for f in self.get("files", [])}
+            remote_files = self._normalize_remote_files(remote_challenge.get("files", []))
+
+            # Delete remote files which are no longer defined locally
+            for remote_file in remote_files:
+                if remote_file not in local_files:
+                    self._delete_file(remote_files[remote_file]["location"])
+
+            # Only check for file changes if there are files to upload
+            if local_files:
+                sha1sums = self._get_files_sha1sums()
+                for local_file_name in local_files:
+                    # Creating a new file
+                    if local_file_name not in remote_files:
+                        self._create_file(self.challenge_directory / local_files[local_file_name])
+                        continue
+
+                    # Updating an existing file
+                    # sha1sum is present in CTFd 3.7+, use it instead of always re-uploading the file if possible
+                    remote_file_sha1sum = sha1sums[remote_files[local_file_name]["location"]]
+                    if remote_file_sha1sum is not None:
+                        with open(self.challenge_directory / local_files[local_file_name], "rb") as lf:
+                            local_file_sha1sum = hash_file(lf)
+
+                        if local_file_sha1sum == remote_file_sha1sum:
+                            continue
+
+                    # if sha1sums are not present, or the hashes are different, re-upload the file
+                    self._delete_file(remote_files[local_file_name]["location"])
+                    self._create_file(self.challenge_directory / local_files[local_file_name])
 
         # Update hints
         if "hints" not in ignore:
@@ -472,7 +609,7 @@ class Challenge(dict):
 
         # Upload files
         if challenge.get("files") and "files" not in ignore:
-            self._create_files()
+            self._create_all_files()
 
         # Add hints
         if challenge.get("hints") and "hints" not in ignore:
@@ -565,94 +702,6 @@ class Challenge(dict):
 
         return True
 
-    # Compare challenge requirements, will resolve all IDs to names
-    def _compare_challenge_requirements(self, r1: List[Union[str, int]], r2: List[Union[str, int]]) -> bool:
-        remote_challenges = self.load_installed_challenges()
-
-        def normalize_requirements(requirements):
-            normalized = []
-            for r in requirements:
-                if type(r) == int:
-                    for remote_challenge in remote_challenges:
-                        if remote_challenge["id"] == r:
-                            normalized.append(remote_challenge["name"])
-                            break
-                else:
-                    normalized.append(r)
-
-            return normalized
-
-        return normalize_requirements(r1) == normalize_requirements(r2)
-
-    # Normalize challenge data from the API response to match challenge.yml
-    # It will remove any extra fields from the remote, as well as expand external references
-    # that have to be fetched separately (e.g., files, flags, hints, etc.)
-    # Note: files won't be included for two reasons:
-    # 1. To avoid downloading them unnecessarily, e.g., when they are ignored
-    # 2. Because it's dependent on the implementation whether to save them (mirror) or just compare (verify)
-    def _normalize_challenge(self, challenge_data: Dict[str, Any]):
-        challenge = {}
-
-        copy_keys = ["name", "category", "value", "type", "state", "connection_info"]
-        for key in copy_keys:
-            if key in challenge_data:
-                challenge[key] = challenge_data[key]
-
-        challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
-        challenge["attempts"] = challenge_data["max_attempts"]
-
-        for key in ["initial", "decay", "minimum"]:
-            if key in challenge_data:
-                if "extra" not in challenge:
-                    challenge["extra"] = {}
-
-                challenge["extra"][key] = challenge_data[key]
-
-        # Add flags
-        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/flags")
-        r.raise_for_status()
-        flags = r.json()["data"]
-        challenge["flags"] = [
-            f["content"]
-            if f["type"] == "static" and (f["data"] is None or f["data"] == "")
-            else {"content": f["content"].strip().replace("\r\n", "\n"), "type": f["type"], "data": f["data"]}
-            for f in flags
-        ]
-
-        # Add tags
-        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/tags")
-        r.raise_for_status()
-        tags = r.json()["data"]
-        challenge["tags"] = [t["value"] for t in tags]
-
-        # Add hints
-        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/hints")
-        r.raise_for_status()
-        hints = r.json()["data"]
-        # skipping pre-requisites for hints because they are not supported in ctfcli
-        challenge["hints"] = [
-            {"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"] for h in hints
-        ]
-
-        # Add topics
-        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics")
-        r.raise_for_status()
-        topics = r.json()["data"]
-        challenge["topics"] = [t["value"] for t in topics]
-
-        # Add requirements
-        r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/requirements")
-        r.raise_for_status()
-        requirements = (r.json().get("data") or {}).get("prerequisites", [])
-        if len(requirements) > 0:
-            # Prefer challenge names over IDs
-            r = self.api.get("/api/v1/challenges")
-            r.raise_for_status()
-            challenges = r.json()["data"]
-            challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
-
-        return challenge
-
     def mirror(self, files_directory_name: str = "dist", ignore: Tuple[str] = ()) -> None:
         self._load_challenge_id()
         remote_challenge = self.load_installed_challenge(self.challenge_id)
@@ -726,24 +775,41 @@ class Challenge(dict):
 
         # Handle a special case for files, unless they are ignored
         if "files" not in ignore:
-            local_files = {Path(f).name: f for f in challenge.get("files", [])}
-            remote_files = {f.split("/")[-1].split("?token=")[0]: f for f in remote_challenge["files"]}
+            # Check if files defined in challenge.yml are present
+            try:
+                self._validate_files()
+                local_files = {Path(f).name: f for f in challenge.get("files", [])}
+            except InvalidChallengeFile:
+                return False
 
+            remote_files = self._normalize_remote_files(remote_challenge["files"])
             # Check if there are no extra local files
             for local_file in local_files:
                 if local_file not in remote_files:
                     return False
 
+            sha1sums = self._get_files_sha1sums()
             # Check if all remote files are present locally
-            for remote_file in remote_files:
-                if remote_file not in local_files:
+            for remote_file_name in remote_files:
+                if remote_file_name not in local_files:
                     return False
 
-                # Check if the remote files are the same as local
-                r = self.api.get(remote_files[remote_file])
+                # sha1sum is present in CTFd 3.7+, use it instead of downloading the file if possible
+                remote_file_sha1sum = sha1sums[remote_files[remote_file_name]["location"]]
+                if remote_file_sha1sum is not None:
+                    with open(self.challenge_directory / local_files[remote_file_name], "rb") as lf:
+                        local_file_sha1sum = hash_file(lf)
+
+                    if local_file_sha1sum != remote_file_sha1sum:
+                        return False
+
+                    return True
+
+                # If sha1sum is not present, download the file and compare the contents
+                r = self.api.get(remote_files[remote_file_name]["url"])
                 r.raise_for_status()
                 remote_file_contents = r.content
-                local_file_contents = (self.challenge_directory / local_files[remote_file]).read_bytes()
+                local_file_contents = (self.challenge_directory / local_files[remote_file_name]).read_bytes()
 
                 if remote_file_contents != local_file_contents:
                     return False
