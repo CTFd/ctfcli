@@ -2,7 +2,7 @@ import re
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import click
 import yaml
@@ -16,8 +16,8 @@ from ctfcli.core.exceptions import (
     RemoteChallengeNotFound,
 )
 from ctfcli.core.image import Image
-from ctfcli.utils.tools import strings
 from ctfcli.utils.hashing import hash_file
+from ctfcli.utils.tools import strings
 
 
 def str_presenter(dumper, data):

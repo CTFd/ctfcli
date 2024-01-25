@@ -14,7 +14,11 @@ from pygments.lexers.data import YamlLexer
 from ctfcli.core.challenge import Challenge
 from ctfcli.core.config import Config
 from ctfcli.core.deployment import get_deployment_handler
-from ctfcli.core.exceptions import ChallengeException, LintException, RemoteChallengeNotFound
+from ctfcli.core.exceptions import (
+    ChallengeException,
+    LintException,
+    RemoteChallengeNotFound,
+)
 from ctfcli.utils.git import get_git_repo_head_branch
 
 log = logging.getLogger("ctfcli.cli.challenges")
