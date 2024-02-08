@@ -13,7 +13,7 @@ class Image:
 
         # if the image is a remote image (eg. ghcr.io/.../...), extract the basename
         self.basename = name
-        if "/" in self.name or "" in self.name:
+        if "/" in self.name or ":" in self.name:
             self.basename = self.name.split(":")[0].split("/")[-1]
 
         self.built = True
