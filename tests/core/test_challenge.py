@@ -106,6 +106,7 @@ class TestLocalChallengeLoading(unittest.TestCase):
         challenge = Challenge(challenge_path, {"image": "test-challenge:latest"})
         self.assertIsNone(challenge.image)
 
+
 class TestRemoteChallengeLoading(unittest.TestCase):
     @mock.patch("ctfcli.core.challenge.API")
     def test_load_installed_challenge(self, mock_api: MagicMock):
