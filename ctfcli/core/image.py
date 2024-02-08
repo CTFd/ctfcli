@@ -7,10 +7,21 @@ from typing import Optional, Union
 
 
 class Image:
-    def __init__(self, name: str, build_path: Union[str, PathLike]):
+    def __init__(self, name: str, build_path: Optional[Union[str, PathLike]] = None):
+        # name can be either a new name to assign or an existing image name
         self.name = name
-        self.build_path = Path(build_path)
-        self.built = False
+
+        # if the image is a remote image (eg. ghcr.io/.../...), extract the basename
+        self.basename = name
+        if "/" in self.name or "" in self.name:
+            self.basename = self.name.split(":")[0].split("/")[-1]
+
+        self.built = True
+
+        # if the image provides a build path, assume it is not built yet
+        if build_path:
+            self.build_path = Path(build_path)
+            self.built = False
 
     def build(self) -> Optional[str]:
         docker_build = subprocess.call(["docker", "build", "-t", self.name, "."], cwd=self.build_path.absolute())
@@ -18,6 +29,13 @@ class Image:
             return
 
         self.built = True
+        return self.name
+
+    def pull(self) -> Optional[str]:
+        docker_pull = subprocess.call(["docker", "pull", self.name])
+        if docker_pull != 0:
+            return
+
         return self.name
 
     def push(self, location: str) -> Optional[str]:
@@ -36,7 +54,7 @@ class Image:
         if not self.built:
             self.build()
 
-        image_tar = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{self.name}.docker.tar")
+        image_tar = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{self.basename}.docker.tar")
         docker_save = subprocess.call(["docker", "save", "--output", image_tar.name, self.name])
 
         if docker_save != 0:

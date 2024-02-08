@@ -29,7 +29,7 @@ class RegistryDeploymentHandler(DeploymentHandler):
         # e.g. registry.example.com/test-project/challenge-image-name
         # challenge image name is appended to the host provided for the deployment
         host_url = urlparse(self.host)
-        location = f"{host_url.netloc}{host_url.path.rstrip('/')}/{self.challenge.image.name}"
+        location = f"{host_url.netloc}{host_url.path.rstrip('/')}/{self.challenge.image.basename}"
 
         if skip_login:
             click.secho(
@@ -57,10 +57,14 @@ class RegistryDeploymentHandler(DeploymentHandler):
                 click.secho("Could not log in to the registry. Please check your configured credentials.", fg="red")
                 return DeploymentResult(False)
 
-        build_result = self.challenge.image.build()
-        if not build_result:
-            click.secho("Could not build the image. Please check docker output above.", fg="red")
-            return DeploymentResult(False)
+        if self.challenge.image.built:
+            if not self.challenge.image.pull():
+                click.secho("Could not pull the image. Please check docker output above.", fg="red")
+                return DeploymentResult(False)
+        else:
+            if not self.challenge.image.build():
+                click.secho("Could not build the image. Please check docker output above.", fg="red")
+                return DeploymentResult(False)
 
         push_result = self.challenge.image.push(location)
         if not push_result:
@@ -89,7 +93,9 @@ class RegistryDeploymentHandler(DeploymentHandler):
         ]
 
         try:
-            log.debug(f"call({docker_login_command}, stderr=subprocess.PIPE, input=password)")
+            log.debug(
+                f"call({docker_login_command}, input=password, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)"
+            )
             subprocess.run(
                 docker_login_command, input=password.encode(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )

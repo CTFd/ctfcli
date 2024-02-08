@@ -33,6 +33,7 @@ class TestSSHDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.export.return_value = "/tmp/test/test-challenge.tar"
         mock_image.get_exposed_port.return_value = 80
@@ -105,6 +106,7 @@ class TestSSHDeployment(unittest.TestCase):
         challenge = Challenge(self.challenge_path)
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.built = False
         mock_image.build.return_value = None
 
         handler = SSHDeploymentHandler(challenge, host="ssh://root@127.0.0.1")
@@ -128,6 +130,7 @@ class TestSSHDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.export.return_value = None
 
@@ -152,6 +155,7 @@ class TestSSHDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.export.return_value = "/tmp/test/test-challenge.tar"
         mock_image.get_exposed_port.return_value = None
@@ -181,6 +185,7 @@ class TestSSHDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.export.return_value = "/tmp/test/test-challenge.tar"
         mock_image.get_exposed_port.return_value = 80

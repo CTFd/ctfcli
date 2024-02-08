@@ -72,6 +72,39 @@ class TestLocalChallengeLoading(unittest.TestCase):
 
         self.assertIsNone(challenge.image)
 
+    def test_recognizes_registry_images(self):
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "ghcr.io/ctfcli/test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "ghcr.io/ctfcli/test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
+
+    def test_recognizes_library_images(self):
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "library/test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "docker.io/library/test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
+
+    @mock.patch("ctfcli.core.challenge.subprocess.call")
+    def test_recognizes_local_prebuilt_images(self, mock_call: MagicMock):
+        mock_call.return_value = 0
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
+
+        mock_call.return_value = 1
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "test-challenge:latest"})
+        self.assertIsNone(challenge.image)
 
 class TestRemoteChallengeLoading(unittest.TestCase):
     @mock.patch("ctfcli.core.challenge.API")

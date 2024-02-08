@@ -143,9 +143,42 @@ class Challenge(dict):
         # Set Image to None if the challenge does not provide one
         self.image = None
 
-        # Get name and a build path for the image if the challenge provides one
-        if self.get("image"):
-            self.image = Image(slugify(self["name"]), self.challenge_directory / self["image"])
+        # Create an image object, if the challenge provides one
+        challenge_image = self.get("image")
+        if challenge_image:
+            # if the image is a library image, prepend docker.io for a full URL
+            if challenge_image.startswith("library/"):
+                challenge_image = f"docker.io/{challenge_image}"
+
+            # check if the image name defines a registry
+            for registry in [
+                "docker.io",
+                "gcr.io",
+                "ecr.aws",
+                "ghcr.io",
+                "azurecr.io",
+                "registry.digitalocean.com",
+                "registry.gitlab.com",
+                "registry.ctfd.io",
+            ]:
+                if registry in challenge_image:
+                    self.image = Image(challenge_image)
+                    break
+
+            # if there's no registry, check if it's a path to build a local image
+            if self.image is None:
+                if (self.challenge_directory / challenge_image / "Dockerfile").exists():
+                    self.image = Image(slugify(self["name"]), self.challenge_directory / self["image"])
+
+            # finally, if it's neither a remote image nor a path to build, check if it's a prebuilt local image
+            if self.image is None:
+                if (
+                    subprocess.call(
+                        ["docker", "inspect", challenge_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+                    == 0
+                ):
+                    self.image = Image(challenge_image)
 
     def __str__(self):
         return self["name"]
