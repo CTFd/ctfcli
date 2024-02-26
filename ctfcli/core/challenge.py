@@ -2,7 +2,7 @@ import re
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import yaml
@@ -140,48 +140,57 @@ class Challenge(dict):
         # API is not initialized before running an API-related operation, but should be reused later
         self._api = None
 
-        # Set Image to None if the challenge does not provide one
-        self.image = None
-
-        # Create an image object, if the challenge provides one
-        challenge_image = self.get("image")
-        if challenge_image:
-            # if the image is a library image, prepend docker.io for a full URL
-            if challenge_image.startswith("library/"):
-                challenge_image = f"docker.io/{challenge_image}"
-
-            # check if the image name defines a registry
-            for registry in [
-                "docker.io",
-                "gcr.io",
-                "ecr.aws",
-                "ghcr.io",
-                "azurecr.io",
-                "registry.digitalocean.com",
-                "registry.gitlab.com",
-                "registry.ctfd.io",
-            ]:
-                if registry in challenge_image:
-                    self.image = Image(challenge_image)
-                    break
-
-            # if there's no registry, check if it's a path to build a local image
-            if self.image is None:
-                if (self.challenge_directory / challenge_image / "Dockerfile").exists():
-                    self.image = Image(slugify(self["name"]), self.challenge_directory / self["image"])
-
-            # finally, if it's neither a remote image nor a path to build, check if it's a prebuilt local image
-            if self.image is None:
-                if (
-                    subprocess.call(
-                        ["docker", "inspect", challenge_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                    )
-                    == 0
-                ):
-                    self.image = Image(challenge_image)
+        # Assign an image if the challenge provides one, otherwise this will be set to None
+        self.image = self._process_challenge_image(self.get("image"))
 
     def __str__(self):
         return self["name"]
+
+    def _process_challenge_image(self, challenge_image: Optional[str]) -> Optional[Image]:
+        if not challenge_image:
+            return None
+
+        # Check if challenge_image is explicitly marked with registry:// prefix
+        if challenge_image.startswith("registry://"):
+            challenge_image = challenge_image.replace("registry://", "")
+            return Image(challenge_image)
+
+        # Check if it's a library image
+        if challenge_image.startswith("library/"):
+            return Image(f"docker.io/{challenge_image}")
+
+        # Check if it defines a known registry
+        known_registries = [
+            "docker.io",
+            "gcr.io",
+            "ecr.aws",
+            "ghcr.io",
+            "azurecr.io",
+            "registry.digitalocean.com",
+            "registry.gitlab.com",
+            "registry.ctfd.io",
+        ]
+        for registry in known_registries:
+            if registry in challenge_image:
+                return Image(challenge_image)
+
+        # Check if it's a path to dockerfile to be built
+        if (self.challenge_directory / challenge_image / "Dockerfile").exists():
+            return Image(slugify(self["name"]), self.challenge_directory / self["image"])
+
+        # Check if it's a local pre-built image
+        if (
+            subprocess.call(
+                ["docker", "inspect", challenge_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            == 0
+        ):
+            return Image(challenge_image)
+
+        # If the image is set, but we fail to determine whether it's local / remote - raise an exception
+        raise InvalidChallengeFile(
+            f"Challenge file at {self.challenge_file_path} defines an image, but it couldn't be resolved"
+        )
 
     def _load_challenge_id(self):
         remote_challenges = self.load_installed_challenges()
