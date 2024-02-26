@@ -1,5 +1,12 @@
 # Changelog
 
+# 0.1.2 / 2023-02-26
+
+### Added
+
+- Before uploading files to CTFd, ctfcli will check for CTFd's SHA1 hash of the previously uploaded file and skip uploading if it is the same
+- Support using remote Docker images instead of having to build and push local images
+
 # 0.1.1 / 2023-12-11
 
 ### Added
