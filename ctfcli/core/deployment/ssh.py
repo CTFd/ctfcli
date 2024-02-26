@@ -19,18 +19,23 @@ class SSHDeploymentHandler(DeploymentHandler):
             )
             return DeploymentResult(False)
 
-        build_result = self.challenge.image.build()
-        if not build_result:
-            click.secho("Could not build the image. Please check docker output above.", fg="red")
-            return DeploymentResult(False)
+        if self.challenge.image.built:
+            if not self.challenge.image.pull():
+                click.secho("Could not pull the image. Please check docker output above.", fg="red")
+                return DeploymentResult(False)
+        else:
+            if not self.challenge.image.build():
+                click.secho("Could not build the image. Please check docker output above.", fg="red")
+                return DeploymentResult(False)
 
         image_name = self.challenge.image.name
-        export_result = self.challenge.image.export()
-        if not export_result:
+        image_basename = self.challenge.image.basename
+        image_export = self.challenge.image.export()
+        if not image_export:
             click.secho("Could not export the image. Please check docker output above.", fg="red")
             return DeploymentResult(False)
 
-        image_export_path = Path(export_result)
+        image_export_path = Path(image_export)
         host_url = urlparse(self.host)
         target_path = host_url.path or "/tmp"
         target_file = f"{target_path}/{image_export_path.name}"
@@ -54,14 +59,15 @@ class SSHDeploymentHandler(DeploymentHandler):
                 [
                     "ssh",
                     host_url.netloc,
-                    f"docker stop {image_name} 2>/dev/null; docker rm {image_name} 2>/dev/null",
+                    f"docker stop {image_basename} 2>/dev/null; docker rm {image_basename} 2>/dev/null",
                 ]
             )
             subprocess.run(
                 [
                     "ssh",
                     host_url.netloc,
-                    f"docker run -d -p{exposed_port}:{exposed_port} --name {image_name} --restart always {image_name}",
+                    f"docker run -d -p{exposed_port}:{exposed_port} --name {image_basename} "
+                    f"--restart always {image_name}",
                 ]
             )
 

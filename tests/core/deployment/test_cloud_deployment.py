@@ -83,6 +83,8 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
+        mock_image.built = False
         mock_image.build.return_value = None
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -134,6 +136,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = None
 
@@ -201,6 +204,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -282,6 +286,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -365,6 +370,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.ctfd.io/example-project/test-challenge"
 
@@ -495,6 +501,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.ctfd.io/example-project/test-challenge"
 
@@ -637,6 +644,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.ctfd.io/example-project/test-challenge"
 
@@ -830,6 +838,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.ctfd.io/example-project/test-challenge"
 
@@ -1019,6 +1028,7 @@ class TestCloudDeployment(unittest.TestCase):
 
         mock_image = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.ctfd.io/example-project/test-challenge"
 

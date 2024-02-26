@@ -23,7 +23,7 @@ class CloudDeploymentHandler(DeploymentHandler):
         # Do not fail here if challenge does not provide an image
         # rather return a failed deployment result during deploy
         if self.challenge.get("image"):
-            self.image_name = self.challenge.image.name
+            self.image_name = self.challenge.image.basename
 
     def deploy(self, skip_login=False, *args, **kwargs) -> DeploymentResult:
         # Check whether challenge defines image
@@ -40,11 +40,15 @@ class CloudDeploymentHandler(DeploymentHandler):
         # Get or create Image in CTFd
         image_data = self._get_or_create_image()
 
-        # Build new / initial version of the image
-        image_name = self.challenge.image.build()
-        if not image_name:
-            click.secho("Could not build the image. Please check docker output above.", fg="red")
-            return DeploymentResult(False)
+        # Build or Pull / Update the configured image
+        if self.challenge.image.built:
+            if not self.challenge.image.pull():
+                click.secho("Could not pull the image. Please check docker output above.", fg="red")
+                return DeploymentResult(False)
+        else:
+            if not self.challenge.image.build():
+                click.secho("Could not build the image. Please check docker output above.", fg="red")
+                return DeploymentResult(False)
 
         if skip_login:
             click.secho(

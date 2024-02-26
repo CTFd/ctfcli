@@ -17,6 +17,26 @@ class TestImage(unittest.TestCase):
         self.assertEqual(image.build_path, build_path)
         self.assertFalse(image.built)
 
+    def test_extracts_correct_basename(self):
+        image_names = [
+            "test-challenge",
+            "test-challenge:latest",
+            "test-challenge:1.0.0",
+            "registry.ctfd.io/example-project/test-challenge",
+            "registry.ctfd.io/example-project/test-challenge:latest",
+            "registry.ctfd.io/example-project/test-challenge:1.0.0",
+            "ghcr.io/example-org/test-challenge",
+            "ghcr.io/example-org/test-challenge:latest",
+            "ghcr.io/example-org/test-challenge:1.0.0",
+            "library/test-challenge",
+            "library/test-challenge:latest",
+            "library/test-challenge:1.0.0",
+        ]
+
+        for name in image_names:
+            image = Image(name)
+            self.assertEqual(image.basename, "test-challenge")
+
     def test_accepts_path_as_string_and_pathlike(self):
         build_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-dockerfile"
         image = Image("test-challenge", build_path)
@@ -289,3 +309,22 @@ class TestImage(unittest.TestCase):
                 )
             ]
         )
+
+    @mock.patch("ctfcli.core.image.subprocess.call")
+    def test_pull(self, mock_call: MagicMock):
+        image_names = [
+            "test-challenge",
+            "registry.ctfd.io/example-project/test-challenge",
+            "ghcr.io/example-org/test-challenge",
+            "library/test-challenge",
+            "test-challenge:latest",
+            "registry.ctfd.io/example-project/test-challenge:latest",
+            "ghcr.io/example-org/test-challenge:latest",
+            "library/test-challenge:latest",
+        ]
+
+        for image_name in image_names:
+            image = Image(image_name)
+            image.pull()
+            self.assertEqual(image_name, image.name)
+            mock_call.assert_called_with(["docker", "pull", image_name])

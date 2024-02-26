@@ -58,6 +58,23 @@ class TestLocalChallengeLoading(unittest.TestCase):
 
         self.assertEqual(challenge["name"], "Test Challenge")
 
+    @mock.patch("ctfcli.core.challenge.subprocess.call")
+    def test_raises_if_image_defined_but_not_resolved(self, mock_call: MagicMock):
+        mock_call.return_value = 1
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+
+        with self.assertRaises(InvalidChallengeFile):
+            Challenge(challenge_path, {"image": "test-challenge:latest"})
+
+    def test_recognizes_image_registry_prefix(self):
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "registry://registry.example.com/my-org/test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "registry.example.com/my-org/test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
+
     def test_creates_image_if_specified(self):
         challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-dockerfile" / "challenge.yml"
         challenge = Challenge(challenge_path)
@@ -71,6 +88,35 @@ class TestLocalChallengeLoading(unittest.TestCase):
         challenge = Challenge(challenge_path)
 
         self.assertIsNone(challenge.image)
+
+    def test_recognizes_registry_images(self):
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "ghcr.io/ctfcli/test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "ghcr.io/ctfcli/test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
+
+    def test_recognizes_library_images(self):
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "library/test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "docker.io/library/test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
+
+    @mock.patch("ctfcli.core.challenge.subprocess.call")
+    def test_recognizes_local_prebuilt_images(self, mock_call: MagicMock):
+        mock_call.return_value = 0
+        challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+        challenge = Challenge(challenge_path, {"image": "test-challenge:latest"})
+
+        self.assertIsInstance(challenge.image, Image)
+        self.assertEqual(challenge.image.name, "test-challenge:latest")
+        self.assertEqual(challenge.image.basename, "test-challenge")
+        self.assertTrue(challenge.image.built)
 
 
 class TestRemoteChallengeLoading(unittest.TestCase):
@@ -1312,20 +1358,6 @@ class TestLintChallenge(unittest.TestCase):
                 "files": [],
             }
             self.assertDictEqual(expected_lint_issues, e.exception.issues)
-
-    def test_validates_challenge_yml_points_to_dockerfile(self):
-        challenge = Challenge(self.minimal_challenge, {"image": "."})
-
-        with self.assertRaises(LintException) as e:
-            challenge.lint()
-
-        expected_lint_issues = {
-            "fields": [],
-            "dockerfile": ["Dockerfile specified in 'image' field but no Dockerfile found"],
-            "hadolint": [],
-            "files": [],
-        }
-        self.assertDictEqual(expected_lint_issues, e.exception.issues)
 
     def test_validates_challenge_yml_does_not_point_to_dockerfile(self):
         challenge = Challenge(self.dockerfile_challenge)

@@ -30,6 +30,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.example.com/example-project/test-challenge"
 
@@ -79,6 +80,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
 
         handler = RegistryDeploymentHandler(challenge, host="registry://registry.example.com/example-project")
@@ -104,6 +106,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
 
         mock_config_constructor.return_value = {"registry": {"username": "test"}}
@@ -133,6 +136,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
 
         mock_config_constructor.return_value = {"registry": {"username": "test", "password": "test"}}
@@ -164,6 +168,8 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
+        mock_image.built = False
         mock_image.build.return_value = None
 
         mock_config_constructor.return_value = {"registry": {"username": "test", "password": "test"}}
@@ -192,6 +198,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = None
 
@@ -224,6 +231,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = "registry.example.com/example-project/test-challenge"
 
@@ -257,6 +265,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
         mock_image: MagicMock = mock_image_constructor.return_value
         mock_image.name = "test-challenge"
+        mock_image.basename = "test-challenge"
         mock_image.build.return_value = "test-challenge"
         mock_image.push.return_value = None
 
