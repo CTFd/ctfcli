@@ -56,7 +56,9 @@ class TestImage(unittest.TestCase):
 
         self.assertTrue(image.built)
         self.assertEqual(image_name, "test-challenge")
-        mock_call.assert_called_once_with(["docker", "build", "-t", "test-challenge", "."], cwd=build_path.absolute())
+        mock_call.assert_called_once_with(
+            ["docker", "build", "--load", "-t", "test-challenge", "."], cwd=build_path.absolute()
+        )
 
     @mock.patch("ctfcli.core.image.subprocess.call", return_value=1)
     def test_build_returns_none_if_failed(self, mock_call: MagicMock):
@@ -68,7 +70,9 @@ class TestImage(unittest.TestCase):
 
         self.assertFalse(image.built)
         self.assertIsNone(image_name)
-        mock_call.assert_called_once_with(["docker", "build", "-t", "test-challenge", "."], cwd=build_path.absolute())
+        mock_call.assert_called_once_with(
+            ["docker", "build", "--load", "-t", "test-challenge", "."], cwd=build_path.absolute()
+        )
 
     @mock.patch("ctfcli.core.image.subprocess.call", return_value=0)
     def test_push_built_image(self, mock_call: MagicMock):
@@ -150,7 +154,7 @@ class TestImage(unittest.TestCase):
         mock_call.assert_has_calls(
             [
                 call(
-                    ["docker", "build", "-t", "test-challenge", "."],
+                    ["docker", "build", "--load", "-t", "test-challenge", "."],
                     cwd=build_path.absolute(),
                 ),
                 call(
@@ -224,7 +228,7 @@ class TestImage(unittest.TestCase):
         mock_call.assert_has_calls(
             [
                 call(
-                    ["docker", "build", "-t", "test-challenge", "."],
+                    ["docker", "build", "--load", "-t", "test-challenge", "."],
                     cwd=build_path.absolute(),
                 ),
                 call(
