@@ -205,3 +205,14 @@ The specification format has already been tested and used with CTFd in productio
 `ctfcli` plugins are essentially additions to the command line interface via dynamic class modifications. See the [plugin documentation page](docs/plugins.md) for a simple example.
 
 *`ctfcli` is an alpha project! The plugin interface is likely to change!*
+
+# Sub-Repos as alternative to Sub-Trees
+
+`ctfcli` manages git-based challenges by using the built-in git `subtree` mechanism. While it works most of the time, it's been proven to have disadvantages and tends to create problems and merge conflicts.  
+
+As an alternative, we're currently experimenting with the git [`git subrepo`](https://github.com/ingydotnet/git-subrepo) extension. 
+This functionality can be enabled by adding a `use_subrepo = True` property to the `[config]` section inside a ctfcli project config.
+
+Subrepo has to be installed separately, and is not backwards compatible with the default `subtree`. 
+Once challenges have been added by using either method, they will not work properly if you change it, and you will have to add the challenges again.
+
