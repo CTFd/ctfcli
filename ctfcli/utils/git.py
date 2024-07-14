@@ -3,6 +3,13 @@ from os import PathLike
 from typing import Optional, Union
 
 
+def check_if_git_subrepo_is_installed() -> bool:
+    output = subprocess.run(["git", "subrepo"], capture_output=True, text=True)
+    if "git: 'subrepo' is not a git command" in output.stderr:
+        return False
+    return True
+
+
 def get_git_repo_head_branch(repo: str) -> Optional[str]:
     """
     A helper method to get the reference of the HEAD branch of a git remote repo.

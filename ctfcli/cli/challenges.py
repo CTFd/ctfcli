@@ -20,7 +20,7 @@ from ctfcli.core.exceptions import (
     LintException,
     RemoteChallengeNotFound,
 )
-from ctfcli.utils.git import get_git_repo_head_branch
+from ctfcli.utils.git import check_if_git_subrepo_is_installed, get_git_repo_head_branch
 
 log = logging.getLogger("ctfcli.cli.challenges")
 
@@ -119,17 +119,24 @@ class ChallengeCommand:
 
         return TemplatesCommand.list()
 
-    def add(self, repo: str, directory: str = None, yaml_path: str = None) -> int:
-        log.debug(f"add: {repo} (directory={directory}, yaml_path={yaml_path})")
+    def add(
+        self, repo: str, directory: str = None, branch: str = None, force: bool = False, yaml_path: str = None
+    ) -> int:
+        log.debug(f"add: {repo} (directory={directory}, branch={branch}, force={force}, yaml_path={yaml_path})")
         config = Config()
 
-        # check if we're working with a remote challenge which has to be pulled first
+        # Check if we're working with a remote challenge which has to be pulled first
         if repo.endswith(".git"):
+            use_subrepo = config["config"].getboolean("use_subrepo", fallback=False)
+            if use_subrepo and not check_if_git_subrepo_is_installed():
+                click.secho("This project is configured to use git subrepo, but it's not installed.")
+                return 1
+
             # Get a relative path from project root to current directory
             project_path = config.project_path
             project_relative_cwd = Path.cwd().relative_to(project_path)
 
-            # Get a new directory that will add the git subtree
+            # Get a new directory that will add the git subtree / git subrepo
             repository_basename = Path(repo).stem
 
             # Use the custom subdirectory for the challenge if one was provided
@@ -148,29 +155,25 @@ class ChallengeCommand:
 
             # Add a new challenge to the config
             config["challenges"][str(challenge_key)] = repo
-            head_branch = get_git_repo_head_branch(repo)
 
-            log.debug(
-                f"call(['git', 'subtree', 'add', '--prefix', '{challenge_path}', "
-                f"'{repo}', '{head_branch}', '--squash'], cwd='{project_path}')"
-            )
-            git_subtree_add = subprocess.call(
-                [
-                    "git",
-                    "subtree",
-                    "add",
-                    "--prefix",
-                    challenge_path,
-                    repo,
-                    head_branch,
-                    "--squash",
-                ],
-                cwd=project_path,
-            )
+            if use_subrepo:
+                # Clone with subrepo if configured
+                cmd = ["git", "subrepo", "clone", repo, challenge_path]
 
-            if git_subtree_add != 0:
+                if branch is not None:
+                    cmd += ["-b", branch]
+
+                if force:
+                    cmd += ["-f"]
+            else:
+                # Otherwise default to the built-in subtree
+                head_branch = get_git_repo_head_branch(repo)
+                cmd = ["git", "subtree", "add", "--prefix", challenge_path, repo, head_branch, "--squash"]
+
+            log.debug(f"call({cmd}, cwd='{project_path}')")
+            if subprocess.call(cmd, cwd=project_path) != 0:
                 click.secho(
-                    "Could not add the challenge subtree. " "Please check git error messages above.",
+                    "Could not add the challenge repository. Please check git error messages above.",
                     fg="red",
                 )
                 return 1
@@ -186,7 +189,7 @@ class ChallengeCommand:
 
             if any(r != 0 for r in [git_add, git_commit]):
                 click.secho(
-                    "Could not commit the challenge subtree. " "Please check git error messages above.",
+                    "Could not commit the challenge repository. Please check git error messages above.",
                     fg="red",
                 )
                 return 1
@@ -205,7 +208,7 @@ class ChallengeCommand:
         return 1
 
     def push(self, challenge: str = None, no_auto_pull: bool = False, quiet=False) -> int:
-        log.debug(f"push: (challenge={challenge})")
+        log.debug(f"push: (challenge={challenge}, no_auto_pull={no_auto_pull}, quiet={quiet})")
         config = Config()
 
         if challenge:
@@ -223,6 +226,11 @@ class ChallengeCommand:
             context = contextlib.nullcontext(challenges)
         else:
             context = click.progressbar(challenges, label="Pushing challenges")
+
+        use_subrepo = config["config"].getboolean("use_subrepo", fallback=False)
+        if use_subrepo and not check_if_git_subrepo_is_installed():
+            click.secho("This project is configured to use git subrepo, but it's not installed.")
+            return 1
 
         with context as context_challenges:
             for challenge_instance in context_challenges:
@@ -256,7 +264,6 @@ class ChallengeCommand:
                     continue
 
                 click.secho(f"Pushing '{challenge_path}' to '{challenge_repo}'", fg="blue")
-                head_branch = get_git_repo_head_branch(challenge_repo)
 
                 log.debug(
                     f"call(['git', 'status', '--porcelain'], cwd='{config.project_path / challenge_path}',"
@@ -287,32 +294,22 @@ class ChallengeCommand:
 
                 if any(r != 0 for r in [git_add, git_commit]):
                     click.secho(
-                        "Could not commit the challenge changes. " "Please check git error messages above.",
+                        "Could not commit the challenge changes. Please check git error messages above.",
                         fg="red",
                     )
                     failed_pushes.append(challenge_instance)
                     continue
 
-                log.debug(
-                    f"call(['git', 'subtree', 'push', '--prefix', '{challenge_path}', '{challenge_repo}', "
-                    f"'{head_branch}'], cwd='{config.project_path / challenge_path}')"
-                )
-                git_subtree_push = subprocess.call(
-                    [
-                        "git",
-                        "subtree",
-                        "push",
-                        "--prefix",
-                        challenge_path,
-                        challenge_repo,
-                        head_branch,
-                    ],
-                    cwd=config.project_path,
-                )
+                if use_subrepo:
+                    cmd = ["git", "subrepo", "push", challenge_path]
+                else:
+                    head_branch = get_git_repo_head_branch(challenge_repo)
+                    cmd = ["git", "subtree", "push", "--prefix", challenge_path, challenge_repo, head_branch]
 
-                if git_subtree_push != 0:
+                log.debug(f"call({cmd}, cwd='{config.project_path / challenge_path}')")
+                if subprocess.call(cmd, cwd=config.project_path) != 0:
                     click.secho(
-                        "Could not push the challenge subtree. " "Please check git error messages above.",
+                        "Could not push the challenge repository. Please check git error messages above.",
                         fg="red",
                     )
                     failed_pushes.append(challenge_instance)
@@ -335,8 +332,8 @@ class ChallengeCommand:
 
         return 1
 
-    def pull(self, challenge: str = None, quiet=False) -> int:
-        log.debug(f"pull: (challenge={challenge})")
+    def pull(self, challenge: str = None, strategy: str = "fast-forward", quiet: bool = False) -> int:
+        log.debug(f"pull: (challenge={challenge}, quiet={quiet})")
         config = Config()
 
         if challenge:
@@ -352,6 +349,11 @@ class ChallengeCommand:
             context = contextlib.nullcontext(challenges)
         else:
             context = click.progressbar(challenges, label="Pulling challenges")
+
+        use_subrepo = config["config"].getboolean("use_subrepo", fallback=False)
+        if use_subrepo and not check_if_git_subrepo_is_installed():
+            click.secho("This project is configured to use git subrepo, but it's not installed.")
+            return 1
 
         failed_pulls = []
         with context as context_challenges:
@@ -386,18 +388,25 @@ class ChallengeCommand:
                     continue
 
                 click.secho(f"Pulling latest '{challenge_repo}' to '{challenge_path}'", fg="blue")
-                head_branch = get_git_repo_head_branch(challenge_repo)
-
-                log.debug(
-                    f"call(['git', 'subtree', 'pull', '--prefix', '{challenge_path}', "
-                    f"'{challenge_repo}', '{head_branch}', '--squash'], cwd='{config.project_path}')"
-                )
 
                 pull_env = os.environ.copy()
-                pull_env["GIT_MERGE_AUTOEDIT"] = "no"
+                if use_subrepo:
+                    cmd = ["git", "subrepo", "pull", challenge_path]
 
-                git_subtree_pull = subprocess.call(
-                    [
+                    if strategy == "rebase":
+                        cmd += ["--rebase"]
+                    elif strategy == "merge":
+                        cmd += ["--merge"]
+                    elif strategy == "force":
+                        cmd += ["--force"]
+                    elif strategy == "fast-forward":
+                        pass  # fast-forward is the default strategy
+                    else:
+                        click.secho(f"Cannot pull challenge - '{strategy}' is not a valid pull strategy", fg="red")
+                else:
+                    head_branch = get_git_repo_head_branch(challenge_repo)
+                    pull_env["GIT_MERGE_AUTOEDIT"] = "no"
+                    cmd = [
                         "git",
                         "subtree",
                         "pull",
@@ -406,12 +415,10 @@ class ChallengeCommand:
                         challenge_repo,
                         head_branch,
                         "--squash",
-                    ],
-                    cwd=config.project_path,
-                    env=pull_env,
-                )
+                    ]
 
-                if git_subtree_pull != 0:
+                log.debug(f"call({cmd}, cwd='{config.project_path})")
+                if subprocess.call(cmd, cwd=config.project_path, env=pull_env) != 0:
                     click.secho(
                         f"Could not pull the subtree for challenge '{challenge_path}'. "
                         "Please check git error messages above.",
@@ -420,25 +427,26 @@ class ChallengeCommand:
                     failed_pulls.append(challenge_instance)
                     continue
 
-                log.debug(f"call(['git', 'mergetool'], cwd='{config.project_path / challenge_path}')")
-                git_mergetool = subprocess.call(["git", "mergetool"], cwd=config.project_path / challenge_path)
+                if not use_subrepo:
+                    log.debug(f"call(['git', 'mergetool'], cwd='{config.project_path / challenge_path}')")
+                    git_mergetool = subprocess.call(["git", "mergetool"], cwd=config.project_path / challenge_path)
 
-                log.debug(f"call(['git', 'commit', '--no-edit'], cwd='{config.project_path / challenge_path}')")
-                subprocess.call(["git", "commit", "--no-edit"], cwd=config.project_path / challenge_path)
+                    log.debug(f"call(['git', 'commit', '--no-edit'], cwd='{config.project_path / challenge_path}')")
+                    subprocess.call(["git", "commit", "--no-edit"], cwd=config.project_path / challenge_path)
 
-                log.debug(f"call(['git', 'clean', '-f'], cwd='{config.project_path / challenge_path}')")
-                git_clean = subprocess.call(["git", "clean", "-f"], cwd=config.project_path / challenge_path)
+                    log.debug(f"call(['git', 'clean', '-f'], cwd='{config.project_path / challenge_path}')")
+                    git_clean = subprocess.call(["git", "clean", "-f"], cwd=config.project_path / challenge_path)
 
-                # git commit is allowed to return a non-zero code
-                # because it would also mean that there's nothing to commit
-                if any(r != 0 for r in [git_mergetool, git_clean]):
-                    click.secho(
-                        f"Could not commit the subtree for challenge '{challenge_path}'. "
-                        "Please check git error messages above.",
-                        fg="red",
-                    )
-                    failed_pulls.append(challenge_instance)
-                    continue
+                    # git commit is allowed to return a non-zero code
+                    # because it would also mean that there's nothing to commit
+                    if any(r != 0 for r in [git_mergetool, git_clean]):
+                        click.secho(
+                            f"Could not commit the changes for challenge '{challenge_path}'. "
+                            "Please check git error messages above.",
+                            fg="red",
+                        )
+                        failed_pulls.append(challenge_instance)
+                        continue
 
         if len(failed_pulls) == 0:
             if not quiet:
@@ -458,6 +466,11 @@ class ChallengeCommand:
 
         if len(config.challenges.items()) == 0:
             click.secho("Could not find any added challenges to restore", fg="yellow")
+            return 1
+
+        use_subrepo = config["config"].getboolean("use_subrepo", fallback=False)
+        if use_subrepo and not check_if_git_subrepo_is_installed():
+            click.secho("This project is configured to use git subrepo, but it's not installed.")
             return 1
 
         failed_restores = []
@@ -483,6 +496,19 @@ class ChallengeCommand:
                 failed_restores.append(challenge_key)
                 continue
 
+            # If we're using subrepo - the restore can be achieved by performing a force pull
+            if use_subrepo:
+                if self.pull(challenge, strategy="force") != 0:
+                    click.secho(
+                        f"Failed to restore challenge '{challenge_key}' via subrepo force pull. "
+                        "Please check git error messages above.",
+                        fg="red",
+                    )
+                    failed_restores.append(challenge_key)
+
+                continue
+
+            # Otherwise - default to restoring the repository via re-adding the subtree
             # Check if target directory exits
             if (config.project_path / challenge_key).exists():
                 click.secho(
