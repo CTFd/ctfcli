@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ctfcli"
-version = "0.1.2"
+version = "0.1.3"
 description = "ctfcli is a tool to manage Capture The Flag events and challenges"
 authors = ["Kevin Chung <kchung@ctfd.io>", "Miłosz Skaza <milosz.skaza@ctfd.io>"]
 readme = "README.md"

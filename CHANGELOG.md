@@ -1,5 +1,20 @@
 # Changelog
 
+# 0.1.3 / 2024-08-20
+
+### Added
+
+- Added support for `git subrepo` instead of only `git subtree`
+- Added the `--create` switch to `ctf challenge mirror` to create local copies of challenges that exist on a remote CTFd instance
+
+### Fixed
+
+- `ctf challenge {push, pull}` will now push / pull all challenges instead of the challenge in the current working directory.
+
+### Changed
+
+- Use `--load` switch as part of docker build to support alternate build drivers
+
 # 0.1.2 / 2023-02-26
 
 ### Added
