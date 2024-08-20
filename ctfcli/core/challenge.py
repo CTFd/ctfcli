@@ -1,3 +1,4 @@
+import logging
 import re
 import subprocess
 from os import PathLike
@@ -6,10 +7,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import click
 import yaml
+from cookiecutter.main import cookiecutter
 from slugify import slugify
 
 from ctfcli.core.api import API
 from ctfcli.core.exceptions import (
+    ChallengeException,
     InvalidChallengeDefinition,
     InvalidChallengeFile,
     LintException,
@@ -18,6 +21,8 @@ from ctfcli.core.exceptions import (
 from ctfcli.core.image import Image
 from ctfcli.utils.hashing import hash_file
 from ctfcli.utils.tools import strings
+
+log = logging.getLogger("ctfcli.core.challenge")
 
 
 def str_presenter(dumper, data):
@@ -100,6 +105,43 @@ class Challenge(dict):
 
         return False
 
+    @staticmethod
+    def clone(config, remote_challenge):
+        name = remote_challenge["name"]
+
+        if name is None:
+            raise ChallengeException(f'Could not get name of remote challenge with id {remote_challenge["id"]}')
+
+        # First, generate a name for the challenge directory
+        category = remote_challenge.get("category", None)
+        challenge_dir_name = slugify(name)
+        if category is not None:
+            challenge_dir_name = str(Path(slugify(category)) / challenge_dir_name)
+
+        if Path(challenge_dir_name).exists():
+            raise ChallengeException(
+                f"Challenge directory '{challenge_dir_name}' for challenge '{name}' already exists"
+            )
+
+        # Create an blank/empty challenge, with only the challenge.yml containing the challenge name
+        template_path = config.get_base_path() / "templates" / "blank" / "empty"
+        log.debug(f"Challenge.clone: cookiecutter({str(template_path)}, {name=}, {challenge_dir_name=}")
+        cookiecutter(
+            str(template_path),
+            no_input=True,
+            extra_context={"name": name, "dirname": challenge_dir_name},
+        )
+
+        if not Path(challenge_dir_name).exists():
+            raise ChallengeException(f"Could not create challenge directory '{challenge_dir_name}' for '{name}'")
+
+        # Add the newly created local challenge to the config file
+        config["challenges"][challenge_dir_name] = challenge_dir_name
+        with open(config.config_path, "w+") as f:
+            config.write(f)
+
+        return Challenge(f"{challenge_dir_name}/challenge.yml")
+
     @property
     def api(self):
         if not self._api:
@@ -110,6 +152,7 @@ class Challenge(dict):
     # __init__ expects an absolute path to challenge_yml, or a relative one from the cwd
     # it does not join that path with the project_path
     def __init__(self, challenge_yml: Union[str, PathLike], overrides=None):
+        log.debug(f"Challenge.__init__: ({challenge_yml=}, {overrides=}")
         if overrides is None:
             overrides = {}
 
@@ -209,7 +252,7 @@ class Challenge(dict):
 
     def _validate_files(self):
         # if the challenge defines files, make sure they exist before making any changes to the challenge
-        for challenge_file in self["files"]:
+        for challenge_file in self.get("files", []):
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 

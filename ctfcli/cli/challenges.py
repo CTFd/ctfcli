@@ -928,11 +928,13 @@ class ChallengeCommand:
         files_directory: str = "dist",
         skip_verify: bool = False,
         ignore: Union[str, Tuple[str]] = (),
+        create: bool = False,
     ) -> int:
         log.debug(
             f"mirror: (challenge={challenge}, files_directory={files_directory}, "
             f"skip_verify={skip_verify}, ignore={ignore})"
         )
+        config = Config()
 
         if challenge:
             challenge_instance = self._resolve_single_challenge(challenge)
@@ -947,18 +949,22 @@ class ChallengeCommand:
             ignore = (ignore,)
 
         remote_challenges = Challenge.load_installed_challenges()
-        if len(local_challenges) > 1:
-            # Issue a warning if there are extra challenges on the remote that do not have a local version
-            local_challenge_names = [c["name"] for c in local_challenges]
 
-            for remote_challenge in remote_challenges:
-                if remote_challenge["name"] not in local_challenge_names:
+        # Issue a warning if there are extra challenges on the remote that do not have a local version
+        local_challenge_names = [c["name"] for c in local_challenges]
+        for remote_challenge in remote_challenges:
+            if remote_challenge["name"] not in local_challenge_names:
+                click.secho(
+                    f"Found challenge '{remote_challenge['name']}' in CTFd, but not in .ctf/config",
+                    fg="yellow",
+                )
+                if create:
                     click.secho(
-                        f"Found challenge '{remote_challenge['name']}' in CTFd, but not in .ctf/config\n"
-                        "Mirroring does not create new local challenges\n"
-                        "Please add the local challenge if you wish to manage it with ctfcli\n",
+                        f"Mirroring '{remote_challenge['name']}' to local due to --create",
                         fg="yellow",
                     )
+                    challenge_instance = Challenge.clone(config=config, remote_challenge=remote_challenge)
+                    challenge_instance.mirror(files_directory_name=files_directory, ignore=ignore)
 
         failed_mirrors = []
         with click.progressbar(local_challenges, label="Mirroring challenges") as challenges:
