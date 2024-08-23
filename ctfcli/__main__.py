@@ -11,6 +11,7 @@ import fire
 
 from ctfcli.cli.challenges import ChallengeCommand
 from ctfcli.cli.config import ConfigCommand
+from ctfcli.cli.instance import InstanceCommand
 from ctfcli.cli.pages import PagesCommand
 from ctfcli.cli.plugins import PluginsCommand
 from ctfcli.cli.templates import TemplatesCommand
@@ -101,6 +102,9 @@ class CTFCLI:
     def config(self):
         return COMMANDS.get("config")
 
+    def instance(self):
+        return COMMANDS.get("instance")
+
     def challenge(self):
         return COMMANDS.get("challenge")
 
@@ -120,6 +124,7 @@ COMMANDS = {
     "pages": PagesCommand(),
     "plugins": PluginsCommand(),
     "templates": TemplatesCommand(),
+    "instance": InstanceCommand(),
     "cli": CTFCLI(),
 }
 

@@ -55,3 +55,7 @@ class InvalidPageConfiguration(PageException):
 
 class IllegalPageOperation(PageException):
     pass
+
+
+class InstanceConfigException(Exception):
+    pass
