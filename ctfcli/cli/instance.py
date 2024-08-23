@@ -11,15 +11,18 @@ log = logging.getLogger("ctfcli.cli.instance")
 class ConfigCommand:
     def get(self, key):
         """Get the value of a specific remote instance config key"""
+        log.debug(f"ConfigCommand.get: ({key=})")
         return ServerConfig.get(key=key)
 
     def set(self, key, value):
         """Set the value of a specific remote instance config key"""
+        log.debug(f"ConfigCommand.set: ({key=})")
         ServerConfig.set(key=key, value=value)
         click.secho(f"Successfully set '{key}' to '{value}'", fg="green")
 
     def pull(self):
         """Copy remote instance configuration values to local config"""
+        log.debug("ConfigCommand.pull")
         server_configs = ServerConfig.getall()
 
         config = Config()
@@ -39,6 +42,7 @@ class ConfigCommand:
 
     def push(self):
         """Save local instance configuration values to remote CTFd instance"""
+        log.debug("ConfigCommand.push")
         config = Config()
         if config.config.has_section("instance") is False:
             config.config.add_section("instance")
