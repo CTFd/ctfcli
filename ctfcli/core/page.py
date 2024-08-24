@@ -17,6 +17,7 @@ from ctfcli.core.exceptions import (
     InvalidPageConfiguration,
     InvalidPageFormat,
 )
+from ctfcli.core.media import Media
 
 PAGE_FORMATS = {
     ".md": "markdown",
@@ -85,8 +86,8 @@ class Page:
 
         with open(self.page_path, "r") as page_file:
             page_data = frontmatter.load(page_file)
-
-            return {**page_data.metadata, "content": page_data.content}
+            content = Media.replace_placeholders(page_data.content)
+            return {**page_data.metadata, "content": content}
 
     def _get_data_by_id(self) -> Optional[Dict]:
         r = self.api.get(f"/api/v1/pages/{self.page_id}")
@@ -173,6 +174,8 @@ class Page:
 
     @staticmethod
     def get_format_extension(fmt) -> str:
+        if fmt is None:
+            return ".md"
         for supported_ext, supported_fmt in PAGE_FORMATS.items():
             if fmt == supported_fmt:
                 return supported_ext

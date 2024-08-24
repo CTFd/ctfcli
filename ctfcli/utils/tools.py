@@ -1,3 +1,4 @@
+import re
 import string
 
 
@@ -21,3 +22,11 @@ def strings(filename, min_length=4):
 
         if len(result) >= min_length:  # catch result at EOF
             yield result
+
+
+def safe_format(fmt, items):
+    """
+    Function that safely formats strings with arbitrary potentially user-supplied format strings
+    Looks for interpolation placeholders like {target} or {{ target }}
+    """
+    return re.sub(r"\{?\{([^{}]*)\}\}?", lambda m: items.get(m.group(1).strip(), m.group(0)), fmt)
