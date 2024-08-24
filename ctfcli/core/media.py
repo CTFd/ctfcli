@@ -6,6 +6,10 @@ class Media:
     @staticmethod
     def replace_placeholders(content: str) -> str:
         config = Config()
-        for m in config["media"]:
+        try:
+            section = config["media"]
+        except KeyError:
+            section = []
+        for m in section:
             content = safe_format(content, items={m: config["media"][m]})
         return content
