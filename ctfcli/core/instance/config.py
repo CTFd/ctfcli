@@ -47,10 +47,10 @@ class ServerConfig:
                 config[c["key"]] = c["value"]
 
         # Not much point in saving internal configs
-        del config["ctf_version"]
-        del config["version_latest"]
-        del config["next_update_check"]
-        del config["setup"]
+        config.pop("ctf_version", None)
+        config.pop("version_latest", None)
+        config.pop("next_update_check", None)
+        config.pop("setup", None)
 
         return config
 
