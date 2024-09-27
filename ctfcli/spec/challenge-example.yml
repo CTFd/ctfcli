@@ -6,6 +6,7 @@ name: "{{cookiecutter.name}}"
 author: "author"
 category: category
 description: This is a sample description
+attribution: Written by [author](https://ctfd.io)
 value: 100
 type: standard
 
