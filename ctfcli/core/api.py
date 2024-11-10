@@ -1,4 +1,4 @@
-from typing import Mapping, Union, Optional, List, Any, Tuple
+from typing import Mapping
 from urllib.parse import urljoin
 
 from requests import Session
@@ -53,7 +53,7 @@ class API(Session):
             # For files, the structure can be List[Tuple[str, Tuple[str, str, Optional[str]]]]
             # Example: [ ('file', ('doc.pdf', open('doc.pdf'), 'text/plain') ) ]
 
-            fields = list()  # type: List[Tuple[str, Any]]
+            fields = list()
             if isinstance(data, dict):
                 # int are not allowed as value in MultipartEncoder
                 fields = list(map(lambda v: (v[0], str(v[1]) if isinstance(v[1], int) else v[1]), data.items()))
