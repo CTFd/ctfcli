@@ -46,8 +46,20 @@ class TestAPI(unittest.TestCase):
 
         mock_request.assert_has_calls(
             [
-                call("GET", "https://example.com/test/path", headers={"Content-Type": "application/json"}),
-                call("GET", "https://example.com/test/path", headers={"Content-Type": "application/json"}),
+                call(
+                    "GET",
+                    "https://example.com/test/path",
+                    headers={"Content-Type": "application/json"},
+                    data=None,
+                    files=None,
+                ),
+                call(
+                    "GET",
+                    "https://example.com/test/path",
+                    headers={"Content-Type": "application/json"},
+                    data=None,
+                    files=None,
+                ),
             ]
         )
 
@@ -60,7 +72,7 @@ class TestAPI(unittest.TestCase):
         api = API()
         api.request("GET", "path")
         mock_request.assert_called_once_with(
-            "GET", "https://example.com/test/path", headers={"Content-Type": "application/json"}
+            "GET", "https://example.com/test/path", headers={"Content-Type": "application/json"}, data=None, files=None
         )
 
     def test_api_object_assigns_ssl_verify(self, *args, **kwargs):

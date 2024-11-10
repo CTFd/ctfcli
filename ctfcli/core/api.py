@@ -74,22 +74,19 @@ class API(Session):
                 **kwargs,
             )
 
-        # If data or files are not key/value pairs, then send the raw values
-        if data is not None or files is not None:
-            return super(API, self).request(
-                method,
-                url,
-                data=data,
-                files=files,
-                *args,
-                **kwargs,
-            )
-
         # otherwise set the content-type to application/json for all API requests
         # modify the headers here instead of using self.headers because we don't want to
         # override the multipart/form-data case above
-        if kwargs.get("headers", None) is None:
-            kwargs["headers"] = {}
+        if data is None and files is None:
+            if kwargs.get("headers", None) is None:
+                kwargs["headers"] = {}
+            kwargs["headers"]["Content-Type"] = "application/json"
 
-        kwargs["headers"]["Content-Type"] = "application/json"
-        return super(API, self).request(method, url, *args, **kwargs)
+        return super(API, self).request(
+            method,
+            url,
+            data=data,
+            files=files,
+            *args,
+            **kwargs,
+        )
