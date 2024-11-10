@@ -170,4 +170,4 @@ class TestAPI(unittest.TestCase):
     def test_request_does_not_override_form_data_content_type(self, mock_request: MagicMock, *args, **kwargs):
         api = API()
         api.request("GET", "/test", data="some-file")
-        mock_request.assert_called_once_with("GET", "https://example.com/test", data="some-file")
+        mock_request.assert_called_once_with("GET", "https://example.com/test", data="some-file", files=None)

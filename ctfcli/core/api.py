@@ -1,6 +1,8 @@
+from typing import Mapping, Union, Optional, List, Any, Tuple
 from urllib.parse import urljoin
 
 from requests import Session
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from ctfcli.core.config import Config
 
@@ -38,14 +40,50 @@ class API(Session):
         if "cookies" in config:
             self.cookies.update(dict(config["cookies"]))
 
-    def request(self, method, url, *args, **kwargs):
+    def request(self, method, url, data=None, files=None, *args, **kwargs):
         # Strip out the preceding / so that urljoin creates the right url
         # considering the appended / on the prefix_url
         url = urljoin(self.prefix_url, url.lstrip("/"))
 
-        # if data= is present, do not modify the content-type
-        if kwargs.get("data", None) is not None:
-            return super(API, self).request(method, url, *args, **kwargs)
+        # If data or files are any kind of key/value iterable
+        # then encode the body as form-data
+        if isinstance(data, (list, tuple, Mapping)) or isinstance(files, (list, tuple, Mapping)):
+            # In order to use the MultipartEncoder, we need to convert data and files to the following structure :
+            # A list of tuple containing the key and the values : List[Tuple[str, str]]
+            # For files, the structure can be List[Tuple[str, Tuple[str, str, Optional[str]]]]
+            # Example: [ ('file', ('doc.pdf', open('doc.pdf'), 'text/plain') ) ]
+
+            fields = list()  # type: List[Tuple[str, Any]]
+            if isinstance(data, dict):
+                # int are not allowed as value in MultipartEncoder
+                fields = list(map(lambda v: (v[0], str(v[1]) if isinstance(v[1], int) else v[1]), data.items()))
+
+            if files is not None:
+                if isinstance(files, dict):
+                    files = list(files.items())
+                fields.extend(files)  # type: ignore
+
+            multipart = MultipartEncoder(fields)
+
+            return super(API, self).request(
+                method,
+                url,
+                data=multipart,
+                headers={"Content-Type": multipart.content_type},
+                *args,
+                **kwargs,
+            )
+
+        # If data or files are not key/value pairs, then send the raw values
+        if data is not None or files is not None:
+            return super(API, self).request(
+                method,
+                url,
+                data=data,
+                files=files,
+                *args,
+                **kwargs,
+            )
 
         # otherwise set the content-type to application/json for all API requests
         # modify the headers here instead of using self.headers because we don't want to
