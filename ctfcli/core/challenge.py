@@ -466,7 +466,7 @@ class Challenge(dict):
                 challenge[key] = challenge_data[key]
 
         challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
-        challenge["attribution"] = challenge_data["attribution"].strip().replace("\r\n", "\n").replace("\t", "")
+        challenge["attribution"] = challenge_data.get("attribution", "").strip().replace("\r\n", "\n").replace("\t", "")
         challenge["attempts"] = challenge_data["max_attempts"]
 
         for key in ["initial", "decay", "minimum"]:
