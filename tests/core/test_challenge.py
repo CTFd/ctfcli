@@ -197,6 +197,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -239,6 +240,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -284,6 +286,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "value": 150,
             "state": "hidden",
             "type": "application_target",
@@ -342,6 +345,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -430,6 +434,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -490,6 +495,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -553,6 +559,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -654,6 +661,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -714,6 +722,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -756,6 +765,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -816,6 +826,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -854,6 +865,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "max_attempts": 0,
@@ -904,6 +916,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "dynamic",
             "state": "hidden",
             "max_attempts": 0,
@@ -961,6 +974,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "New Test",
             "description": "New Test Description",
+            "attribution": "New Test Attribution",
             "type": "standard",
             "value": 150,
             "state": "hidden",
@@ -1018,7 +1032,7 @@ class TestSyncChallenge(unittest.TestCase):
         properties = [
             # fmt: off
             # simple types
-            "category", "description", "type", "value", "attempts", "connection_info", "state",
+            "category", "description", "attribution", "type", "value", "attempts", "connection_info", "state",
             # complex types
             "extra", "flags", "topics", "tags", "files", "hints", "requirements",
             # fmt: on
@@ -1028,6 +1042,7 @@ class TestSyncChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "Old Category",
             "description": "Old Description",
+            "attribution": "Old Attribution",
             "type": "some-custom-type",
             "value": 100,
             "state": "visible",
@@ -1057,6 +1072,7 @@ class TestSyncChallenge(unittest.TestCase):
                             "name": "Test Challenge",
                             "category": "New Test",
                             "description": "New Test Description",
+                            "attribution": "New Test Attribution",
                             "type": "standard",
                             "value": 150,
                             "state": "hidden",
@@ -1072,7 +1088,7 @@ class TestSyncChallenge(unittest.TestCase):
                             expected_challenge_payload["value"] = remote_installed_challenge["value"]
                             challenge["value"] = 200
 
-                        if p in ["category", "description", "type"]:
+                        if p in ["category", "description", "attribution", "type"]:
                             expected_challenge_payload[p] = remote_installed_challenge[p]
                             challenge[p] = "new-value"
 
@@ -1154,6 +1170,7 @@ class TestCreateChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "Test",
             "description": "Test Description",
+            "attribution": "Test Attribution",
             "value": 150,
             "max_attempts": 5,
             "type": "standard",
@@ -1244,7 +1261,7 @@ class TestCreateChallenge(unittest.TestCase):
     def test_does_not_set_ignored_attributes(self):
         # fmt:off
         properties = [
-            "value", "category", "description", "attempts", "connection_info", "state",  # simple types
+            "value", "category", "description", "attribution", "attempts", "connection_info", "state",  # simple types
             "extra", "flags", "topics", "tags", "files", "hints", "requirements"  # complex types
         ]
         # fmt:on
@@ -1262,6 +1279,7 @@ class TestCreateChallenge(unittest.TestCase):
                             "name": "Test Challenge",
                             "category": "New Test",
                             "description": "New Test Description",
+                            "attribution": "New Test Attribution",
                             "type": "standard",
                             "value": 150,
                             "state": "hidden",
@@ -1282,7 +1300,7 @@ class TestCreateChallenge(unittest.TestCase):
                             expected_challenge_payload[p] = "custom-type"
 
                         # expect these to be in the payload, with the defaults or empty:
-                        if p in ["category", "description"]:
+                        if p in ["category", "description", "attribution"]:
                             challenge[p] = "new-value"
                             expected_challenge_payload[p] = ""
 
@@ -1520,6 +1538,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                     "name": "Test Challenge",
                     "value": 150,
                     "description": "Test Description",
+                    "attribution": "Test Attribution",
                     "connection_info": "https://example.com",
                     "next_id": None,
                     "category": "Test",
@@ -1681,6 +1700,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
             "name": "Test Challenge",
             "category": "Test",
             "description": "Test Description",
+            "attribution": "Test Attribution",
             "value": 150,
             "max_attempts": 5,
             "type": "standard",
@@ -1703,6 +1723,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                 "state": "hidden",
                 "connection_info": "https://example.com",
                 "description": "Test Description",
+                "attribution": "Test Attribution",
                 "attempts": 5,
                 "flags": [
                     "flag{test-flag}",
@@ -1755,6 +1776,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
             {
                 "value": 200,
                 "description": "other description",
+                "attribution": "other attribution",
                 "connection_info": "https://other.example.com",
                 "flags": ["flag{other-flag}", "other-flag"],
                 "topics": ["other-topic-1", "other-topic-2"],

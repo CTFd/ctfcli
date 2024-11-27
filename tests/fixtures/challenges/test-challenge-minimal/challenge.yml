@@ -1,6 +1,7 @@
 name: Test Challenge
 category: New Test
 description: New Test Description
+attribution: New Test Attribution
 value: 150
 author: Test
 type: standard

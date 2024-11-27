@@ -43,7 +43,7 @@ yaml.representer.SafeRepresenter.add_representer(str, str_presenter)
 class Challenge(dict):
     key_order = [
         # fmt: off
-        "name", "author", "category", "description", "value",
+        "name", "author", "category", "description", "attribution", "value",
         "type", "extra", "image", "protocol", "host",
         "connection_info", "healthcheck", "attempts", "flags",
         "files", "topics", "tags", "files", "hints",
@@ -262,6 +262,7 @@ class Challenge(dict):
             "name": self["name"],
             "category": self.get("category", ""),
             "description": self.get("description", ""),
+            "attribution": self.get("attribution", ""),
             "type": self.get("type", "standard"),
             # Hide the challenge for the duration of the sync / creation
             "state": "hidden",
@@ -460,12 +461,13 @@ class Challenge(dict):
     def _normalize_challenge(self, challenge_data: Dict[str, Any]):
         challenge = {}
 
-        copy_keys = ["name", "category", "value", "type", "state", "connection_info"]
+        copy_keys = ["name", "category", "attribution", "value", "type", "state", "connection_info"]
         for key in copy_keys:
             if key in challenge_data:
                 challenge[key] = challenge_data[key]
 
         challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
+        challenge["attribution"] = challenge_data.get("attribution", "").strip().replace("\r\n", "\n").replace("\t", "")
         challenge["attempts"] = challenge_data["max_attempts"]
 
         for key in ["initial", "decay", "minimum"]:
@@ -557,7 +559,7 @@ class Challenge(dict):
         remote_challenge = self.load_installed_challenge(self.challenge_id)
 
         # if value, category, type or description are ignored, revert them to the remote state in the initial payload
-        reset_properties_if_ignored = ["value", "category", "type", "description"]
+        reset_properties_if_ignored = ["value", "category", "type", "description", "attribution"]
         for p in reset_properties_if_ignored:
             if p in ignore:
                 challenge_payload[p] = remote_challenge[p]
@@ -671,7 +673,7 @@ class Challenge(dict):
         # value is required (unless the challenge is a dynamic value challenge),
         # and the type will default to standard
         # if category or description are ignored, set them to an empty string
-        reset_properties_if_ignored = ["category", "description"]
+        reset_properties_if_ignored = ["category", "description", "attribution"]
         for p in reset_properties_if_ignored:
             if p in ignore:
                 challenge_payload[p] = ""
@@ -717,7 +719,7 @@ class Challenge(dict):
         issues = {"fields": [], "dockerfile": [], "hadolint": [], "files": []}
 
         # Check if required fields are present
-        for field in ["name", "author", "category", "description", "value"]:
+        for field in ["name", "author", "category", "description", "attribution", "value"]:
             # value is allowed to be none if the challenge type is dynamic
             if field == "value" and challenge.get("type") == "dynamic":
                 continue
