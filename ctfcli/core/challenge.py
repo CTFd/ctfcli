@@ -771,7 +771,6 @@ class Challenge(dict):
                 )
 
         # Check that files don't have a flag in them
-        challenge_files = challenge.get("files", [])
         for challenge_file in challenge_files:
             challenge_file_path = self.challenge_directory / challenge_file
 
