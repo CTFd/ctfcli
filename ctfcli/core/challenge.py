@@ -761,8 +761,8 @@ class Challenge(dict):
                         click.secho("Skipping Hadolint", fg="yellow")
 
         # Check that all files exist
-        challenge_files = challenge.get("files") or []
-        for challenge_file in challenge_files:
+        files = self.get("files") or []
+        for challenge_file in files:
             challenge_file_path = self.challenge_directory / challenge_file
 
             if challenge_file_path.is_file() is False:
@@ -771,7 +771,7 @@ class Challenge(dict):
                 )
 
         # Check that files don't have a flag in them
-        for challenge_file in challenge_files:
+        for challenge_file in files:
             challenge_file_path = self.challenge_directory / challenge_file
 
             if not challenge_file_path.exists():
