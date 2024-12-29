@@ -251,8 +251,8 @@ class Challenge(dict):
             raise RemoteChallengeNotFound(f"Could not load remote challenge with name '{self['name']}'")
 
     def _validate_files(self):
-        # if the challenge defines files, make sure they exist before making any changes to the challenge
-        for challenge_file in self.get("files") or []:
+        files = self.get("files") or []
+        for challenge_file in files:
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 
@@ -364,7 +364,9 @@ class Challenge(dict):
 
     def _create_all_files(self):
         new_files = []
-        for challenge_file in self.get("files") or []:
+
+        files = self.get("files") or []
+        for challenge_file in files:
             new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))
 
         files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
@@ -587,9 +589,12 @@ class Challenge(dict):
 
         # Create / Upload files
         if "files" not in ignore:
+            self["files"] = self.get("files") or []
+            remote_challenge["files"] = remote_challenge.get("files") or []
+
             # Get basenames of local files to compare against remote files
-            local_files = {f.split("/")[-1]: f for f in self.get("files") or []}
-            remote_files = self._normalize_remote_files(remote_challenge.get("files") or [])
+            local_files = {f.split("/")[-1]: f for f in self["files"]}
+            remote_files = self._normalize_remote_files(remote_challenge["files"])
 
             # Delete remote files which are no longer defined locally
             for remote_file in remote_files:
