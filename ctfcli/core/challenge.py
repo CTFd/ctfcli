@@ -251,8 +251,8 @@ class Challenge(dict):
             raise RemoteChallengeNotFound(f"Could not load remote challenge with name '{self['name']}'")
 
     def _validate_files(self):
-        # if the challenge defines files, make sure they exist before making any changes to the challenge
-        for challenge_file in self.get("files", []):
+        files = self.get("files") or []
+        for challenge_file in files:
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 
@@ -364,7 +364,9 @@ class Challenge(dict):
 
     def _create_all_files(self):
         new_files = []
-        for challenge_file in self["files"]:
+
+        files = self.get("files") or []
+        for challenge_file in files:
             new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))
 
         files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
@@ -587,9 +589,12 @@ class Challenge(dict):
 
         # Create / Upload files
         if "files" not in ignore:
+            self["files"] = self.get("files") or []
+            remote_challenge["files"] = remote_challenge.get("files") or []
+
             # Get basenames of local files to compare against remote files
-            local_files = {f.split("/")[-1]: f for f in self.get("files", [])}
-            remote_files = self._normalize_remote_files(remote_challenge.get("files", []))
+            local_files = {f.split("/")[-1]: f for f in self["files"]}
+            remote_files = self._normalize_remote_files(remote_challenge["files"])
 
             # Delete remote files which are no longer defined locally
             for remote_file in remote_files:
@@ -761,8 +766,8 @@ class Challenge(dict):
                         click.secho("Skipping Hadolint", fg="yellow")
 
         # Check that all files exist
-        challenge_files = challenge.get("files", [])
-        for challenge_file in challenge_files:
+        files = self.get("files") or []
+        for challenge_file in files:
             challenge_file_path = self.challenge_directory / challenge_file
 
             if challenge_file_path.is_file() is False:
@@ -771,8 +776,7 @@ class Challenge(dict):
                 )
 
         # Check that files don't have a flag in them
-        challenge_files = challenge.get("files", [])
-        for challenge_file in challenge_files:
+        for challenge_file in files:
             challenge_file_path = self.challenge_directory / challenge_file
 
             if not challenge_file_path.exists():
@@ -794,9 +798,12 @@ class Challenge(dict):
         remote_challenge = self.load_installed_challenge(self.challenge_id)
         challenge = self._normalize_challenge(remote_challenge)
 
+        remote_challenge["files"] = remote_challenge.get("files") or []
+        challenge["files"] = challenge.get("files") or []
+
         # Add files which are not handled in _normalize_challenge
         if "files" not in ignore:
-            local_files = {Path(f).name: f for f in challenge.get("files", [])}
+            local_files = {Path(f).name: f for f in challenge["files"]}
 
             # Update files
             for remote_file in remote_challenge["files"]:
@@ -813,9 +820,6 @@ class Challenge(dict):
                     challenge_files_directory.mkdir(parents=True, exist_ok=True)
 
                     (challenge_files_directory / remote_file_name).write_bytes(r.content)
-                    if "files" not in challenge:
-                        challenge["files"] = []
-
                     challenge["files"].append(f"{files_directory_name}/{remote_file_name}")
 
                 # The file is already present in the challenge.yml - we know the desired path
@@ -827,7 +831,7 @@ class Challenge(dict):
             # Soft-Delete files that are not present on the remote
             # Remove them from challenge.yml but do not delete them from disk
             remote_file_names = [f.split("/")[-1].split("?token=")[0] for f in remote_challenge["files"]]
-            challenge["files"] = [f for f in challenge.get("files", []) if Path(f).name in remote_file_names]
+            challenge["files"] = [f for f in challenge["files"] if Path(f).name in remote_file_names]
 
         for key in challenge.keys():
             if key not in ignore:
@@ -840,6 +844,9 @@ class Challenge(dict):
         challenge = self
         remote_challenge = self.load_installed_challenge(self.challenge_id)
         normalized_challenge = self._normalize_challenge(remote_challenge)
+
+        remote_challenge["files"] = remote_challenge.get("files") or []
+        challenge["files"] = challenge.get("files") or []
 
         for key in normalized_challenge:
             if key in ignore:
@@ -865,7 +872,7 @@ class Challenge(dict):
             # Check if files defined in challenge.yml are present
             try:
                 self._validate_files()
-                local_files = {Path(f).name: f for f in challenge.get("files", [])}
+                local_files = {Path(f).name: f for f in challenge["files"]}
             except InvalidChallengeFile:
                 return False
 
