@@ -47,7 +47,7 @@ class Challenge(dict):
         "type", "extra", "image", "protocol", "host",
         "connection_info", "healthcheck", "attempts", "flags",
         "files", "topics", "tags", "files", "hints",
-        "requirements", "state", "version",
+        "requirements", "next_id", "state", "version",
         # fmt: on
     ]
 
@@ -103,6 +103,8 @@ class Challenge(dict):
         if key in ["tags", "hints", "topics", "requirements", "files"] and value == []:
             return True
 
+        if key == "next_id" and value is None:
+            return True
         return False
 
     @staticmethod
@@ -434,6 +436,40 @@ class Challenge(dict):
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
         r.raise_for_status()
 
+    def _set_next_id(self, nid):
+        if type(nid) == str:
+            # nid by name
+            # find the challenge id from installed challenges
+            remote_challenges = self.load_installed_challenges()
+            for remote_challenge in remote_challenges:
+                if remote_challenge["name"] == nid:
+                    nid = remote_challenge["id"]
+                    break
+            if type(nid) == str:
+                click.secho(
+                    "Challenge cannot find next_id. Maybe it is invalid name or id. It will be cleared.",
+                    fg="yellow",
+                )
+                nid = None
+        elif type(nid) == int and nid > 0:
+            # nid by challenge id
+            # trust it and use it directly
+            nid = remote_challenge["id"]
+        else:
+            nid = None
+
+        if self.challenge_id == nid:
+            click.secho(
+                "Challenge cannot set next_id itself. Skipping invalid next_id.",
+                fg="yellow",
+            )
+            nid = None
+
+        #return nid
+        next_id_payload = {"next_id": nid}
+        r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=next_id_payload)
+        r.raise_for_status()
+
     # Compare challenge requirements, will resolve all IDs to names
     def _compare_challenge_requirements(self, r1: List[Union[str, int]], r2: List[Union[str, int]]) -> bool:
         remote_challenges = self.load_installed_challenges()
@@ -452,6 +488,21 @@ class Challenge(dict):
             return normalized
 
         return normalize_requirements(r1) == normalize_requirements(r2)
+
+    # Compare challenge next_id, will resolve all IDs to names
+    def _compare_challenge_next_id(self, r1: Union[str, int, None], r2: Union[str, int, None]) -> bool:
+        def normalize_next_id(r):
+            normalized = None
+            if type(r) == int:
+                remote_challenge = self.load_installed_challenge(r)
+                if remote_challenge["id"] == r:
+                    normalized = remote_challenge["name"]
+            else:
+                normalized = r
+
+            return normalized
+
+        return normalize_next_id(r1) == normalize_next_id(r2)
 
     # Normalize challenge data from the API response to match challenge.yml
     # It will remove any extra fields from the remote, as well as expand external references
@@ -520,6 +571,16 @@ class Challenge(dict):
             r.raise_for_status()
             challenges = r.json()["data"]
             challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
+
+        # Add next_id
+        nid = challenge_data.get("next_id", None)
+        if nid:
+            # Prefer challenge names over IDs
+            r = self.api.get(f"/api/v1/challenges/{nid}")
+            r.raise_for_status()
+            challenge["next_id"] = r.json()["data"]["name"]
+        else:
+            challenge["next_id"] = None
 
         return challenge
 
@@ -634,6 +695,11 @@ class Challenge(dict):
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
 
+        # Set next_id
+        nid = challenge.get("next_id", None)
+        if "next_id" not in ignore:
+            self._set_next_id(nid)
+
         make_challenge_visible = False
 
         # Bring back the challenge to be visible if:
@@ -710,6 +776,11 @@ class Challenge(dict):
         # Add requirements
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
+
+        # Add next_id
+        nid = challenge.get("next_id", None)
+        if "next_id" not in ignore:
+            self._set_next_id(nid)
 
         # Bring back the challenge if it's supposed to be visible
         # Either explicitly, or by assuming the default value (possibly because the state is ignored)
@@ -863,6 +934,9 @@ class Challenge(dict):
             if challenge[key] != normalized_challenge[key]:
                 if key == "requirements":
                     if self._compare_challenge_requirements(challenge[key], normalized_challenge[key]):
+                        continue
+                if key == "next_id":
+                    if self._compare_challenge_next_id(challenge[key], normalized_challenge[key]):
                         continue
 
                 return False
