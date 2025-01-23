@@ -61,6 +61,7 @@ flags:
     - {
         type: "static",
         content: "flag{wat}",
+        data: "case_sensitive",
     }
     # A static case insensitive flag
     - {
@@ -114,6 +115,13 @@ hints:
 requirements:
     - "Warmup"
     - "Are you alive"
+
+# Requirements has a flag named "anonymize". It displays anonymized
+# challenge if it is set to true. Otherwise, the challenge will be 
+# hidden until a user satisfys the prerequisites.
+# default is false.
+# Can be removed if unused
+require_anonymize: false
 
 # The next_id is used to display a next recommended challenge to a user when 
 # the user correctly answers the current challenge.
