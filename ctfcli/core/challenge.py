@@ -95,7 +95,7 @@ class Challenge(dict):
         if key == "attempts" and value == 0:
             return True
 
-        if key == "require_anonymize" and value == False:
+        if key == "require_anonymize" and value is False:
             return True
 
         if key == "state" and value == "visible":
@@ -439,7 +439,7 @@ class Challenge(dict):
             required_challenges.remove(self.challenge_id)
         required_challenges.sort()
 
-        if self.get("require_anonymize") == None:
+        if self.get("require_anonymize") is None:
             self["require_anonymize"] = False
 
         requirements_payload = {
@@ -1032,7 +1032,7 @@ class Challenge(dict):
             for remote_file_name in remote_files:
                 if remote_file_name not in local_files:
                     click.secho(
-                        f"{remote_file_namne} is not in local challenge.",
+                        f"{remote_file_name} is not in local challenge.",
                         fg="yellow",
                     )
                     return False
@@ -1045,7 +1045,7 @@ class Challenge(dict):
 
                     if local_file_sha1sum != remote_file_sha1sum:
                         click.secho(
-                            f"sha1sum does not match with remote one.",
+                            "sha1sum does not match with remote one.",
                             fg="yellow",
                         )
                         return False
@@ -1060,7 +1060,7 @@ class Challenge(dict):
 
                 if remote_file_contents != local_file_contents:
                     click.secho(
-                        f"the file content does not match with the remote one.",
+                        "the file content does not match with the remote one.",
                         fg="yellow",
                     )
                     return False
