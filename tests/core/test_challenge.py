@@ -1767,7 +1767,6 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
         # pop keys with default values to see if they are ignored
         for p in ["type", "state"]:
             challenge.pop(p)
-        print(challenge)
 
         challenge.challenge_id = 3
         self.assertTrue(challenge.verify(ignore=["files"]))
