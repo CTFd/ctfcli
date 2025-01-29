@@ -47,7 +47,7 @@ class Challenge(dict):
         "type", "extra", "image", "protocol", "host",
         "connection_info", "healthcheck", "attempts", "flags",
         "files", "topics", "tags", "files", "hints",
-        "requirements", "require_anonymize", "next_id", "state", 
+        "requirements", "require_anonymize", "next", "state", 
         "version",
         # fmt: on
     ]
@@ -107,7 +107,7 @@ class Challenge(dict):
         if key in ["tags", "hints", "topics", "requirements", "files"] and value == []:
             return True
 
-        if key == "next_id" and value is None:
+        if key == "next" and value is None:
             return True
         return False
 
@@ -451,37 +451,37 @@ class Challenge(dict):
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
         r.raise_for_status()
 
-    def _set_next_id(self, nid):
-        if type(nid) == str:
+    def _set_next(self, _next):
+        if type(_next) == str:
             # nid by name
             # find the challenge id from installed challenges
             remote_challenges = self.load_installed_challenges()
             for remote_challenge in remote_challenges:
-                if remote_challenge["name"] == nid:
-                    nid = remote_challenge["id"]
+                if remote_challenge["name"] == _next:
+                    _next = remote_challenge["id"]
                     break
-            if type(nid) == str:
+            if type(_next) == str:
                 click.secho(
-                    "Challenge cannot find next_id. Maybe it is invalid name or id. It will be cleared.",
+                    "Challenge cannot find next challenge. Maybe it is invalid name or id. It will be cleared.",
                     fg="yellow",
                 )
-                nid = None
-        elif type(nid) == int and nid > 0:
+                _next = None
+        elif type(_next) == int and _next > 0:
             # nid by challenge id
             # trust it and use it directly
-            nid = remote_challenge["id"]
+            _next = remote_challenge["id"]
         else:
-            nid = None
+            _next = None
 
-        if self.challenge_id == nid:
+        if self.challenge_id == _next:
             click.secho(
-                "Challenge cannot set next_id itself. Skipping invalid next_id.",
+                "Challenge cannot set next challenge itself. Skipping invalid next challenge.",
                 fg="yellow",
             )
-            nid = None
+            _next = None
 
-        next_id_payload = {"next_id": nid}
-        r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=next_id_payload)
+        next_payload = {"next_id": _next}
+        r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=next_payload)
         r.raise_for_status()
 
     # Compare challenge requirements, will resolve all IDs to names
@@ -507,20 +507,21 @@ class Challenge(dict):
         nr2.sort()
         return nr1 == nr2
 
-    # Compare challenge next_id, will resolve all IDs to names
-    def _compare_challenge_next_id(self, r1: Union[str, int, None], r2: Union[str, int, None]) -> bool:
-        def normalize_next_id(r):
+    # Compare next challenges, will resolve all IDs to names
+    def _compare_challenge_next(self, r1: Union[str, int, None], r2: Union[str, int, None]) -> bool:
+        def normalize_next(r):
             normalized = None
             if type(r) == int:
-                remote_challenge = self.load_installed_challenge(r)
-                if remote_challenge["id"] == r:
-                    normalized = remote_challenge["name"]
+                if r > 0:
+                    remote_challenge = self.load_installed_challenge(r)
+                    if remote_challenge["id"] == r:
+                        normalized = remote_challenge["name"]
             else:
                 normalized = r
 
             return normalized
 
-        return normalize_next_id(r1) == normalize_next_id(r2)
+        return normalize_next(r1) == normalize_next(r2)
 
     # Normalize challenge data from the API response to match challenge.yml
     # It will remove any extra fields from the remote, as well as expand external references
@@ -606,15 +607,15 @@ class Challenge(dict):
         # Add anonymize flag
         challenge["require_anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
 
-        # Add next_id
+        # Add next
         nid = challenge_data.get("next_id", None)
         if nid:
             # Prefer challenge names over IDs
             r = self.api.get(f"/api/v1/challenges/{nid}")
             r.raise_for_status()
-            challenge["next_id"] = r.json()["data"]["name"]
+            challenge["next"] = (r.json().get("data") or {}).get("name", None)
         else:
-            challenge["next_id"] = None
+            challenge["next"] = None
 
         return challenge
 
@@ -741,10 +742,10 @@ class Challenge(dict):
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
 
-        # Set next_id
-        nid = challenge.get("next_id", None)
-        if "next_id" not in ignore:
-            self._set_next_id(nid)
+        # Set next
+        _next = challenge.get("next", None)
+        if "next" not in ignore:
+            self._set_next(_next)
 
         make_challenge_visible = False
 
@@ -823,10 +824,10 @@ class Challenge(dict):
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
 
-        # Add next_id
-        nid = challenge.get("next_id", None)
-        if "next_id" not in ignore:
-            self._set_next_id(nid)
+        # Add next
+        _next = challenge.get("next", None)
+        if "next" not in ignore:
+            self._set_next(_next)
 
         # Bring back the challenge if it's supposed to be visible
         # Either explicitly, or by assuming the default value (possibly because the state is ignored)
@@ -993,8 +994,8 @@ class Challenge(dict):
                 if key == "requirements":
                     if self._compare_challenge_requirements(challenge[key], normalized_challenge[key]):
                         continue
-                if key == "next_id":
-                    if self._compare_challenge_next_id(challenge[key], normalized_challenge[key]):
+                if key == "next":
+                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]):
                         continue
 
                 click.secho(

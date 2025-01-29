@@ -1552,7 +1552,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                     "description": "Test Description",
                     "attribution": "Test Attribution",
                     "connection_info": "https://example.com",
-                    "next_id": 0,
+                    "next_id": None,
                     "category": "Test",
                     "state": "visible",
                     "max_attempts": 5,
@@ -1745,7 +1745,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                 "tags": ["tag-1", "tag-2"],
                 "hints": ["free hint", {"content": "paid hint", "cost": 100}],
                 "topics": ["topic-1", "topic-2"],
-                "next_id": None,
+                "next": None,
                 "require_anonymize": False,
                 "requirements": ["First Test Challenge", "Other Test Challenge"],
                 "extra": {
