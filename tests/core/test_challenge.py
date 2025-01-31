@@ -1746,8 +1746,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                 "hints": ["free hint", {"content": "paid hint", "cost": 100}],
                 "topics": ["topic-1", "topic-2"],
                 "next": None,
-                "require_anonymize": False,
-                "requirements": ["First Test Challenge", "Other Test Challenge"],
+                "requirements": {"prerequisites": ["First Test Challenge", "Other Test Challenge"], "anonymize": False},
                 "extra": {
                     "initial": 100,
                     "decay": 10,
@@ -1809,7 +1808,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
         # and ctfcli will update them to use the name
         expected_challenge = Challenge(
             self.full_challenge,
-            {"requirements": ["First Test Challenge", "Other Test Challenge"]},
+            {"requirements": {"prerequisites": ["First Test Challenge", "Other Test Challenge"], "anonymize": False}},
         )
 
         # pop keys with default values as they should not be in the loaded data

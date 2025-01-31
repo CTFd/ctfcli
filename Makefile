@@ -1,5 +1,5 @@
 lint:
-	black --check .
+	black --diff .
 	isort --check .
 	ruff check .
 

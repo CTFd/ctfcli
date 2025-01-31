@@ -47,8 +47,7 @@ class Challenge(dict):
         "type", "extra", "image", "protocol", "host",
         "connection_info", "healthcheck", "attempts", "flags",
         "files", "topics", "tags", "files", "hints",
-        "requirements", "require_anonymize", "next", "state", 
-        "version",
+        "requirements", "next", "state", "version",
         # fmt: on
     ]
 
@@ -95,9 +94,6 @@ class Challenge(dict):
         if key == "attempts" and value == 0:
             return True
 
-        if key == "require_anonymize" and value is False:
-            return True
-
         if key == "state" and value == "visible":
             return True
 
@@ -105,6 +101,9 @@ class Challenge(dict):
             return True
 
         if key in ["tags", "hints", "topics", "requirements", "files"] and value == []:
+            return True
+
+        if key == "requirements" and value == {"prerequisites": [], "anonymize": False}:
             return True
 
         if key == "next" and value is None:
@@ -415,14 +414,28 @@ class Challenge(dict):
     def _set_required_challenges(self):
         remote_challenges = self.load_installed_challenges()
         required_challenges = []
+        anonymize = False
+        if type(self["requirements"]) == dict:
+            rc = self["requirements"].get("prerequisites", [])
+            anonymize = self["requirements"].get("anonymize", False)
+        else:
+            rc = self["requirements"]
 
-        for required_challenge in self["requirements"]:
+        for required_challenge in rc:
             if type(required_challenge) == str:
                 # requirement by name
                 # find the challenge id from installed challenges
+                found = False
                 for remote_challenge in remote_challenges:
                     if remote_challenge["name"] == required_challenge:
                         required_challenges.append(remote_challenge["id"])
+                        found = True
+                        break
+                if found is False:
+                    click.secho(
+                        f'Challenge id cannot be found. Skipping invalid requirement name "{required_challenge}".',
+                        fg="yellow",
+                    )
 
             elif type(required_challenge) == int:
                 # requirement by challenge id
@@ -439,13 +452,10 @@ class Challenge(dict):
             required_challenges.remove(self.challenge_id)
         required_challenges.sort()
 
-        if self.get("require_anonymize") is None:
-            self["require_anonymize"] = False
-
         requirements_payload = {
             "requirements": {
                 "prerequisites": required_challenges,
-                "anonymize": self["require_anonymize"],
+                "anonymize": anonymize,
             }
         }
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
@@ -598,14 +608,15 @@ class Challenge(dict):
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/requirements")
         r.raise_for_status()
         requirements = (r.json().get("data") or {}).get("prerequisites", [])
+        challenge["requirements"] = {"prerequisites": [], "anonymize": False}
         if len(requirements) > 0:
             # Prefer challenge names over IDs
             r2 = self.api.get("/api/v1/challenges?view=admin")
             r2.raise_for_status()
             challenges = r2.json()["data"]
-            challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
+            challenge["requirements"]["prerequisites"] = [c["name"] for c in challenges if c["id"] in requirements]
         # Add anonymize flag
-        challenge["require_anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
+        challenge["requirements"]["anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
 
         # Add next
         nid = challenge_data.get("next_id", None)
@@ -992,10 +1003,18 @@ class Challenge(dict):
 
             if challenge[key] != normalized_challenge[key]:
                 if key == "requirements":
-                    if self._compare_challenge_requirements(challenge[key], normalized_challenge[key]):
-                        continue
+                    if type(challenge[key]) == dict:
+                        cr = challenge[key]["prerequisites"]
+                        ca = challenge[key].get("anonymize", False)
+                    else:
+                        cr = challenge[key]
+                        ca = False
+                    if self._compare_challenge_requirements(cr, normalized_challenge[key]["prerequisites"]):
+                        if ca == normalized_challenge[key]["anonymize"]:
+                            continue
+
                 if key == "next":
-                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]):
+                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]["prerequisites"]):
                         continue
 
                 click.secho(

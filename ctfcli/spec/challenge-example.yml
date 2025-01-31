@@ -116,14 +116,15 @@ requirements:
     - "Warmup"
     - "Are you alive"
 
-# Requirements has a flag named "anonymize". It displays anonymized
-# challenge if it is set to true. Otherwise, the challenge will be 
-# hidden until a user satisfys the prerequisites.
-# default is false.
-# Can be removed if unused
-require_anonymize: false
+# The following format for requirements can also be used. This format can also
+# support the "anonymize" flag, which will display the challenge but with all 
+# the challenge information anonymized if it is not unlocked yet.
+#requirements:
+#    prerequisites:
+#        - "Warmup"
+#        - "Are you alive"
+#    anonymize: true
 
-# The next is used to display a next recommended challenge to a user when 
 # the user correctly answers the current challenge.
 # Can be removed if unused
 # Accepts a challenge name as a string, a challenge ID as an integer, or null
