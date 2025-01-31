@@ -1014,7 +1014,7 @@ class Challenge(dict):
                             continue
 
                 if key == "next":
-                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]["prerequisites"]):
+                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]):
                         continue
 
                 click.secho(
