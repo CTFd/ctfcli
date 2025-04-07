@@ -10,6 +10,10 @@ from ctfcli.core.exceptions import ProjectNotInitialized
 
 
 class Config:
+    _env_vars = {
+        "CTFD_TOKEN": "access_token",
+    }
+
     def __init__(self):
         self.base_path = self.get_base_path()
         self.project_path = self.get_project_path()
@@ -25,6 +29,24 @@ class Config:
 
         self.config = parser
         self.challenges = dict(self.config["challenges"])
+
+        # Load environment variables
+        self._env_overrides()
+
+    def _env_overrides(self):
+        """
+        For each environment variable specified in _env_vars, check if it exists
+        and if so, add it to the config under the "config" section.
+        """
+        for env_var, config_key in self._env_vars.items():
+            env_value = os.getenv(env_var)
+            if not env_value:
+                continue
+
+            if not self.config.has_section("config"):
+                self.config.add_section("config")
+
+            self.config["config"][config_key] = env_value
 
     def __getitem__(self, key):
         return self.config[key]

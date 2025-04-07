@@ -3,6 +3,7 @@ from urllib.parse import urljoin
 from requests import Session
 
 from ctfcli.core.config import Config
+from ctfcli.core.exceptions import MissingAPIKey
 
 
 class API(Session):
@@ -11,7 +12,11 @@ class API(Session):
 
         # Load required configuration values
         self.url = config["config"]["url"]
-        self.access_token = config["config"]["access_token"]
+
+        try:
+            self.access_token = config["config"]["access_token"]
+        except KeyError:
+            raise MissingAPIKey()
 
         # Handle SSL verification disabling
         try:
