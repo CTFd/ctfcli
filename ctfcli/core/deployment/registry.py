@@ -25,6 +25,12 @@ class RegistryDeploymentHandler(DeploymentHandler):
             )
             return DeploymentResult(False)
 
+        if self.challenge.image.compose:
+            click.secho(
+                "Cannot use registry deployer with __compose__ stacks", fg="red"
+            )
+            return DeploymentResult(False)
+
         # resolve a location for the image push
         # e.g. registry.example.com/test-project/challenge-image-name
         # challenge image name is appended to the host provided for the deployment

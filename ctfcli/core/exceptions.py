@@ -38,6 +38,12 @@ class InvalidChallengeFile(ChallengeException):
 class RemoteChallengeNotFound(ChallengeException):
     pass
 
+class ImageException(ChallengeException):
+    pass
+
+class InvalidComposeOperation(ImageException):
+    pass
+
 
 class LintException(Exception):
     def __init__(self, *args, issues: Dict[str, List[str]] = None):
