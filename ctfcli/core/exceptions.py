@@ -6,7 +6,7 @@ import click
 class MissingAPIKey(Exception):
     def __str__(self):
         return (
-            "Missing API key. Please set the API key in your configuration file or set CTFD_TOKEN environment variable."
+            "Missing API key. Please set the API key in your configuration file or set CTFCLI_ACCESS_TOKEN environment variable."
         )
 
 

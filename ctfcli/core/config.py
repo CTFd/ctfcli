@@ -11,7 +11,8 @@ from ctfcli.core.exceptions import ProjectNotInitialized
 
 class Config:
     _env_vars = {
-        "CTFD_TOKEN": "access_token",
+        "CTFCLI_ACCESS_TOKEN": "access_token",
+        "CTFCLI_URL": "url",
     }
 
     def __init__(self):
