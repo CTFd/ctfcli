@@ -3,6 +3,22 @@ from typing import Dict, List
 import click
 
 
+class MissingAPIKey(Exception):
+    def __str__(self):
+        return (
+            "Missing API key. "
+            "Please set the API key in your configuration file or set the CTFCLI_ACCESS_TOKEN environment variable."
+        )
+
+
+class MissingInstanceURL(Exception):
+    def __str__(self):
+        return (
+            "Missing CTFd instance URL. "
+            "Please set the instance URL in your configuration file or set the CTFCLI_URL environment variable."
+        )
+
+
 class ProjectNotInitialized(Exception):
     pass
 
