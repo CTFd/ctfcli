@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 from requests import Session
 
 from ctfcli.core.config import Config
-from ctfcli.core.exceptions import MissingAPIKey
+from ctfcli.core.exceptions import MissingAPIKey, MissingInstanceURL
 
 
 class API(Session):
@@ -11,7 +11,10 @@ class API(Session):
         config = Config()
 
         # Load required configuration values
-        self.url = config["config"]["url"]
+        try:
+            self.url = config["config"]["url"]
+        except KeyError:
+            raise MissingInstanceURL()
 
         try:
             self.access_token = config["config"]["access_token"]

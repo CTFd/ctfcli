@@ -16,7 +16,11 @@ from ctfcli.cli.media import MediaCommand
 from ctfcli.cli.pages import PagesCommand
 from ctfcli.cli.plugins import PluginsCommand
 from ctfcli.cli.templates import TemplatesCommand
-from ctfcli.core.exceptions import MissingAPIKey, ProjectNotInitialized
+from ctfcli.core.exceptions import (
+    MissingAPIKey,
+    MissingInstanceURL,
+    ProjectNotInitialized,
+)
 from ctfcli.core.plugins import load_plugins
 from ctfcli.utils.git import check_if_dir_is_inside_git_repo
 
@@ -147,6 +151,10 @@ def main():
 
         if isinstance(ret, int):
             sys.exit(ret)
+
+    except MissingInstanceURL as e:
+        click.secho(e, fg="red")
+        sys.exit(1)
 
     except MissingAPIKey as e:
         click.secho(e, fg="red")
