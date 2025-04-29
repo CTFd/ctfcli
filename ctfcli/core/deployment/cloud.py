@@ -3,9 +3,9 @@ import subprocess
 import time
 from typing import Dict, Optional
 from urllib.parse import urlparse
-from slugify import slugify
 
 import click
+from slugify import slugify
 
 from ctfcli.core.api import API
 from ctfcli.core.config import Config
