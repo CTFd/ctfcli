@@ -1,5 +1,23 @@
 # Changelog
 
+# 0.1.4 / 2025-04-29
+
+### Added
+
+- Added support for `ctf instance` with the `ctf instance config` command which can be used to `get` and `set` configuration on CTFd
+- Added `ctf media add`, `ctf media rm`, `ctf media url`
+  - Allows ctfcli repos to manage files locally and reference the actual server URLs of media files in Pages
+  - Adds concept of replacing placeholders like `{{ media/ctfd.png }}` with the actual URL on the server
+- Added the `attribution` field to challenge.yml
+- Added the `next` field to challenge.yml
+- Added ability to anoymize challenges while specifying prerequisites
+- Added specifying CTFd instance URL and access token via envvars: `CTFCLI_URL`, `CTFCLI_ACCESS_TOKEN`
+
+### Fixed
+
+- Fix issue with managing challenges with an empty files section
+- Fix issue where images could not be deployed due to being named incorrectly
+
 # 0.1.3 / 2024-08-20
 
 ### Added
