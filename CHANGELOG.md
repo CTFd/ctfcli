@@ -18,8 +18,6 @@
 - Fix issue with managing challenges with an empty files section
 - Fix issue where images could not be deployed due to being named incorrectly
 
-### Changed
-
 # 0.1.3 / 2024-08-20
 
 ### Added
