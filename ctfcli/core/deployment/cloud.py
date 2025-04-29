@@ -5,6 +5,7 @@ from typing import Dict, Optional
 from urllib.parse import urlparse
 
 import click
+from slugify import slugify
 
 from ctfcli.core.api import API
 from ctfcli.core.config import Config
@@ -118,7 +119,8 @@ class CloudDeploymentHandler(DeploymentHandler):
                 return self.api.get(f"/api/v1/services/{service_data['id']}").json()["data"]
 
         # Create the service if it doesn't exist
-        return self.api.post("/api/v1/services", json={"name": self.image_name, "image": image_location}).json()["data"]
+        image_name_slug = slugify(self.image_name)
+        return self.api.post("/api/v1/services", json={"name": image_name_slug, "image": image_location}).json()["data"]
 
     def _await_service_deployment(self, service_data, interval=10, timeout=180) -> Optional[Dict]:
         service_id = service_data["id"]

@@ -24,6 +24,7 @@ appdirs = "^1.4.4"
 colorama = "^0.4.6"
 fire = "^0.7.0"
 typing-extensions = "^4.7.1"
+python-slugify = "^8.0.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
