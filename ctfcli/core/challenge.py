@@ -47,7 +47,7 @@ class Challenge(dict):
         "type", "extra", "image", "protocol", "host",
         "connection_info", "healthcheck", "attempts", "flags",
         "files", "topics", "tags", "files", "hints",
-        "requirements", "state", "version",
+        "requirements", "next", "state", "version",
         # fmt: on
     ]
 
@@ -61,7 +61,7 @@ class Challenge(dict):
     @staticmethod
     def load_installed_challenge(challenge_id) -> Dict:
         api = API()
-        r = api.get(f"/api/v1/challenges/{challenge_id}")
+        r = api.get(f"/api/v1/challenges/{challenge_id}?view=admin")
 
         if not r.ok:
             raise RemoteChallengeNotFound(f"Could not load challenge with id={challenge_id}")
@@ -103,6 +103,11 @@ class Challenge(dict):
         if key in ["tags", "hints", "topics", "requirements", "files"] and value == []:
             return True
 
+        if key == "requirements" and value == {"prerequisites": [], "anonymize": False}:
+            return True
+
+        if key == "next" and value is None:
+            return True
         return False
 
     @staticmethod
@@ -224,7 +229,9 @@ class Challenge(dict):
         # Check if it's a local pre-built image
         if (
             subprocess.call(
-                ["docker", "inspect", challenge_image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                ["docker", "inspect", challenge_image],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
             == 0
         ):
@@ -407,14 +414,28 @@ class Challenge(dict):
     def _set_required_challenges(self):
         remote_challenges = self.load_installed_challenges()
         required_challenges = []
+        anonymize = False
+        if type(self["requirements"]) == dict:
+            rc = self["requirements"].get("prerequisites", [])
+            anonymize = self["requirements"].get("anonymize", False)
+        else:
+            rc = self["requirements"]
 
-        for required_challenge in self["requirements"]:
+        for required_challenge in rc:
             if type(required_challenge) == str:
                 # requirement by name
                 # find the challenge id from installed challenges
+                found = False
                 for remote_challenge in remote_challenges:
                     if remote_challenge["name"] == required_challenge:
                         required_challenges.append(remote_challenge["id"])
+                        found = True
+                        break
+                if found is False:
+                    click.secho(
+                        f'Challenge id cannot be found. Skipping invalid requirement name "{required_challenge}".',
+                        fg="yellow",
+                    )
 
             elif type(required_challenge) == int:
                 # requirement by challenge id
@@ -429,9 +450,48 @@ class Challenge(dict):
                 fg="yellow",
             )
             required_challenges.remove(self.challenge_id)
+        required_challenges.sort()
 
-        requirements_payload = {"requirements": {"prerequisites": required_challenges}}
+        requirements_payload = {
+            "requirements": {
+                "prerequisites": required_challenges,
+                "anonymize": anonymize,
+            }
+        }
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=requirements_payload)
+        r.raise_for_status()
+
+    def _set_next(self, _next):
+        if type(_next) == str:
+            # nid by name
+            # find the challenge id from installed challenges
+            remote_challenges = self.load_installed_challenges()
+            for remote_challenge in remote_challenges:
+                if remote_challenge["name"] == _next:
+                    _next = remote_challenge["id"]
+                    break
+            if type(_next) == str:
+                click.secho(
+                    "Challenge cannot find next challenge. Maybe it is invalid name or id. It will be cleared.",
+                    fg="yellow",
+                )
+                _next = None
+        elif type(_next) == int and _next > 0:
+            # nid by challenge id
+            # trust it and use it directly
+            _next = remote_challenge["id"]
+        else:
+            _next = None
+
+        if self.challenge_id == _next:
+            click.secho(
+                "Challenge cannot set next challenge itself. Skipping invalid next challenge.",
+                fg="yellow",
+            )
+            _next = None
+
+        next_payload = {"next_id": _next}
+        r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=next_payload)
         r.raise_for_status()
 
     # Compare challenge requirements, will resolve all IDs to names
@@ -451,7 +511,27 @@ class Challenge(dict):
 
             return normalized
 
-        return normalize_requirements(r1) == normalize_requirements(r2)
+        nr1 = normalize_requirements(r1)
+        nr1.sort()
+        nr2 = normalize_requirements(r2)
+        nr2.sort()
+        return nr1 == nr2
+
+    # Compare next challenges, will resolve all IDs to names
+    def _compare_challenge_next(self, r1: Union[str, int, None], r2: Union[str, int, None]) -> bool:
+        def normalize_next(r):
+            normalized = None
+            if type(r) == int:
+                if r > 0:
+                    remote_challenge = self.load_installed_challenge(r)
+                    if remote_challenge["id"] == r:
+                        normalized = remote_challenge["name"]
+            else:
+                normalized = r
+
+            return normalized
+
+        return normalize_next(r1) == normalize_next(r2)
 
     # Normalize challenge data from the API response to match challenge.yml
     # It will remove any extra fields from the remote, as well as expand external references
@@ -462,7 +542,15 @@ class Challenge(dict):
     def _normalize_challenge(self, challenge_data: Dict[str, Any]):
         challenge = {}
 
-        copy_keys = ["name", "category", "attribution", "value", "type", "state", "connection_info"]
+        copy_keys = [
+            "name",
+            "category",
+            "attribution",
+            "value",
+            "type",
+            "state",
+            "connection_info",
+        ]
         for key in copy_keys:
             if key in challenge_data:
                 challenge[key] = challenge_data[key]
@@ -483,9 +571,15 @@ class Challenge(dict):
         r.raise_for_status()
         flags = r.json()["data"]
         challenge["flags"] = [
-            f["content"]
-            if f["type"] == "static" and (f["data"] is None or f["data"] == "")
-            else {"content": f["content"].strip().replace("\r\n", "\n"), "type": f["type"], "data": f["data"]}
+            (
+                f["content"]
+                if f["type"] == "static" and (f["data"] is None or f["data"] == "")
+                else {
+                    "content": f["content"].strip().replace("\r\n", "\n"),
+                    "type": f["type"],
+                    "data": f["data"],
+                }
+            )
             for f in flags
         ]
 
@@ -501,7 +595,7 @@ class Challenge(dict):
         hints = r.json()["data"]
         # skipping pre-requisites for hints because they are not supported in ctfcli
         challenge["hints"] = [
-            {"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"] for h in hints
+            ({"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"]) for h in hints
         ]
 
         # Add topics
@@ -514,12 +608,25 @@ class Challenge(dict):
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/requirements")
         r.raise_for_status()
         requirements = (r.json().get("data") or {}).get("prerequisites", [])
+        challenge["requirements"] = {"prerequisites": [], "anonymize": False}
         if len(requirements) > 0:
             # Prefer challenge names over IDs
-            r = self.api.get("/api/v1/challenges")
+            r2 = self.api.get("/api/v1/challenges?view=admin")
+            r2.raise_for_status()
+            challenges = r2.json()["data"]
+            challenge["requirements"]["prerequisites"] = [c["name"] for c in challenges if c["id"] in requirements]
+        # Add anonymize flag
+        challenge["requirements"]["anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
+
+        # Add next
+        nid = challenge_data.get("next_id", None)
+        if nid:
+            # Prefer challenge names over IDs
+            r = self.api.get(f"/api/v1/challenges/{nid}")
             r.raise_for_status()
-            challenges = r.json()["data"]
-            challenge["requirements"] = [c["name"] for c in challenges if c["id"] in requirements]
+            challenge["next"] = (r.json().get("data") or {}).get("name", None)
+        else:
+            challenge["next"] = None
 
         return challenge
 
@@ -528,7 +635,10 @@ class Challenge(dict):
         normalized = {}
         for f in remote_files:
             file_parts = f.split("?token=")[0].split("/")
-            normalized[file_parts[-1]] = {"url": f, "location": f"{file_parts[-2]}/{file_parts[-1]}"}
+            normalized[file_parts[-1]] = {
+                "url": f,
+                "location": f"{file_parts[-2]}/{file_parts[-1]}",
+            }
 
         return normalized
 
@@ -560,7 +670,13 @@ class Challenge(dict):
         remote_challenge = self.load_installed_challenge(self.challenge_id)
 
         # if value, category, type or description are ignored, revert them to the remote state in the initial payload
-        reset_properties_if_ignored = ["value", "category", "type", "description", "attribution"]
+        reset_properties_if_ignored = [
+            "value",
+            "category",
+            "type",
+            "description",
+            "attribution",
+        ]
         for p in reset_properties_if_ignored:
             if p in ignore:
                 challenge_payload[p] = remote_challenge[p]
@@ -614,7 +730,10 @@ class Challenge(dict):
                     # sha1sum is present in CTFd 3.7+, use it instead of always re-uploading the file if possible
                     remote_file_sha1sum = sha1sums[remote_files[local_file_name]["location"]]
                     if remote_file_sha1sum is not None:
-                        with open(self.challenge_directory / local_files[local_file_name], "rb") as lf:
+                        with open(
+                            self.challenge_directory / local_files[local_file_name],
+                            "rb",
+                        ) as lf:
                             local_file_sha1sum = hash_file(lf)
 
                         if local_file_sha1sum == remote_file_sha1sum:
@@ -633,6 +752,11 @@ class Challenge(dict):
         # Update requirements
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
+
+        # Set next
+        _next = challenge.get("next", None)
+        if "next" not in ignore:
+            self._set_next(_next)
 
         make_challenge_visible = False
 
@@ -711,6 +835,11 @@ class Challenge(dict):
         if challenge.get("requirements") and "requirements" not in ignore:
             self._set_required_challenges()
 
+        # Add next
+        _next = challenge.get("next", None)
+        if "next" not in ignore:
+            self._set_next(_next)
+
         # Bring back the challenge if it's supposed to be visible
         # Either explicitly, or by assuming the default value (possibly because the state is ignored)
         if challenge.get("state", "visible") == "visible" or "state" in ignore:
@@ -723,7 +852,14 @@ class Challenge(dict):
         issues = {"fields": [], "dockerfile": [], "hadolint": [], "files": []}
 
         # Check if required fields are present
-        for field in ["name", "author", "category", "description", "attribution", "value"]:
+        for field in [
+            "name",
+            "author",
+            "category",
+            "description",
+            "attribution",
+            "value",
+        ]:
             # value is allowed to be none if the challenge type is dynamic
             if field == "value" and challenge.get("type") == "dynamic":
                 continue
@@ -858,12 +994,33 @@ class Challenge(dict):
                 if self.is_default_challenge_property(key, normalized_challenge[key]):
                     continue
 
+                click.secho(
+                    f"{key} is not in challenge.",
+                    fg="yellow",
+                )
+
                 return False
 
             if challenge[key] != normalized_challenge[key]:
                 if key == "requirements":
-                    if self._compare_challenge_requirements(challenge[key], normalized_challenge[key]):
+                    if type(challenge[key]) == dict:
+                        cr = challenge[key]["prerequisites"]
+                        ca = challenge[key].get("anonymize", False)
+                    else:
+                        cr = challenge[key]
+                        ca = False
+                    if self._compare_challenge_requirements(cr, normalized_challenge[key]["prerequisites"]):
+                        if ca == normalized_challenge[key]["anonymize"]:
+                            continue
+
+                if key == "next":
+                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]):
                         continue
+
+                click.secho(
+                    f"{key} comparison failed.",
+                    fg="yellow",
+                )
 
                 return False
 
@@ -874,18 +1031,30 @@ class Challenge(dict):
                 self._validate_files()
                 local_files = {Path(f).name: f for f in challenge["files"]}
             except InvalidChallengeFile:
+                click.secho(
+                    "InvalidChallengeFile",
+                    fg="yellow",
+                )
                 return False
 
             remote_files = self._normalize_remote_files(remote_challenge["files"])
             # Check if there are no extra local files
             for local_file in local_files:
                 if local_file not in remote_files:
+                    click.secho(
+                        f"{local_file} is not in remote challenge.",
+                        fg="yellow",
+                    )
                     return False
 
             sha1sums = self._get_files_sha1sums()
             # Check if all remote files are present locally
             for remote_file_name in remote_files:
                 if remote_file_name not in local_files:
+                    click.secho(
+                        f"{remote_file_name} is not in local challenge.",
+                        fg="yellow",
+                    )
                     return False
 
                 # sha1sum is present in CTFd 3.7+, use it instead of downloading the file if possible
@@ -895,6 +1064,10 @@ class Challenge(dict):
                         local_file_sha1sum = hash_file(lf)
 
                     if local_file_sha1sum != remote_file_sha1sum:
+                        click.secho(
+                            "sha1sum does not match with remote one.",
+                            fg="yellow",
+                        )
                         return False
 
                     return True
@@ -906,6 +1079,10 @@ class Challenge(dict):
                 local_file_contents = (self.challenge_directory / local_files[remote_file_name]).read_bytes()
 
                 if remote_file_contents != local_file_contents:
+                    click.secho(
+                        "the file content does not match with the remote one.",
+                        fg="yellow",
+                    )
                     return False
 
         return True

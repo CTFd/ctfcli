@@ -61,6 +61,7 @@ flags:
     - {
         type: "static",
         content: "flag{wat}",
+        data: "case_sensitive",
     }
     # A static case insensitive flag
     - {
@@ -114,6 +115,22 @@ hints:
 requirements:
     - "Warmup"
     - "Are you alive"
+
+# The following format for requirements can also be used. This format can also
+# support the "anonymize" flag, which will display the challenge but with all 
+# the challenge information anonymized if it is not unlocked yet.
+#requirements:
+#    prerequisites:
+#        - "Warmup"
+#        - "Are you alive"
+#    anonymize: true
+
+# The next is used to display a next recommended challenge to a user when 
+# the user correctly answers the current challenge.
+# Can be removed if unused
+# Accepts a challenge name as a string, a challenge ID as an integer, or null
+# if you want to remove or disable it.
+next: null
 
 # The state of the challenge.
 # If the field is omitted, the challenge is visible by default.
