@@ -736,7 +736,7 @@ class Challenge(dict):
                         ) as lf:
                             local_file_sha1sum = hash_file(lf)
 
-                        if local_file_sha1sum == remote_file_sha1sum:
+                        if not "checksum" in ignore and local_file_sha1sum == remote_file_sha1sum:
                             continue
 
                     # if sha1sums are not present, or the hashes are different, re-upload the file
