@@ -107,6 +107,9 @@ hints:
         cost: 10
     }
     - This hint is free
+    - title: Titled Hint
+      content: This hint has a title and costs points
+      cost: 10
 
 # Requirements are used to make a challenge require another challenge to be
 # solved before being available.

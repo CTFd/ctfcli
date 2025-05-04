@@ -398,12 +398,14 @@ class Challenge(dict):
             if type(hint) == str:
                 hint_payload = {
                     "content": hint,
+                    "title": "",
                     "cost": 0,
                     "challenge_id": self.challenge_id,
                 }
             else:
                 hint_payload = {
                     "content": hint["content"],
+                    "title": hint.get("title", ""),
                     "cost": hint["cost"],
                     "challenge_id": self.challenge_id,
                 }
