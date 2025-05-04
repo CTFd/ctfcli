@@ -699,9 +699,9 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.post.assert_has_calls(
             [
-                call("/api/v1/hints", json={"content": "free hint", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"content": "free hint", "title": "", "cost": 0, "challenge_id": 1}),
                 call().raise_for_status(),
-                call("/api/v1/hints", json={"content": "paid hint", "cost": 100, "challenge_id": 1}),
+                call("/api/v1/hints", json={"content": "paid hint", "title": "", "cost": 100, "challenge_id": 1}),
                 call().raise_for_status(),
             ]
         )
@@ -1029,7 +1029,7 @@ class TestSyncChallenge(unittest.TestCase):
                 call().raise_for_status(),
                 call("/api/v1/files", files=ANY, data={"challenge_id": 1, "type": "challenge"}),
                 call().raise_for_status(),
-                call("/api/v1/hints", json={"content": "free hint", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"title": "", "content": "free hint", "cost": 0, "challenge_id": 1}),
                 call().raise_for_status(),
             ]
         )
@@ -1237,8 +1237,8 @@ class TestCreateChallenge(unittest.TestCase):
                 # files
                 call("/api/v1/files", files=ANY, data={"challenge_id": 3, "type": "challenge"}),
                 # hints
-                call("/api/v1/hints", json={"content": "free hint", "cost": 0, "challenge_id": 3}),
-                call("/api/v1/hints", json={"content": "paid hint", "cost": 100, "challenge_id": 3}),
+                call("/api/v1/hints", json={"title": "", "content": "free hint", "cost": 0, "challenge_id": 3}),
+                call("/api/v1/hints", json={"title": "", "content": "paid hint", "cost": 100, "challenge_id": 3}),
             ]
         )
 
