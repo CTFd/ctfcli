@@ -406,7 +406,7 @@ class Challenge(dict):
                 hint_payload = {
                     "content": hint["content"],
                     "title": hint.get("title", ""),
-                    "cost": hint["cost"],
+                    "cost": hint.get("cost", 0),
                     "challenge_id": self.challenge_id,
                 }
 
