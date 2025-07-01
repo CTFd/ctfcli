@@ -558,7 +558,7 @@ class Challenge(dict):
                 challenge[key] = challenge_data[key]
 
         challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
-        challenge["attribution"] = challenge_data.get("attribution", "").strip().replace("\r\n", "\n").replace("\t", "")
+        challenge["attribution"] = (challenge_data.get("attribution", "") or "").strip().replace("\r\n", "\n").replace("\t", "")
         challenge["attempts"] = challenge_data["max_attempts"]
 
         for key in ["initial", "decay", "minimum"]:
@@ -570,55 +570,91 @@ class Challenge(dict):
 
         # Add flags
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/flags")
-        r.raise_for_status()
-        flags = r.json()["data"]
-        challenge["flags"] = [
-            (
-                f["content"]
-                if f["type"] == "static" and (f["data"] is None or f["data"] == "")
-                else {
-                    "content": f["content"].strip().replace("\r\n", "\n"),
-                    "type": f["type"],
-                    "data": f["data"],
-                }
+        if r.status_code == 403:
+            click.secho(
+                f"Could not fetch flags due to permissions.",
+                fg="yellow",
             )
-            for f in flags
-        ]
+            challenge["flags"] = []
+        else:
+            r.raise_for_status()
+            flags = r.json()["data"]
+            challenge["flags"] = [
+                (
+                    f["content"]
+                    if f["type"] == "static" and (f["data"] is None or f["data"] == "")
+                    else {
+                        "content": f["content"].strip().replace("\r\n", "\n"),
+                        "type": f["type"],
+                        "data": f["data"],
+                    }
+                )
+                for f in flags
+            ]
 
         # Add tags
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/tags")
-        r.raise_for_status()
-        tags = r.json()["data"]
-        challenge["tags"] = [t["value"] for t in tags]
+        if r.status_code == 403:
+            click.secho(
+                f"Could not fetch tags due to permissions.",
+                fg="yellow",
+            )
+            challenge["tags"] = []
+        else:
+            r.raise_for_status()
+            tags = r.json()["data"]
+            challenge["tags"] = [t["value"] for t in tags]
+            
 
         # Add hints
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/hints")
-        r.raise_for_status()
-        hints = r.json()["data"]
-        # skipping pre-requisites for hints because they are not supported in ctfcli
-        challenge["hints"] = [
-            ({"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"]) for h in hints
-        ]
+        if r.status_code == 403:
+            click.secho(
+                f"Could not fetch hints due to permissions.",
+                fg="yellow",
+            )
+            challenge["hints"] = []
+        else:
+            r.raise_for_status()
+            hints = r.json()["data"]
+            # skipping pre-requisites for hints because they are not supported in ctfcli
+            challenge["hints"] = [
+                ({"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"]) for h in hints
+            ]
 
         # Add topics
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics")
-        r.raise_for_status()
-        topics = r.json()["data"]
-        challenge["topics"] = [t["value"] for t in topics]
+        if r.status_code == 403:
+            click.secho(
+                f"Could not fetch topics due to permissions.",
+                fg="yellow",
+            )
+            challenge["topics"] = []
+        else:
+            r.raise_for_status()
+            topics = r.json()["data"]
+            challenge["topics"] = [t["value"] for t in topics]
 
         # Add requirements
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/requirements")
-        r.raise_for_status()
-        requirements = (r.json().get("data") or {}).get("prerequisites", [])
-        challenge["requirements"] = {"prerequisites": [], "anonymize": False}
-        if len(requirements) > 0:
-            # Prefer challenge names over IDs
-            r2 = self.api.get("/api/v1/challenges?view=admin")
-            r2.raise_for_status()
-            challenges = r2.json()["data"]
-            challenge["requirements"]["prerequisites"] = [c["name"] for c in challenges if c["id"] in requirements]
-        # Add anonymize flag
-        challenge["requirements"]["anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
+        if r.status_code == 403:
+            click.secho(
+                f"Could not fetch requirements due to permissions.",
+                fg="yellow",
+            )
+            challenge["requirements"] = {"prerequisites": [], "anonymize": False}
+        else:
+            r.raise_for_status()
+            requirements = (r.json().get("data") or {}).get("prerequisites", [])
+            challenge["requirements"] = {"prerequisites": [], "anonymize": False}
+            if len(requirements) > 0:
+                # Prefer challenge names over IDs
+                r2 = self.api.get("/api/v1/challenges?view=admin")
+                r2.raise_for_status()
+                challenges = r2.json()["data"]
+                challenge["requirements"]["prerequisites"] = [c["name"] for c in challenges if c["id"] in requirements]
+            # Add anonymize flag
+            challenge["requirements"]["anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
 
         # Add next
         nid = challenge_data.get("next_id", None)
