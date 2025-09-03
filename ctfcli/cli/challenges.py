@@ -578,7 +578,7 @@ class ChallengeCommand:
         if isinstance(ignore, str):
             ignore = (ignore,)
 
-        config = Config()
+        _config = Config()
         remote_challenges = Challenge.load_installed_challenges()
 
         failed_installs = []
@@ -590,9 +590,7 @@ class ChallengeCommand:
                     challenge_instance["state"] = "hidden"
 
                 click.secho(
-                    f"Installing '{challenge_instance}' ("
-                    f"{challenge_instance.challenge_file_path.relative_to(config.project_path)}"
-                    f") ...",
+                    f"Installing '{challenge_instance}' ({challenge_instance.challenge_file_path}) ...",
                     fg="blue",
                 )
 
