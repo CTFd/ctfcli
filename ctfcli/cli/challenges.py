@@ -590,9 +590,7 @@ class ChallengeCommand:
                     challenge_instance["state"] = "hidden"
 
                 click.secho(
-                    f"Installing '{challenge_instance}' ("
-                    f"{challenge_instance.challenge_file_path.relative_to(config.project_path)}"
-                    f") ...",
+                    f"Installing '{challenge_instance}' ({challenge_instance.challenge_file_path}) ...",
                     fg="blue",
                 )
 
