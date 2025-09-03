@@ -578,7 +578,7 @@ class ChallengeCommand:
         if isinstance(ignore, str):
             ignore = (ignore,)
 
-        config = Config()
+        _config = Config()
         remote_challenges = Challenge.load_installed_challenges()
 
         failed_installs = []
