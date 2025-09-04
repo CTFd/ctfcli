@@ -45,7 +45,7 @@ class Challenge(dict):
         # fmt: off
         "name", "author", "category", "description", "attribution", "value",
         "type", "extra", "image", "protocol", "host",
-        "connection_info", "healthcheck", "attempts", "flags",
+        "connection_info", "healthcheck", "attempts", "logic", "flags",
         "files", "topics", "tags", "files", "hints",
         "requirements", "next", "state", "version",
         # fmt: on
@@ -290,6 +290,10 @@ class Challenge(dict):
 
         if "connection_info" not in ignore:
             challenge_payload["connection_info"] = challenge.get("connection_info", None)
+
+        if "logic" not in ignore:
+            if challenge.get("logic"):
+                challenge_payload["logic"] = challenge.get("logic") or "any"
 
         if "extra" not in ignore:
             challenge_payload = {**challenge_payload, **challenge.get("extra", {})}
@@ -552,13 +556,16 @@ class Challenge(dict):
             "type",
             "state",
             "connection_info",
+            "logic",
         ]
         for key in copy_keys:
             if key in challenge_data:
                 challenge[key] = challenge_data[key]
 
         challenge["description"] = challenge_data["description"].strip().replace("\r\n", "\n").replace("\t", "")
-        challenge["attribution"] = challenge_data.get("attribution", "").strip().replace("\r\n", "\n").replace("\t", "")
+        challenge["attribution"] = challenge_data.get("attribution", "")
+        if challenge["attribution"]:
+            challenge["attribution"] = challenge["attribution"].strip().replace("\r\n", "\n").replace("\t", "")
         challenge["attempts"] = challenge_data["max_attempts"]
 
         for key in ["initial", "decay", "minimum"]:
@@ -685,6 +692,8 @@ class Challenge(dict):
 
         # Update simple properties
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=challenge_payload)
+        if r.ok is False:
+            click.secho(f"Failed to sync challenge: ({r.status_code}) {r.text}", fg="red")
         r.raise_for_status()
 
         # Update flags
@@ -809,6 +818,8 @@ class Challenge(dict):
                 challenge_payload[p] = ""
 
         r = self.api.post("/api/v1/challenges", json=challenge_payload)
+        if r.ok is False:
+            click.secho(f"Failed to create challenge: ({r.status_code}) {r.text}", fg="red")
         r.raise_for_status()
 
         self.challenge_id = r.json()["data"]["id"]

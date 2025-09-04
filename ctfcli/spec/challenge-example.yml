@@ -51,6 +51,12 @@ healthcheck: writeup/exploit.sh
 # Can be removed if unused
 attempts: 5
 
+# Specifies flag processing behavior of challenge
+# Accept any flag (default): any
+# Require all flags to be provided: all
+# Require all team members to submit any flag: team
+logic: any
+
 # Flags specify answers that your challenge use. You should generally provide at least one.
 # Can be removed if unused
 # Accepts strings or dictionaries of CTFd API data
