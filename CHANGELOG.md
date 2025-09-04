@@ -1,5 +1,16 @@
 # Changelog
 
+# 0.1.5 / 2025-09-04
+
+### Added
+
+- Support for hint titles
+- Support `logic` key for challenges
+
+### Fixed
+
+- Fix issue with resolving relative challenge paths during install
+
 # 0.1.4 / 2025-04-29
 
 ### Added
