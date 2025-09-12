@@ -711,14 +711,14 @@ class ChallengeCommand:
         else:
             challenges = self._resolve_all_challenges()
 
-        deployable_challenges, failed_deployments, failed_syncs = [], [], []
+        deployable_challenges, failed_deployments, skipped_deployments, failed_syncs = [], [], [], []
 
         # get challenges which can be deployed (have an image)
         for challenge_instance in challenges:
             if challenge_instance.get("image"):
                 deployable_challenges.append(challenge_instance)
             else:
-                failed_deployments.append(challenge_instance)
+                skipped_deployments.append(challenge_instance)
 
         config = Config()
         with click.progressbar(deployable_challenges, label="Deploying challenges") as challenges:
@@ -815,9 +815,14 @@ class ChallengeCommand:
 
                 click.secho("Success!\n", fg="green")
 
+        if len(skipped_deployments) > 0:
+            click.secho("Deployment skipped (no image specified) for:",fg="yellow")
+            for challenge_instance in skipped_deployments:
+                click.echo(f" - {challenge_instance}")
+
         if len(failed_deployments) == 0 and len(failed_syncs) == 0:
             click.secho(
-                "Success! All challenges deployed and installed or synced.",
+                "Success! All deployable challenges deployed and installed or synced.",
                 fg="green",
             )
             return 0
