@@ -26,9 +26,7 @@ class RegistryDeploymentHandler(DeploymentHandler):
             return DeploymentResult(False)
 
         if self.challenge.image.compose:
-            click.secho(
-                "Cannot use registry deployer with __compose__ stacks", fg="red"
-            )
+            click.secho("Cannot use registry deployer with __compose__ stacks", fg="red")
             return DeploymentResult(False)
 
         # resolve a location for the image push

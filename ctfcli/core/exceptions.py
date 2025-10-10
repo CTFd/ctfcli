@@ -38,8 +38,10 @@ class InvalidChallengeFile(ChallengeException):
 class RemoteChallengeNotFound(ChallengeException):
     pass
 
+
 class ImageException(ChallengeException):
     pass
+
 
 class InvalidComposeOperation(ImageException):
     pass

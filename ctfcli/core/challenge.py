@@ -885,7 +885,10 @@ class Challenge(dict):
                 issues["fields"].append(f"challenge.yml is missing required field: {field}")
 
         # Check that the image field and Dockerfile match
-        if (self.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") not in [".", "__compose__"]:
+        if (self.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") not in [
+            ".",
+            "__compose__",
+        ]:
             issues["dockerfile"].append("Dockerfile exists but image field does not point to it or compose")
 
         # Check that Dockerfile exists and is EXPOSE'ing a port
