@@ -816,7 +816,7 @@ class ChallengeCommand:
                 click.secho("Success!\n", fg="green")
 
         if len(skipped_deployments) > 0:
-            click.secho("Deployment skipped (no image specified) for:",fg="yellow")
+            click.secho("Deployment skipped (no image specified) for:", fg="yellow")
             for challenge_instance in skipped_deployments:
                 click.echo(f" - {challenge_instance}")
 

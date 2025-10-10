@@ -4,6 +4,7 @@ import tempfile
 from os import PathLike
 from pathlib import Path
 from typing import Optional, Union
+
 from ctfcli.core.exceptions import InvalidComposeOperation
 
 
