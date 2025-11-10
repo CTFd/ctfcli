@@ -653,7 +653,7 @@ class ChallengeCommand:
         if isinstance(ignore, str):
             ignore = (ignore,)
 
-        config = Config()
+        _config = Config()
         remote_challenges = Challenge.load_installed_challenges()
 
         failed_syncs = []
@@ -718,7 +718,7 @@ class ChallengeCommand:
             else:
                 skipped_deployments.append(challenge_instance)
 
-        config = Config()
+        _config = Config()
         with click.progressbar(deployable_challenges, label="Deploying challenges") as challenges:
             for challenge_instance in challenges:
                 click.echo()
