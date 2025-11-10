@@ -653,7 +653,7 @@ class ChallengeCommand:
         if isinstance(ignore, str):
             ignore = (ignore,)
 
-        config = Config()
+        _config = Config()
         remote_challenges = Challenge.load_installed_challenges()
 
         failed_syncs = []
@@ -672,9 +672,7 @@ class ChallengeCommand:
                     continue
 
                 click.secho(
-                    f"Syncing '{challenge_name}' ("
-                    f"{challenge_instance.challenge_file_path.relative_to(config.project_path)}"
-                    f") ...",
+                    f"Syncing '{challenge_name}' (" f"{challenge_instance.challenge_file_path}" ") ...",
                     fg="blue",
                 )
                 try:
@@ -720,7 +718,7 @@ class ChallengeCommand:
             else:
                 skipped_deployments.append(challenge_instance)
 
-        config = Config()
+        _config = Config()
         with click.progressbar(deployable_challenges, label="Deploying challenges") as challenges:
             for challenge_instance in challenges:
                 click.echo()
@@ -748,7 +746,7 @@ class ChallengeCommand:
 
                 click.secho(
                     f"Deploying challenge service '{challenge_name}' "
-                    f"({challenge_instance.challenge_file_path.relative_to(config.project_path)}) "
+                    f"({challenge_instance.challenge_file_path}) "
                     f"with {deployment_handler.__class__.__name__} ...",
                     fg="blue",
                 )
@@ -816,7 +814,7 @@ class ChallengeCommand:
                 click.secho("Success!\n", fg="green")
 
         if len(skipped_deployments) > 0:
-            click.secho("Deployment skipped (no image specified) for:",fg="yellow")
+            click.secho("Deployment skipped (no image specified) for:", fg="yellow")
             for challenge_instance in skipped_deployments:
                 click.echo(f" - {challenge_instance}")
 
