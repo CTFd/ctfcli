@@ -672,9 +672,7 @@ class ChallengeCommand:
                     continue
 
                 click.secho(
-                    f"Syncing '{challenge_name}' ("
-                    f"{challenge_instance.challenge_file_path.absolute().relative_to(config.project_path)}"
-                    f") ...",
+                    f"Syncing '{challenge_name}' (" f"{challenge_instance.challenge_file_path}" ") ...",
                     fg="blue",
                 )
                 try:
@@ -748,7 +746,7 @@ class ChallengeCommand:
 
                 click.secho(
                     f"Deploying challenge service '{challenge_name}' "
-                    f"({challenge_instance.challenge_file_path.absolute().relative_to(config.project_path)}) "
+                    f"({challenge_instance.challenge_file_path}) "
                     f"with {deployment_handler.__class__.__name__} ...",
                     fg="blue",
                 )
@@ -816,7 +814,7 @@ class ChallengeCommand:
                 click.secho("Success!\n", fg="green")
 
         if len(skipped_deployments) > 0:
-            click.secho("Deployment skipped (no image specified) for:",fg="yellow")
+            click.secho("Deployment skipped (no image specified) for:", fg="yellow")
             for challenge_instance in skipped_deployments:
                 click.echo(f" - {challenge_instance}")
 
