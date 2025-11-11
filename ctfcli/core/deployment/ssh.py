@@ -47,7 +47,7 @@ class SSHDeploymentHandler(DeploymentHandler):
                 [
                     "ssh",
                     host_url.netloc,
-                    f"cd {remote_path} && " "docker compose up -d --build --remove-orphans -y",
+                    f"cd '{remote_path}' && docker compose up -d --build --remove-orphans -y",
                 ],
                 check=True,
             )
