@@ -198,6 +198,10 @@ class Challenge(dict):
         if not challenge_image:
             return None
 
+        # Check if challenge_image is explicitly marked as __compose__
+        if challenge_image == "__compose__":
+            return Image(challenge_image)
+
         # Check if challenge_image is explicitly marked with registry:// prefix
         if challenge_image.startswith("registry://"):
             challenge_image = challenge_image.replace("registry://", "")
@@ -881,8 +885,11 @@ class Challenge(dict):
                 issues["fields"].append(f"challenge.yml is missing required field: {field}")
 
         # Check that the image field and Dockerfile match
-        if (self.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") != ".":
-            issues["dockerfile"].append("Dockerfile exists but image field does not point to it")
+        if (self.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") not in [
+            ".",
+            "__compose__",
+        ]:
+            issues["dockerfile"].append("Dockerfile exists but image field does not point to it or compose")
 
         # Check that Dockerfile exists and is EXPOSE'ing a port
         if challenge.get("image") == ".":

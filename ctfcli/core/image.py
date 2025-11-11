@@ -5,6 +5,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Optional, Union
 
+from ctfcli.core.exceptions import InvalidComposeOperation
+
 
 class Image:
     def __init__(self, name: str, build_path: Optional[Union[str, PathLike]] = None):
@@ -16,6 +18,11 @@ class Image:
         if "/" in self.name or ":" in self.name:
             self.basename = self.name.split(":")[0].split("/")[-1]
 
+        if self.name == "__compose__":
+            self.compose = True
+        else:
+            self.compose = False
+
         self.built = True
 
         # if the image provides a build path, assume it is not built yet
@@ -24,6 +31,9 @@ class Image:
             self.built = False
 
     def build(self) -> Optional[str]:
+        if self.compose:
+            raise InvalidComposeOperation("Local build not supported for docker compose challenges")
+
         docker_build = subprocess.call(
             ["docker", "build", "--load", "-t", self.name, "."], cwd=self.build_path.absolute()
         )
@@ -34,6 +44,9 @@ class Image:
         return self.name
 
     def pull(self) -> Optional[str]:
+        if self.compose:
+            raise InvalidComposeOperation("Local pull not supported for docker compose challenges")
+
         docker_pull = subprocess.call(["docker", "pull", self.name])
         if docker_pull != 0:
             return
@@ -41,6 +54,9 @@ class Image:
         return self.name
 
     def push(self, location: str) -> Optional[str]:
+        if self.compose:
+            raise InvalidComposeOperation("Local push not supported for docker compose challenges")
+
         if not self.built:
             self.build()
 
@@ -53,6 +69,9 @@ class Image:
         return location
 
     def export(self) -> Optional[str]:
+        if self.compose:
+            raise InvalidComposeOperation("Local export not supported for docker compose challenges")
+
         if not self.built:
             self.build()
 
