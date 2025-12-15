@@ -1,47 +1,34 @@
 ---
-name: Build and Publish
+name: Build
 
 on:
   release:
     types: [published]
-  pull_request:
-    types: [opened, reopened, edited, synchronize]
 
 jobs:
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.11]
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
-        run: |
-            pip install poetry
-            poetry install
+        run: uv sync
 
       - name: Build package
-        run: poetry build
+        run: uv build
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
         with:
-          path: |
-           ./dist/*.tar.gz
+          path: ./dist/
 
-      - name: Publish to PYPI
+      - name: Publish
+        if: ${{ github.event_name == 'release' }}
+        run: uv publish
         env:
-          PYPI_TOKEN: ${{ secrets.PYPI_PASSWORD }}
-        if: ${{ github.event_name == 'release' && env.PYPI_TOKEN != null }}
-        run: |
-          poetry config pypi-token.pypi "$PYPI_TOKEN"
-          poetry publish
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_PASSWORD }}
+

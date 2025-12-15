@@ -1,12 +1,13 @@
+.PHONY: all
+.IGNORE: lint format
+
 lint:
-	black --diff .
-	isort --check .
+	ruff format --check .
 	ruff check .
 
 format:
-	black .
-	isort .
-	ruff --fix .
+	ruff check --select F401 --select TID252 --select I --fix .
+	ruff format .
 
 test:
 	pytest --cov=ctfcli tests
