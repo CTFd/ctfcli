@@ -27,9 +27,9 @@ ctf = "ctfcli.__main__:main"
 [dependency-groups]
 dev = [
     "ruff>=0.14.9,<0.15",
-    "pytest>=7.4.0,<8",
-    "pytest-sugar>=0.9.7,<0.10",
-    "pytest-cov>=4.1.0,<5",
+    "pytest>=9.0.2,<10",
+    "pytest-sugar>=1.1.1,<2",
+    "pytest-cov>=7.0.0,<8",
 ]
 
 [build-system]

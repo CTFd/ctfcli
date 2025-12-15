@@ -1447,7 +1447,7 @@ class TestLintChallenge(unittest.TestCase):
             challenge.lint()
 
         mock_run.assert_called_once_with(
-            ["docker", "run", "--rm", "-i", "hadolint/hadolint"], stdout=-1, stderr=-1, input=ANY
+            ["docker", "run", "--rm", "-i", "hadolint/hadolint"], capture_output=True, input=ANY
         )
 
         expected_lint_issues = {
