@@ -753,17 +753,14 @@ class ChallengeCommand:
 
                 deployment_result = deployment_handler.deploy(skip_login=skip_login)
 
-                # Don't modify the connection_info if it exists already
-                if challenge_instance.get("connection_info"):
-                    click.secho("Using connection_info from challenge.yml", fg="yellow")
-
-                # Otherwise, use connection_info from the deployment result if provided
-                elif deployment_result.connection_info:
+                # Save connection_info from the deployment result if returned
+                if deployment_result.connection_info:
+                    click.secho("Saving connection_info in challenge.yml", fg="yellow")
                     challenge_instance["connection_info"] = deployment_result.connection_info
 
-                # Finally, if no connection_info was provided in the challenge and the
-                # deployment didn't result in one either, just ensure it's not present
-                else:
+                # If no connection_info was provided by the challenge
+                # and the deployment didn't result in one either, just ensure it's not present
+                elif not challenge_instance.get("connection_info"):
                     challenge_instance["connection_info"] = None
 
                 if not deployment_result.success:
