@@ -755,7 +755,7 @@ class ChallengeCommand:
 
                 # Save connection_info from the deployment result if returned
                 if deployment_result.connection_info:
-                    click.secho("Updating connection_info in challenge.yml", fg="yellow")
+                    click.secho("Saving connection_info in challenge.yml", fg="yellow")
                     challenge_instance["connection_info"] = deployment_result.connection_info
 
                 # If no connection_info was provided by the challenge
