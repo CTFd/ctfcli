@@ -40,12 +40,12 @@ build-backend = "hatchling.build"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "UP", "B", "I", "S", "SIM", "DTZ", "RUF"]
-ignore = ["E721"]
+select = ["E", "F", "UP", "B", "I", "S", "SIM", "DTZ", "RUF", "RET", "TID"]
+ignore = ["E721", "S603", "S607", "RUF012"]
 exclude = ["build/**", "ctfcli/templates/**"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S", "SIM", "RUF"]
+"tests/**" = ["S", "SIM", "RUF", "RET503"]
 
 [tool.ruff.format]
 exclude = ["build/**", "ctfcli/templates/**"]

@@ -13,13 +13,13 @@ class API(Session):
         # Load required configuration values
         try:
             self.url = config["config"]["url"]
-        except KeyError:
-            raise MissingInstanceURL()
+        except KeyError as e:
+            raise MissingInstanceURL() from e
 
         try:
             self.access_token = config["config"]["access_token"]
-        except KeyError:
-            raise MissingAPIKey()
+        except KeyError as e:
+            raise MissingAPIKey() from e
 
         # Handle SSL verification disabling
         try:
@@ -30,7 +30,7 @@ class API(Session):
             # https://requests.kennethreitz.org/en/master/user/advanced/#ssl-cert-verification
             ssl_verify = config["config"].get("ssl_verify")
 
-        super(API, self).__init__()
+        super().__init__()
 
         # Strip out ending slashes and append a singular one, so we generate
         # clean base URLs for both main deployments and subdir deployments
@@ -52,14 +52,14 @@ class API(Session):
         url = urljoin(self.prefix_url, url.lstrip("/"))
 
         # if data= is present, do not modify the content-type
-        if kwargs.get("data", None) is not None:
-            return super(API, self).request(method, url, *args, **kwargs)
+        if kwargs.get("data") is not None:
+            return super().request(method, url, *args, **kwargs)
 
         # otherwise set the content-type to application/json for all API requests
         # modify the headers here instead of using self.headers because we don't want to
         # override the multipart/form-data case above
-        if kwargs.get("headers", None) is None:
+        if kwargs.get("headers") is None:
             kwargs["headers"] = {}
 
         kwargs["headers"]["Content-Type"] = "application/json"
-        return super(API, self).request(method, url, *args, **kwargs)
+        return super().request(method, url, *args, **kwargs)

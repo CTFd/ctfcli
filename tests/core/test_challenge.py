@@ -1,7 +1,6 @@
 import re
 import unittest
 from pathlib import Path
-from typing import List
 from unittest import mock
 from unittest.mock import ANY, MagicMock, call, mock_open
 
@@ -1040,9 +1039,22 @@ class TestSyncChallenge(unittest.TestCase):
         properties = [
             # fmt: off
             # simple types
-            "category", "description", "attribution", "type", "value", "attempts", "connection_info", "state",
+            "category",
+            "description",
+            "attribution",
+            "type",
+            "value",
+            "attempts",
+            "connection_info",
+            "state",
             # complex types
-            "extra", "flags", "topics", "tags", "files", "hints", "requirements",
+            "extra",
+            "flags",
+            "topics",
+            "tags",
+            "files",
+            "hints",
+            "requirements",
             # fmt: on
         ]
 
@@ -1844,7 +1856,7 @@ class TestSaveChallenge(unittest.TestCase):
             challenge.save()
             dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
 
-        def check_order(yml: str, order: List[str]):
+        def check_order(yml: str, order: list[str]):
             indices = {}
             for key in order:
                 match = re.search(r"\b" + re.escape(key) + r"\b", yml)
@@ -1857,8 +1869,8 @@ class TestSaveChallenge(unittest.TestCase):
             sorted_indices = sorted(indices.values())
             if sorted_indices == list(indices.values()):
                 return True
-            else:
-                return False
+
+            return False
 
         key_order = challenge.key_order.copy()
         for k in ["state", "type"]:
