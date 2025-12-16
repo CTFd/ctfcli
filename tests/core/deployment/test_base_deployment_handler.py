@@ -24,7 +24,7 @@ class TestDeploymentHandlerLoading(unittest.TestCase):
             "registry": RegistryDeploymentHandler,
         }
 
-        for key, handler in handlers.items():
+        for key, _handler in handlers.items():
             handler_class = get_deployment_handler(key)
             self.assertIs(handlers[key], handler_class)
 

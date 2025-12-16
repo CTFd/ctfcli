@@ -1,7 +1,6 @@
 import logging
 import subprocess
 import time
-from typing import Dict, Optional
 from urllib.parse import urlparse
 
 import click
@@ -16,7 +15,7 @@ log = logging.getLogger("ctfcli.core.deployment.cloud")
 
 class CloudDeploymentHandler(DeploymentHandler):
     def __init__(self, *args, **kwargs):
-        super(CloudDeploymentHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.api = API()
         self.config = Config()
@@ -122,7 +121,7 @@ class CloudDeploymentHandler(DeploymentHandler):
         image_name_slug = slugify(self.image_name)
         return self.api.post("/api/v1/services", json={"name": image_name_slug, "image": image_location}).json()["data"]
 
-    def _await_service_deployment(self, service_data, interval=10, timeout=180) -> Optional[Dict]:
+    def _await_service_deployment(self, service_data, interval=10, timeout=180) -> dict | None:
         service_id = service_data["id"]
 
         base_timeout = timeout
@@ -140,7 +139,7 @@ class CloudDeploymentHandler(DeploymentHandler):
 
         if timeout == 0:
             click.secho("Timeout awaiting challenge deployment", fg="red")
-            return
+            return None
 
         return service_data
 
@@ -180,16 +179,13 @@ class CloudDeploymentHandler(DeploymentHandler):
         log.debug(f"call({docker_login_command}, stderr=subprocess.PIPE, input=docker_password)")
         login_response = subprocess.check_output(docker_login_command, input=docker_password, stderr=subprocess.PIPE)
 
-        if b"Login Succeeded" in login_response:
-            return True
-
-        return False
+        return b"Login Succeeded" in login_response
 
     def _get_connection_info(
         self,
         hostname: str,
-        tcp_hostname: Optional[str] = None,
-        tcp_port: Optional[str] = None,
+        tcp_hostname: str | None = None,
+        tcp_port: str | None = None,
     ) -> str:
         # if protocol is http(s) - return an URL
         if self.protocol and self.protocol.startswith("http"):

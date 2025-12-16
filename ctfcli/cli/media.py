@@ -15,7 +15,7 @@ class MediaCommand:
 
         api = API()
 
-        new_file = ("file", open(path, mode="rb"))
+        new_file = ("file", open(path, mode="rb"))  # noqa: SIM115
         filename = os.path.basename(path)
         location = f"media/{filename}"
         file_payload = {

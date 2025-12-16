@@ -48,8 +48,7 @@ class TestLintException(unittest.TestCase):
                 call(),
                 call("-:1 DL3006 warning: Always tag the version of an image explicitly"),
                 call(
-                    " - Challenge file 'files/test-file.png' specified, "
-                    "but not found at /challenge/files/test-file.png"
+                    " - Challenge file 'files/test-file.png' specified, but not found at /challenge/files/test-file.png"
                 ),
                 call(),
             ]

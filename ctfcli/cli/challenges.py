@@ -3,7 +3,6 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 import click
@@ -103,7 +102,7 @@ class ChallengeCommand:
         if not challenge_instance:
             return 1
 
-        with open(challenge_instance.challenge_file_path, "r") as challenge_yml_file:
+        with open(challenge_instance.challenge_file_path) as challenge_yml_file:
             challenge_yml = challenge_yml_file.read()
 
             if color:
@@ -120,7 +119,12 @@ class ChallengeCommand:
         return TemplatesCommand.list()
 
     def add(
-        self, repo: str, directory: str = None, branch: str = None, force: bool = False, yaml_path: str = None
+        self,
+        repo: str,
+        directory: str | None = None,
+        branch: str | None = None,
+        force: bool = False,
+        yaml_path: str | None = None,
     ) -> int:
         log.debug(f"add: {repo} (directory={directory}, branch={branch}, force={force}, yaml_path={yaml_path})")
         config = Config()
@@ -207,7 +211,7 @@ class ChallengeCommand:
         click.secho(f"Could not process the challenge path: '{repo}'", fg="red")
         return 1
 
-    def push(self, challenge: str = None, no_auto_pull: bool = False, quiet=False) -> int:
+    def push(self, challenge: str | None = None, no_auto_pull: bool = False, quiet=False) -> int:
         log.debug(f"push: (challenge={challenge}, no_auto_pull={no_auto_pull}, quiet={quiet})")
         config = Config()
 
@@ -332,7 +336,7 @@ class ChallengeCommand:
 
         return 1
 
-    def pull(self, challenge: str = None, strategy: str = "fast-forward", quiet: bool = False) -> int:
+    def pull(self, challenge: str | None = None, strategy: str = "fast-forward", quiet: bool = False) -> int:
         log.debug(f"pull: (challenge={challenge}, quiet={quiet})")
         config = Config()
 
@@ -460,7 +464,7 @@ class ChallengeCommand:
 
         return 1
 
-    def restore(self, challenge: str = None) -> int:
+    def restore(self, challenge: str | None = None) -> int:
         log.debug(f"restore: (challenge={challenge})")
         config = Config()
 
@@ -562,7 +566,7 @@ class ChallengeCommand:
         return 1
 
     def install(
-        self, challenge: str = None, force: bool = False, hidden: bool = False, ignore: Union[str, Tuple[str]] = ()
+        self, challenge: str | None = None, force: bool = False, hidden: bool = False, ignore: str | tuple[str] = ()
     ) -> int:
         log.debug(f"install: (challenge={challenge}, force={force}, hidden={hidden}, ignore={ignore})")
 
@@ -638,7 +642,7 @@ class ChallengeCommand:
 
         return 1
 
-    def sync(self, challenge: str = None, ignore: Union[str, Tuple[str]] = ()) -> int:
+    def sync(self, challenge: str | None = None, ignore: str | tuple[str] = ()) -> int:
         log.debug(f"sync: (challenge={challenge}, ignore={ignore})")
 
         if challenge:
@@ -672,7 +676,7 @@ class ChallengeCommand:
                     continue
 
                 click.secho(
-                    f"Syncing '{challenge_name}' (" f"{challenge_instance.challenge_file_path}" ") ...",
+                    f"Syncing '{challenge_name}' ({challenge_instance.challenge_file_path}) ...",
                     fg="blue",
                 )
                 try:
@@ -694,8 +698,8 @@ class ChallengeCommand:
 
     def deploy(
         self,
-        challenge: str = None,
-        host: str = None,
+        challenge: str | None = None,
+        host: str | None = None,
         skip_login: bool = False,
     ) -> int:
         log.debug(f"deploy: (challenge={challenge}, host={host}, skip_login={skip_login})")
@@ -836,7 +840,7 @@ class ChallengeCommand:
 
     def lint(
         self,
-        challenge: str = None,
+        challenge: str | None = None,
         skip_hadolint: bool = False,
         flag_format: str = "flag{",
     ) -> int:
@@ -857,7 +861,7 @@ class ChallengeCommand:
         click.secho("Success! Lint didn't find any issues!", fg="green")
         return 0
 
-    def healthcheck(self, challenge: Optional[str] = None) -> int:
+    def healthcheck(self, challenge: str | None = None) -> int:
         log.debug(f"healthcheck: (challenge={challenge})")
 
         challenge_instance = self._resolve_single_challenge(challenge)
@@ -922,10 +926,10 @@ class ChallengeCommand:
 
     def mirror(
         self,
-        challenge: str = None,
+        challenge: str | None = None,
         files_directory: str = "dist",
         skip_verify: bool = False,
-        ignore: Union[str, Tuple[str]] = (),
+        ignore: str | tuple[str] = (),
         create: bool = False,
     ) -> int:
         log.debug(
@@ -991,7 +995,7 @@ class ChallengeCommand:
 
         return 1
 
-    def verify(self, challenge: str = None, ignore: Tuple[str] = ()) -> int:
+    def verify(self, challenge: str | None = None, ignore: tuple[str] = ()) -> int:
         log.debug(f"verify: (challenge={challenge}, ignore={ignore})")
 
         if challenge:
@@ -1056,7 +1060,7 @@ class ChallengeCommand:
 
         return 1
 
-    def format(self, challenge: Optional[str] = None) -> int:
+    def format(self, challenge: str | None = None) -> int:
         log.debug(f"format: (challenge={challenge})")
 
         if challenge:
@@ -1090,7 +1094,7 @@ class ChallengeCommand:
         return 1
 
     @staticmethod
-    def _resolve_single_challenge(challenge: Optional[str] = None) -> Optional[Challenge]:
+    def _resolve_single_challenge(challenge: str | None = None) -> Challenge | None:
         # if a challenge is specified
         if challenge:
             # check if it's a path to challenge.yml, or the current directory
@@ -1113,10 +1117,10 @@ class ChallengeCommand:
             return Challenge(challenge_path)
         except ChallengeException as e:
             click.secho(str(e), fg="red")
-            return
+            return None
 
     @staticmethod
-    def _resolve_all_challenges() -> List[Challenge]:
+    def _resolve_all_challenges() -> list[Challenge]:
         config = Config()
         challenge_keys = config.challenges.keys()
 

@@ -4,7 +4,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Union
 
 import click
 import fire
@@ -33,7 +32,7 @@ log = logging.getLogger("ctfcli.main")
 class CTFCLI:
     @staticmethod
     def init(
-        directory: Optional[Union[str, os.PathLike]] = None,
+        directory: str | os.PathLike | None = None,
         no_git: bool = False,
         no_commit: bool = False,
     ):

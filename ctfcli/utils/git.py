@@ -1,16 +1,13 @@
 import subprocess
 from os import PathLike
-from typing import Optional, Union
 
 
 def check_if_git_subrepo_is_installed() -> bool:
     output = subprocess.run(["git", "subrepo"], capture_output=True, text=True)
-    if "git: 'subrepo' is not a git command" in output.stderr:
-        return False
-    return True
+    return "git: 'subrepo' is not a git command" not in output.stderr
 
 
-def get_git_repo_head_branch(repo: str) -> Optional[str]:
+def get_git_repo_head_branch(repo: str) -> str | None:
     """
     A helper method to get the reference of the HEAD branch of a git remote repo.
     https://stackoverflow.com/a/41925348
@@ -32,8 +29,10 @@ def get_git_repo_head_branch(repo: str) -> Optional[str]:
     if head_branch_line.startswith("refs/heads/"):
         return head_branch_line[11:]
 
+    return None
 
-def check_if_dir_is_inside_git_repo(cwd: Optional[Union[str, PathLike]] = None) -> bool:
+
+def check_if_dir_is_inside_git_repo(cwd: str | PathLike | None = None) -> bool:
     """
     Checks whether a given directory is inside a git repo.
     """
@@ -48,9 +47,6 @@ def check_if_dir_is_inside_git_repo(cwd: Optional[Union[str, PathLike]] = None) 
             .strip()
         )
 
-        if out == "true":
-            return True
-
-        return False
+        return out == "true"
     except subprocess.CalledProcessError:
         return False

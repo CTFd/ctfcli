@@ -3,7 +3,7 @@ import re
 import subprocess
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import click
 import yaml
@@ -30,7 +30,8 @@ def str_presenter(dumper, data):
         text_list = [line.rstrip() for line in data.splitlines()]
         fixed_data = "\n".join(text_list)
         return dumper.represent_scalar("tag:yaml.org,2002:str", fixed_data, style="|")
-    elif len(data) > 80:
+
+    if len(data) > 80:
         return dumper.represent_scalar("tag:yaml.org,2002:str", data.rstrip(), style=">")
 
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
@@ -42,24 +43,49 @@ yaml.representer.SafeRepresenter.add_representer(str, str_presenter)
 
 class Challenge(dict):
     key_order = [
-        # fmt: off
-        "name", "author", "category", "description", "attribution", "value",
-        "type", "extra", "image", "protocol", "host",
-        "connection_info", "healthcheck", "attempts", "logic", "flags",
-        "files", "topics", "tags", "files", "hints",
-        "requirements", "next", "state", "version",
-        # fmt: on
+        "name",
+        "author",
+        "category",
+        "description",
+        "attribution",
+        "value",
+        "type",
+        "extra",
+        "image",
+        "protocol",
+        "host",
+        "connection_info",
+        "healthcheck",
+        "attempts",
+        "logic",
+        "flags",
+        "files",
+        "topics",
+        "tags",
+        "files",
+        "hints",
+        "requirements",
+        "next",
+        "state",
+        "version",
     ]
 
     keys_with_newline = [
-        # fmt: off
-        "extra", "image", "attempts", "flags", "topics", "tags",
-        "files", "hints", "requirements", "state", "version",
-        # fmt: on
+        "extra",
+        "image",
+        "attempts",
+        "flags",
+        "topics",
+        "tags",
+        "files",
+        "hints",
+        "requirements",
+        "state",
+        "version",
     ]
 
     @staticmethod
-    def load_installed_challenge(challenge_id) -> Dict:
+    def load_installed_challenge(challenge_id) -> dict:
         api = API()
         r = api.get(f"/api/v1/challenges/{challenge_id}?view=admin")
 
@@ -73,7 +99,7 @@ class Challenge(dict):
         return installed_challenge
 
     @staticmethod
-    def load_installed_challenges() -> List:
+    def load_installed_challenges() -> list:
         api = API()
         r = api.get("/api/v1/challenges?view=admin")
 
@@ -106,16 +132,14 @@ class Challenge(dict):
         if key == "requirements" and value == {"prerequisites": [], "anonymize": False}:
             return True
 
-        if key == "next" and value is None:
-            return True
-        return False
+        return bool(key == "next" and value is None)
 
     @staticmethod
     def clone(config, remote_challenge):
         name = remote_challenge["name"]
 
         if name is None:
-            raise ChallengeException(f'Could not get name of remote challenge with id {remote_challenge["id"]}')
+            raise ChallengeException(f"Could not get name of remote challenge with id {remote_challenge['id']}")
 
         # First, generate a name for the challenge directory
         category = remote_challenge.get("category", None)
@@ -130,7 +154,7 @@ class Challenge(dict):
 
         # Create an blank/empty challenge, with only the challenge.yml containing the challenge name
         template_path = config.get_base_path() / "templates" / "blank" / "empty"
-        log.debug(f"Challenge.clone: cookiecutter({str(template_path)}, {name=}, {challenge_dir_name=}")
+        log.debug(f"Challenge.clone: cookiecutter({template_path!s}, {name=}, {challenge_dir_name=}")
         cookiecutter(
             str(template_path),
             no_input=True,
@@ -156,7 +180,7 @@ class Challenge(dict):
 
     # __init__ expects an absolute path to challenge_yml, or a relative one from the cwd
     # it does not join that path with the project_path
-    def __init__(self, challenge_yml: Union[str, PathLike], overrides=None):
+    def __init__(self, challenge_yml: str | PathLike, overrides=None):
         log.debug(f"Challenge.__init__: ({challenge_yml=}, {overrides=}")
         if overrides is None:
             overrides = {}
@@ -172,7 +196,9 @@ class Challenge(dict):
             try:
                 challenge_definition = yaml.safe_load(challenge_file.read())
             except yaml.YAMLError as e:
-                raise InvalidChallengeFile(f"Challenge file at {self.challenge_file_path} could not be loaded:\n{e}")
+                raise InvalidChallengeFile(
+                    f"Challenge file at {self.challenge_file_path} could not be loaded:\n{e}"
+                ) from e
 
             if type(challenge_definition) != dict:
                 raise InvalidChallengeFile(
@@ -180,7 +206,7 @@ class Challenge(dict):
                 )
 
         challenge_data = {**challenge_definition, **overrides}
-        super(Challenge, self).__init__(challenge_data)
+        super().__init__(challenge_data)
 
         # Challenge id is unknown before loading the remote challenge
         self.challenge_id = None
@@ -194,7 +220,7 @@ class Challenge(dict):
     def __str__(self):
         return self["name"]
 
-    def _process_challenge_image(self, challenge_image: Optional[str]) -> Optional[Image]:
+    def _process_challenge_image(self, challenge_image: str | None) -> Image | None:
         if not challenge_image:
             return None
 
@@ -263,7 +289,7 @@ class Challenge(dict):
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 
-    def _get_initial_challenge_payload(self, ignore: Tuple[str] = ()) -> Dict:
+    def _get_initial_challenge_payload(self, ignore: tuple[str] = ()) -> dict:
         challenge = self
         challenge_payload = {
             "name": self["name"],
@@ -291,9 +317,8 @@ class Challenge(dict):
         if "connection_info" not in ignore:
             challenge_payload["connection_info"] = challenge.get("connection_info", None)
 
-        if "logic" not in ignore:
-            if challenge.get("logic"):
-                challenge_payload["logic"] = challenge.get("logic") or "any"
+        if "logic" not in ignore and challenge.get("logic"):
+            challenge_payload["logic"] = challenge.get("logic") or "any"
 
         if "extra" not in ignore:
             challenge_payload = {**challenge_payload, **challenge.get("extra", {})}
@@ -363,7 +388,7 @@ class Challenge(dict):
                 r.raise_for_status()
 
     def _create_file(self, local_path: Path):
-        new_file = ("file", open(local_path, mode="rb"))
+        new_file = ("file", open(local_path, mode="rb"))  # noqa: SIM115
         file_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
 
         # Specifically use data= here to send multipart/form-data
@@ -378,7 +403,7 @@ class Challenge(dict):
 
         files = self.get("files") or []
         for challenge_file in files:
-            new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))
+            new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))  # noqa: SIM115
 
         files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
 
@@ -501,7 +526,7 @@ class Challenge(dict):
         r.raise_for_status()
 
     # Compare challenge requirements, will resolve all IDs to names
-    def _compare_challenge_requirements(self, r1: List[Union[str, int]], r2: List[Union[str, int]]) -> bool:
+    def _compare_challenge_requirements(self, r1: list[str | int], r2: list[str | int]) -> bool:
         remote_challenges = self.load_installed_challenges()
 
         def normalize_requirements(requirements):
@@ -524,7 +549,7 @@ class Challenge(dict):
         return nr1 == nr2
 
     # Compare next challenges, will resolve all IDs to names
-    def _compare_challenge_next(self, r1: Union[str, int, None], r2: Union[str, int, None]) -> bool:
+    def _compare_challenge_next(self, r1: str | int | None, r2: str | int | None) -> bool:
         def normalize_next(r):
             normalized = None
             if type(r) == int:
@@ -545,7 +570,7 @@ class Challenge(dict):
     # Note: files won't be included for two reasons:
     # 1. To avoid downloading them unnecessarily, e.g., when they are ignored
     # 2. Because it's dependent on the implementation whether to save them (mirror) or just compare (verify)
-    def _normalize_challenge(self, challenge_data: Dict[str, Any]):
+    def _normalize_challenge(self, challenge_data: dict[str, Any]):
         challenge = {}
 
         copy_keys = [
@@ -628,7 +653,7 @@ class Challenge(dict):
         challenge["requirements"]["anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
 
         # Add next
-        nid = challenge_data.get("next_id", None)
+        nid = challenge_data.get("next_id")
         if nid:
             # Prefer challenge names over IDs
             r = self.api.get(f"/api/v1/challenges/{nid}")
@@ -640,7 +665,7 @@ class Challenge(dict):
         return challenge
 
     # Create a dictionary of remote files in { basename: {"url": "", "location": ""} } format
-    def _normalize_remote_files(self, remote_files: List[str]) -> Dict[str, Dict[str, str]]:
+    def _normalize_remote_files(self, remote_files: list[str]) -> dict[str, dict[str, str]]:
         normalized = {}
         for f in remote_files:
             file_parts = f.split("?token=")[0].split("/")
@@ -652,12 +677,12 @@ class Challenge(dict):
         return normalized
 
     # Create a dictionary of sha1sums in { location: sha1sum } format
-    def _get_files_sha1sums(self) -> Dict[str, str]:
+    def _get_files_sha1sums(self) -> dict[str, str]:
         r = self.api.get("/api/v1/files?type=challenge")
         r.raise_for_status()
         return {f["location"]: f.get("sha1sum", None) for f in r.json()["data"]}
 
-    def sync(self, ignore: Tuple[str] = ()) -> None:
+    def sync(self, ignore: tuple[str] = ()) -> None:
         challenge = self
 
         if "name" in ignore:
@@ -786,7 +811,7 @@ class Challenge(dict):
             r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json={"state": "visible"})
             r.raise_for_status()
 
-    def create(self, ignore: Tuple[str] = ()) -> None:
+    def create(self, ignore: tuple[str] = ()) -> None:
         challenge = self
 
         for attr in ["name", "value"]:
@@ -893,7 +918,7 @@ class Challenge(dict):
                 issues["dockerfile"].append("Dockerfile specified in 'image' field but no Dockerfile found")
 
             if has_dockerfile:
-                with open(dockerfile_path, "r") as dockerfile:
+                with open(dockerfile_path) as dockerfile:
                     dockerfile_source = dockerfile.read()
 
                     if "EXPOSE" not in dockerfile_source:
@@ -903,8 +928,7 @@ class Challenge(dict):
                         # Check Dockerfile with hadolint
                         hadolint = subprocess.run(
                             ["docker", "run", "--rm", "-i", "hadolint/hadolint"],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
+                            capture_output=True,
                             input=dockerfile_source.encode(),
                         )
 
@@ -942,7 +966,7 @@ class Challenge(dict):
 
         return True
 
-    def mirror(self, files_directory_name: str = "dist", ignore: Tuple[str] = ()) -> None:
+    def mirror(self, files_directory_name: str = "dist", ignore: tuple[str] = ()) -> None:
         self._load_challenge_id()
         remote_challenge = self.load_installed_challenge(self.challenge_id)
         challenge = self._normalize_challenge(remote_challenge)
@@ -982,13 +1006,13 @@ class Challenge(dict):
             remote_file_names = [f.split("/")[-1].split("?token=")[0] for f in remote_challenge["files"]]
             challenge["files"] = [f for f in challenge["files"] if Path(f).name in remote_file_names]
 
-        for key in challenge.keys():
+        for key in challenge:
             if key not in ignore:
                 self[key] = challenge[key]
 
         self.save()
 
-    def verify(self, ignore: Tuple[str] = ()) -> bool:
+    def verify(self, ignore: tuple[str] = ()) -> bool:
         self._load_challenge_id()
         challenge = self
         remote_challenge = self.load_installed_challenge(self.challenge_id)
@@ -1022,13 +1046,14 @@ class Challenge(dict):
                     else:
                         cr = challenge[key]
                         ca = False
-                    if self._compare_challenge_requirements(cr, normalized_challenge[key]["prerequisites"]):
-                        if ca == normalized_challenge[key]["anonymize"]:
-                            continue
-
-                if key == "next":
-                    if self._compare_challenge_next(challenge[key], normalized_challenge[key]):
+                    if (
+                        self._compare_challenge_requirements(cr, normalized_challenge[key]["prerequisites"])
+                        and ca == normalized_challenge[key]["anonymize"]
+                    ):
                         continue
+
+                if key == "next" and self._compare_challenge_next(challenge[key], normalized_challenge[key]):
+                    continue
 
                 click.secho(
                     f"{key} comparison failed.",
@@ -1127,4 +1152,4 @@ class Challenge(dict):
                 challenge_file.write(pretty_challenge_yml)
 
         except Exception as e:
-            raise InvalidChallengeFile(f"Challenge file could not be saved:\n{e}")
+            raise InvalidChallengeFile(f"Challenge file could not be saved:\n{e}") from e
