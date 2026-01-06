@@ -1,5 +1,22 @@
 # Changelog
 
+# 0.1.6 / 2026-01-06
+
+### Added
+
+- Add `sha1sum` to `--ignore` as part of `ctf challenge sync` to allow syncing files when the remote checksum or local checksum is corrupted
+
+### Fixed
+
+- Fix an issue where if deployment returned updated connection info we wouldn't update it in challenge.yml
+- Fix an issue where relative paths would not deploy due to a logging error
+
+### Changed
+
+- Challenges without an image will be considered a skipped deploy instead of a failed deploy
+- Switch from poetry to uv
+- Switch from to ruff
+
 # 0.1.5 / 2025-09-04
 
 ### Added
