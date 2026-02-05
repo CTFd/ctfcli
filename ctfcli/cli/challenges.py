@@ -19,7 +19,7 @@ from ctfcli.core.exceptions import (
     LintException,
     RemoteChallengeNotFound,
 )
-from ctfcli.utils.git import check_if_git_subrepo_is_installed, get_git_repo_head_branch
+from ctfcli.utils.git import check_if_git_subrepo_is_installed, resolve_repo_url
 
 log = logging.getLogger("ctfcli.cli.challenges")
 
@@ -157,8 +157,8 @@ class ChallengeCommand:
             if yaml_path:
                 challenge_key = challenge_key / yaml_path
 
-            # Add a new challenge to the config
-            config["challenges"][str(challenge_key)] = repo
+            # Add a new challenge to the config, with the branch if specified
+            config["challenges"][str(challenge_key)] = f"{repo}@{branch}" if branch else repo
 
             if use_subrepo:
                 # Clone with subrepo if configured
@@ -171,8 +171,8 @@ class ChallengeCommand:
                     cmd += ["-f"]
             else:
                 # Otherwise default to the built-in subtree
-                head_branch = get_git_repo_head_branch(repo)
-                cmd = ["git", "subtree", "add", "--prefix", challenge_path, repo, head_branch, "--squash"]
+                _, target_branch = resolve_repo_url(repo, branch=branch)
+                cmd = ["git", "subtree", "add", "--prefix", challenge_path, repo, target_branch, "--squash"]
 
             log.debug(f"call({cmd}, cwd='{project_path}')")
             if subprocess.call(cmd, cwd=project_path) != 0:
@@ -259,6 +259,8 @@ class ChallengeCommand:
                     failed_pushes.append(challenge_instance)
                     continue
 
+                challenge_repo, challenge_branch = resolve_repo_url(challenge_repo)
+
                 if not challenge_repo.endswith(".git"):
                     click.secho(
                         f"Cannot push challenge '{challenge_path}', as it's not a git-based challenge",
@@ -307,8 +309,7 @@ class ChallengeCommand:
                 if use_subrepo:
                     cmd = ["git", "subrepo", "push", challenge_path]
                 else:
-                    head_branch = get_git_repo_head_branch(challenge_repo)
-                    cmd = ["git", "subtree", "push", "--prefix", challenge_path, challenge_repo, head_branch]
+                    cmd = ["git", "subtree", "push", "--prefix", challenge_path, challenge_repo, challenge_branch]
 
                 log.debug(f"call({cmd}, cwd='{config.project_path / challenge_path}')")
                 if subprocess.call(cmd, cwd=config.project_path) != 0:
@@ -383,6 +384,8 @@ class ChallengeCommand:
                     failed_pulls.append(challenge_instance)
                     continue
 
+                challenge_repo, challenge_branch = resolve_repo_url(challenge_repo)
+
                 if not challenge_repo.endswith(".git"):
                     click.secho(
                         f"Cannot pull challenge '{challenge_path}', as it's not a git-based challenge",
@@ -408,7 +411,6 @@ class ChallengeCommand:
                     else:
                         click.secho(f"Cannot pull challenge - '{strategy}' is not a valid pull strategy", fg="red")
                 else:
-                    head_branch = get_git_repo_head_branch(challenge_repo)
                     pull_env["GIT_MERGE_AUTOEDIT"] = "no"
                     cmd = [
                         "git",
@@ -417,7 +419,7 @@ class ChallengeCommand:
                         "--prefix",
                         challenge_path,
                         challenge_repo,
-                        head_branch,
+                        challenge_branch,
                         "--squash",
                     ]
 
@@ -527,11 +529,12 @@ class ChallengeCommand:
                 f"Restoring git repo '{challenge_source}' to '{challenge_key}'",
                 fg="blue",
             )
-            head_branch = get_git_repo_head_branch(challenge_source)
+
+            challenge_source, challenge_branch = resolve_repo_url(challenge_source)
 
             log.debug(
                 f"call(['git', 'subtree', 'add', '--prefix', '{challenge_key}', '{challenge_source}', "
-                f"'{head_branch}', '--squash'], cwd='{config.project_path}')"
+                f"'{challenge_branch}', '--squash'], cwd='{config.project_path}')"
             )
             git_subtree_add = subprocess.call(
                 [
@@ -541,7 +544,7 @@ class ChallengeCommand:
                     "--prefix",
                     challenge_key,
                     challenge_source,
-                    head_branch,
+                    challenge_branch,
                     "--squash",
                 ],
                 cwd=config.project_path,

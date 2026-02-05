@@ -2,34 +2,60 @@ import subprocess
 from os import PathLike
 
 
-def check_if_git_subrepo_is_installed() -> bool:
-    output = subprocess.run(["git", "subrepo"], capture_output=True, text=True)
-    return "git: 'subrepo' is not a git command" not in output.stderr
-
-
-def get_git_repo_head_branch(repo: str) -> str | None:
+def resolve_repo_url(repo: str, branch: str | None = None) -> tuple[str, str | None]:
     """
-    A helper method to get the reference of the HEAD branch of a git remote repo.
-    https://stackoverflow.com/a/41925348
+    Resolves a repo string to (clean_url, branch).
+
+    Resolution order:
+      1. The `branch` parameter, if provided
+      2. An inline @branch parsed from the repo string
+      3. The remote's HEAD branch, detected via git ls-remote
+
+    Returns (url, None) if no branch can be determined.
     """
+    # Strip an inline @branch suffix if present
+    marker = ".git@"
+    idx = repo.rfind(marker)
+    if idx != -1:
+        inline_branch = repo[idx + 5 :]
+        repo = repo[: idx + 4]  # clean URL up to .git
+        if not branch and inline_branch:
+            branch = inline_branch
+
+    # Branch already resolved
+    if branch:
+        return repo, branch
+
+    # Non-git paths have no remote to query
+    if not repo.endswith(".git"):
+        return repo, None
+
+    # Fall back to detecting the remote HEAD branch
+    # https://stackoverflow.com/a/41925348
     try:
-        output = subprocess.check_output(["git", "ls-remote", "--symref", repo, "HEAD"], stderr=subprocess.DEVNULL)
+        output = subprocess.check_output(
+            ["git", "ls-remote", "--symref", repo, "HEAD"],
+            stderr=subprocess.DEVNULL,
+        )
 
-        # if for some reason subprocess didn't error, but returned None or an empty byte-string - return None
-        # this can happen if a repository exists, but doesn't have a head branch
+        # repo exists but doesn't have a head branch
         if type(output) != bytes or len(output) == 0:
-            return None
+            return repo, None
 
     except subprocess.CalledProcessError:
-        return None
+        return repo, None
 
-    # otherwise process the output
     output = output.decode().strip()
     head_branch_line = output.split()[1]
     if head_branch_line.startswith("refs/heads/"):
-        return head_branch_line[11:]
+        return repo, head_branch_line[11:]
 
-    return None
+    return repo, None
+
+
+def check_if_git_subrepo_is_installed() -> bool:
+    output = subprocess.run(["git", "subrepo"], capture_output=True, text=True)
+    return "git: 'subrepo' is not a git command" not in output.stderr
 
 
 def check_if_dir_is_inside_git_repo(cwd: str | PathLike | None = None) -> bool:
