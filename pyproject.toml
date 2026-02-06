@@ -1,6 +1,6 @@
 [project]
 name = "ctfcli"
-version = "0.1.5"
+version = "0.1.6"
 description = "ctfcli is a tool to manage Capture The Flag events and challenges"
 authors = [
     { name = "Kevin Chung", email = "kchung@ctfd.io" },
