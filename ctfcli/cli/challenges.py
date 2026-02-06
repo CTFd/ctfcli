@@ -226,92 +226,91 @@ class ChallengeCommand:
 
         failed_pushes = []
 
-        if quiet or len(challenges) <= 1:
-            context = contextlib.nullcontext(challenges)
-        else:
-            context = click.progressbar(challenges, label="Pushing challenges")
-
         use_subrepo = config["config"].getboolean("use_subrepo", fallback=False)
         if use_subrepo and not check_if_git_subrepo_is_installed():
             click.secho("This project is configured to use git subrepo, but it's not installed.")
             return 1
 
-        with context as context_challenges:
-            for challenge_instance in context_challenges:
+        # Validate all challenges and check for uncommitted changes upfront
+        challenges_to_push = []
+        challenges_with_uncommitted_changes = []
+
+        for challenge_instance in challenges:
+            # Get a relative path from project root to the challenge
+            challenge_path = challenge_instance.challenge_directory.resolve().relative_to(config.project_path)
+            challenge_repo = config.challenges.get(str(challenge_path), None)
+
+            # if we don't find the challenge by the directory,
+            # check if it's saved with a direct path to challenge.yml
+            if not challenge_repo:
+                challenge_repo = config.challenges.get(str(challenge_path / "challenge.yml"), None)
+
+            if not challenge_repo:
+                click.secho(
+                    f"Could not find added challenge '{challenge_path}' "
+                    "Please check that the challenge is added to .ctf/config and that your path matches",
+                    fg="red",
+                )
+                failed_pushes.append(challenge_instance)
+                continue
+
+            challenge_repo, challenge_branch = resolve_repo_url(challenge_repo)
+
+            if not challenge_repo.endswith(".git"):
+                click.secho(
+                    f"Cannot push challenge '{challenge_path}', as it's not a git-based challenge",
+                    fg="yellow",
+                )
+                failed_pushes.append(challenge_instance)
+                continue
+
+            # Check for uncommitted changes
+            log.debug(
+                f"call(['git', 'status', '--porcelain'], cwd='{config.project_path / challenge_path}',"
+                f" stdout=subprocess.PIPE, text=True)"
+            )
+            git_status = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=config.project_path / challenge_path,
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+
+            if git_status.stdout.strip() != "" and git_status.returncode == 0:
+                challenges_with_uncommitted_changes.append(challenge_path)
+
+            challenges_to_push.append((challenge_instance, challenge_path, challenge_repo, challenge_branch))
+
+        # If any challenges have uncommitted changes, error out
+        if challenges_with_uncommitted_changes:
+            click.secho(
+                "Cannot push: the following challenges have uncommitted changes:",
+                fg="red",
+            )
+            for challenge_path in challenges_with_uncommitted_changes:
+                click.echo(f" - {challenge_path}")
+
+            click.echo()
+            click.secho("Please commit your changes before pushing.", fg="yellow")
+            return 1
+
+        # Push all challenges (working directory is clean)
+        if not quiet and len(challenges_to_push) > 1:
+            push_context = click.progressbar(challenges_to_push, label="Pushing challenges")
+        else:
+            push_context = contextlib.nullcontext(challenges_to_push)
+
+        with push_context as challenges_iterator:
+            for challenge_instance, challenge_path, challenge_repo, challenge_branch in challenges_iterator:
                 click.echo()
-
-                # Get a relative path from project root to the challenge
-                # As this is what git subtree push requires
-                challenge_path = challenge_instance.challenge_directory.resolve().relative_to(config.project_path)
-                challenge_repo = config.challenges.get(str(challenge_path), None)
-
-                # if we don't find the challenge by the directory,
-                # check if it's saved with a direct path to challenge.yml
-                if not challenge_repo:
-                    challenge_repo = config.challenges.get(str(challenge_path / "challenge.yml"), None)
-
-                if not challenge_repo:
-                    click.secho(
-                        f"Could not find added challenge '{challenge_path}' "
-                        "Please check that the challenge is added to .ctf/config and that your path matches",
-                        fg="red",
-                    )
-                    failed_pushes.append(challenge_instance)
-                    continue
-
-                challenge_repo, challenge_branch = resolve_repo_url(challenge_repo)
-
-                if not challenge_repo.endswith(".git"):
-                    click.secho(
-                        f"Cannot push challenge '{challenge_path}', as it's not a git-based challenge",
-                        fg="yellow",
-                    )
-                    failed_pushes.append(challenge_instance)
-                    continue
-
                 click.secho(f"Pushing '{challenge_path}' to '{challenge_repo}'", fg="blue")
-
-                log.debug(
-                    f"call(['git', 'status', '--porcelain'], cwd='{config.project_path / challenge_path}',"
-                    f" stdout=subprocess.PIPE, text=True)"
-                )
-                git_status = subprocess.run(
-                    ["git", "status", "--porcelain"],
-                    cwd=config.project_path / challenge_path,
-                    stdout=subprocess.PIPE,
-                    text=True,
-                )
-
-                if git_status.stdout.strip() == "" and git_status.returncode == 0:
-                    click.secho(f"No changes to be pushed for {challenge_path}", fg="green")
-                    continue
-
-                log.debug(f"call(['git', 'add', '.'], cwd='{config.project_path / challenge_path}')")
-                git_add = subprocess.call(["git", "add", "."], cwd=config.project_path / challenge_path)
-
-                log.debug(
-                    f"call(['git', 'commit', '-m', 'Pushing changes to {challenge_path}'], "
-                    f"cwd='{config.project_path / challenge_path}')"
-                )
-                git_commit = subprocess.call(
-                    ["git", "commit", "-m", f"Pushing changes to {challenge_path}"],
-                    cwd=config.project_path / challenge_path,
-                )
-
-                if any(r != 0 for r in [git_add, git_commit]):
-                    click.secho(
-                        "Could not commit the challenge changes. Please check git error messages above.",
-                        fg="red",
-                    )
-                    failed_pushes.append(challenge_instance)
-                    continue
 
                 if use_subrepo:
                     cmd = ["git", "subrepo", "push", challenge_path]
                 else:
                     cmd = ["git", "subtree", "push", "--prefix", challenge_path, challenge_repo, challenge_branch]
 
-                log.debug(f"call({cmd}, cwd='{config.project_path / challenge_path}')")
+                log.debug(f"call({cmd}, cwd='{config.project_path}')")
                 if subprocess.call(cmd, cwd=config.project_path) != 0:
                     click.secho(
                         "Could not push the challenge repository. Please check git error messages above.",
