@@ -211,8 +211,8 @@ class ChallengeCommand:
         click.secho(f"Could not process the challenge path: '{repo}'", fg="red")
         return 1
 
-    def push(self, challenge: str | None = None, no_auto_pull: bool = False, quiet=False) -> int:
-        log.debug(f"push: (challenge={challenge}, no_auto_pull={no_auto_pull}, quiet={quiet})")
+    def push(self, challenge: str | None = None, quiet=False) -> int:
+        log.debug(f"push: (challenge={challenge}, quiet={quiet})")
         config = Config()
 
         if challenge:
@@ -318,10 +318,6 @@ class ChallengeCommand:
                     )
                     failed_pushes.append(challenge_instance)
                     continue
-
-                # if auto pull is not disabled
-                if not no_auto_pull:
-                    self.pull(str(challenge_path), quiet=True)
 
         if len(failed_pushes) == 0:
             if not quiet:
