@@ -442,6 +442,112 @@ class Challenge(dict):
             r = self.api.post("/api/v1/hints", json=hint_payload)
             r.raise_for_status()
 
+
+    def _resolve_writeup(self) -> Optional[Path]:
+        writeup_path_candidates = [
+            self.challenge_directory / "writeup" / "WRITEUP.md",
+            self.challenge_directory / "writeup" / "writeup.md",
+            self.challenge_directory / "WRITEUP.md",
+            self.challenge_directory / "writeup.md",
+            self.challenge_directory / "writeup" / "README.md",
+            self.challenge_directory / "writeup" / "readme.md",
+        ]
+
+        writeup_path = None
+        for candidate in writeup_path_candidates:
+            if candidate.exists():
+                writeup_path = candidate
+                break
+
+        if writeup_path is None:
+            click.secho(
+                f"Could not find a writeup file for challenge {self}!",
+                fg="red",
+            )
+            return
+
+        return writeup_path
+    
+    def _delete_existing_solution(self):
+        remote_solutions = self.api.get("/api/v1/solutions").json()["data"]
+        for solution in remote_solutions:
+            if solution["challenge_id"] == self.challenge_id:
+                r = self.api.delete(f"/api/v1/solutions/{solution['id']}")
+                r.raise_for_status()
+
+    def _create_solution(self):
+        writeup_path = self._resolve_writeup()
+
+        if not writeup_path:
+            click.secho(
+                f"Failed to create solution for {self}!",
+                fg="red",
+            )
+            return
+        
+        solution_payload_create = {
+            "challenge_id": self.challenge_id,
+            "state": "hidden",
+            "content": ""
+        }
+
+        r = self.api.post("/api/v1/solutions", json=solution_payload_create)
+        r.raise_for_status()
+        solution_id = r.json()["data"]["id"]
+        
+        with writeup_path.open("r") as writeup_file:
+            content = writeup_file.read()
+        
+            # Find all images in the content (both markdown and HTML formats)
+            # Markdown format: ![alt text](image_url)
+            # Returns tuples: (full_match, alt_text, image_path)
+            markdown_images = re.findall(r'(!\[([^\]]*)\]\(([^\)]+)\))', content)
+            # HTML format: <img src="..." />
+            # Returns tuples: (full_match, image_path)
+            html_images = re.findall(r'(<img[^>]+src=["\']([^"\']+)["\'][^>]*>)', content)
+            
+            # Find all snippet includes (MkDocs style: --8<-- "filename")
+            # Returns tuples: (full_match, filename)
+            snippet_includes = re.findall(r'(--8<--\s+["\']([^"\']+)["\'])', content)
+
+
+            for mdx, alt, path in markdown_images:
+                new_file = ("file", open(writeup_path.parent / path, mode="rb"))
+                file_payload = {
+                    "type": "solution",
+                    "solution_id": solution_id,
+                }
+
+                # Specifically use data= here to send multipart/form-data
+                r = self.api.post("/api/v1/files", files=[new_file], data=file_payload)
+                r.raise_for_status()
+                resp = r.json()
+                server_location = resp["data"][0]["location"]
+                content = content.replace(mdx, f"![{alt}](/files/{server_location})")
+
+            # Process snippet includes (--8<-- "filename")
+            for full_match, filename in snippet_includes:
+                snippet_file_path = writeup_path.parent / filename
+                if snippet_file_path.exists():
+                    with snippet_file_path.open("r") as snippet_file:
+                        snippet_content = snippet_file.read()
+                        # Replace the --8<-- directive with the actual file content
+                        content = content.replace(full_match, snippet_content)
+                else:
+                    log.warning(f"Snippet file not found: {filename}")
+
+            # # Log found images for debugging
+            # if markdown_images:
+            #     print(f"Found {len(markdown_images)} markdown images in writeup")
+            # if html_images:
+            #     log.debug(f"Found {len(html_images)} HTML images in writeup")
+
+            solution_payload_patch = {
+                "content": content
+            }
+            r = self.api.patch(f"/api/v1/solutions/{solution_id}", json=solution_payload_patch)
+            r.raise_for_status()
+
     def _set_required_challenges(self):
         remote_challenges = self.load_installed_challenges()
         required_challenges = []
@@ -795,6 +901,10 @@ class Challenge(dict):
         _next = challenge.get("next", None)
         if "next" not in ignore:
             self._set_next(_next)
+
+        if "solution" not in ignore:
+            # self._delete_existing_solution()
+            self._create_solution()
 
         make_challenge_visible = False
 
