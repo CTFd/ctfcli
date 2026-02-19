@@ -54,7 +54,7 @@ healthcheck: writeup/exploit.sh
 # You can also use an object:
 # solution:
 #   path: writeup/WRITEUP.md
-#   visibility: solved  # hidden | visible | solved
+#   state: solved  # hidden | visible | solved
 solution: writeup/WRITEUP.md
 
 # Can be removed if unused

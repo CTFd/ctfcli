@@ -453,7 +453,7 @@ class Challenge(dict):
 
         if type(solution) != dict:
             click.secho(
-                "The solution field must be a string path or an object with path and visibility/state",
+                "The solution field must be a string path or an object with path and state",
                 fg="red",
             )
             return None
@@ -463,9 +463,9 @@ class Challenge(dict):
             click.secho("The solution object must define a non-empty string path field", fg="red")
             return None
 
-        solution_state = solution.get("visibility", solution.get("state", "hidden"))
+        solution_state = solution.get("state", "hidden")
         if type(solution_state) != str or solution_state not in ["hidden", "visible", "solved"]:
-            click.secho("The solution visibility/state must be one of: hidden, visible, solved", fg="red")
+            click.secho("The solution state must be one of: hidden, visible, solved", fg="red")
             return None
 
         return solution_path, solution_state
@@ -559,7 +559,6 @@ class Challenge(dict):
                         content = content.replace(full_match, snippet_content)
                 else:
                     log.warning(f"Snippet file not found: {filename}")
-
 
             solution_payload_patch = {"content": content}
             r = self.api.patch(f"/api/v1/solutions/{solution_id}", json=solution_payload_patch)
@@ -1091,15 +1090,15 @@ class Challenge(dict):
                 solution_file = solution
             elif type(solution) == dict:
                 solution_file = solution.get("path")
-                solution_state = solution.get("visibility", solution.get("state", "hidden"))
+                if "visibility" in solution:
+                    issues["fields"].append("The solution object no longer supports visibility. Use state instead.")
+                solution_state = solution.get("state", "hidden")
 
                 if type(solution_state) != str or solution_state not in ["hidden", "visible", "solved"]:
-                    issues["fields"].append("The solution visibility/state must be one of: hidden, visible, solved")
+                    issues["fields"].append("The solution state must be one of: hidden, visible, solved")
 
             else:
-                issues["fields"].append(
-                    "The solution field must be a string path or an object with path and visibility/state"
-                )
+                issues["fields"].append("The solution field must be a string path or an object with path and state")
 
             if type(solution_file) != str or not solution_file:
                 issues["fields"].append("The solution object must define a non-empty string path field")

@@ -150,7 +150,7 @@ class TestChallengeSolutions(unittest.TestCase):
             {
                 "solution": {
                     "path": "challenge.yml",
-                    "visibility": "solved",
+                    "state": "solved",
                 }
             },
         )
@@ -158,7 +158,7 @@ class TestChallengeSolutions(unittest.TestCase):
         self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
         self.assertEqual(solution_state, "solved")
 
-    def test_resolves_solution_object_state_alias_from_specified_path(self):
+    def test_resolves_solution_object_with_state_from_specified_path(self):
         challenge = Challenge(
             self.minimal_challenge,
             {
@@ -221,8 +221,8 @@ class TestChallengeSolutions(unittest.TestCase):
         mock_api.patch.assert_has_calls([call("/api/v1/solutions/5", json={"content": ANY})])
 
     @mock.patch("ctfcli.core.challenge.API")
-    def test_creates_solution_from_object_with_visibility(self, mock_api_constructor: MagicMock):
-        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "visibility": "visible"}})
+    def test_creates_solution_from_object_with_state(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "visible"}})
         challenge.challenge_id = 1
 
         def mock_get(*args, **kwargs):
@@ -255,7 +255,7 @@ class TestChallengeSolutions(unittest.TestCase):
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_updates_existing_solution_instead_of_creating_duplicate(self, mock_api_constructor: MagicMock):
-        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "visibility": "solved"}})
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "solved"}})
         challenge.challenge_id = 1
 
         def mock_get(*args, **kwargs):
@@ -1774,14 +1774,29 @@ class TestLintChallenge(unittest.TestCase):
 
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
 
-    def test_validates_solution_visibility(self):
-        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "visibility": "public"}})
+    def test_validates_solution_state(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "public"}})
 
         with self.assertRaises(LintException) as e:
             challenge.lint(skip_hadolint=True)
 
         expected_lint_issues = {
-            "fields": ["The solution visibility/state must be one of: hidden, visible, solved"],
+            "fields": ["The solution state must be one of: hidden, visible, solved"],
+            "dockerfile": [],
+            "hadolint": [],
+            "files": [],
+        }
+
+        self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+    def test_rejects_solution_visibility_key(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "visibility": "visible"}})
+
+        with self.assertRaises(LintException) as e:
+            challenge.lint(skip_hadolint=True)
+
+        expected_lint_issues = {
+            "fields": ["The solution object no longer supports visibility. Use state instead."],
             "dockerfile": [],
             "hadolint": [],
             "files": [],
