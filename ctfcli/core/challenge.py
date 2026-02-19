@@ -56,6 +56,7 @@ class Challenge(dict):
         "host",
         "connection_info",
         "healthcheck",
+        "solution",
         "attempts",
         "logic",
         "flags",
@@ -442,32 +443,49 @@ class Challenge(dict):
             r = self.api.post("/api/v1/hints", json=hint_payload)
             r.raise_for_status()
 
+    def _parse_solution_definition(self) -> tuple[str, str] | None:
+        solution = self.get("solution", None)
+        if not solution:
+            return None
 
-    def _resolve_writeup(self) -> Optional[Path]:
-        writeup_path_candidates = [
-            self.challenge_directory / "writeup" / "WRITEUP.md",
-            self.challenge_directory / "writeup" / "writeup.md",
-            self.challenge_directory / "WRITEUP.md",
-            self.challenge_directory / "writeup.md",
-            self.challenge_directory / "writeup" / "README.md",
-            self.challenge_directory / "writeup" / "readme.md",
-        ]
+        if type(solution) == str:
+            return solution, "hidden"
 
-        writeup_path = None
-        for candidate in writeup_path_candidates:
-            if candidate.exists():
-                writeup_path = candidate
-                break
-
-        if writeup_path is None:
+        if type(solution) != dict:
             click.secho(
-                f"Could not find a writeup file for challenge {self}!",
+                "The solution field must be a string path or an object with path and state",
                 fg="red",
             )
-            return
+            return None
 
-        return writeup_path
-    
+        solution_path = solution.get("path")
+        if type(solution_path) != str or not solution_path:
+            click.secho("The solution object must define a non-empty string path field", fg="red")
+            return None
+
+        solution_state = solution.get("state", "hidden")
+        if type(solution_state) != str or solution_state not in ["hidden", "visible", "solved"]:
+            click.secho("The solution state must be one of: hidden, visible, solved", fg="red")
+            return None
+
+        return solution_path, solution_state
+
+    def _resolve_solution_path(self) -> tuple[Path, str] | None:
+        parsed_solution = self._parse_solution_definition()
+        if not parsed_solution:
+            return None
+
+        solution_path_string, solution_state = parsed_solution
+        solution_path = self.challenge_directory / solution_path_string
+        if not solution_path.is_file():
+            click.secho(
+                f"Solution file '{solution_path_string}' specified, but not found at {solution_path}",
+                fg="red",
+            )
+            return None
+
+        return solution_path, solution_state
+
     def _delete_existing_solution(self):
         remote_solutions = self.api.get("/api/v1/solutions").json()["data"]
         for solution in remote_solutions:
@@ -475,44 +493,50 @@ class Challenge(dict):
                 r = self.api.delete(f"/api/v1/solutions/{solution['id']}")
                 r.raise_for_status()
 
-    def _create_solution(self):
-        writeup_path = self._resolve_writeup()
-
-        if not writeup_path:
-            click.secho(
-                f"Failed to create solution for {self}!",
-                fg="red",
-            )
-            return
-        
-        solution_payload_create = {
-            "challenge_id": self.challenge_id,
-            "state": "hidden",
-            "content": ""
-        }
-
-        r = self.api.post("/api/v1/solutions", json=solution_payload_create)
+    def _get_existing_solution_id(self) -> int | None:
+        r = self.api.get("/api/v1/solutions")
         r.raise_for_status()
-        solution_id = r.json()["data"]["id"]
-        
-        with writeup_path.open("r") as writeup_file:
-            content = writeup_file.read()
-        
-            # Find all images in the content (both markdown and HTML formats)
+        remote_solutions = r.json().get("data") or []
+        for solution in remote_solutions:
+            if solution["challenge_id"] == self.challenge_id:
+                return solution["id"]
+        return None
+
+    def _create_solution(self):
+        resolved_solution = self._resolve_solution_path()
+        if not resolved_solution:
+            return
+        solution_path, solution_state = resolved_solution
+
+        solution_id = self._get_existing_solution_id()
+        if solution_id is None:
+            solution_payload_create = {"challenge_id": self.challenge_id, "state": solution_state, "content": ""}
+
+            r = self.api.post("/api/v1/solutions", json=solution_payload_create)
+            r.raise_for_status()
+            solution_id = r.json()["data"]["id"]
+        else:
+            # Keep solution state in sync and clear stale content before rebuilding references.
+            r = self.api.patch(
+                f"/api/v1/solutions/{solution_id}",
+                json={"state": solution_state, "content": ""},
+            )
+            r.raise_for_status()
+
+        with solution_path.open("r") as solution_file:
+            content = solution_file.read()
+
+            # Find all images in the content (markdown format; ignore html format)
             # Markdown format: ![alt text](image_url)
             # Returns tuples: (full_match, alt_text, image_path)
-            markdown_images = re.findall(r'(!\[([^\]]*)\]\(([^\)]+)\))', content)
-            # HTML format: <img src="..." />
-            # Returns tuples: (full_match, image_path)
-            html_images = re.findall(r'(<img[^>]+src=["\']([^"\']+)["\'][^>]*>)', content)
-            
+            markdown_images = re.findall(r"(!\[([^\]]*)\]\(([^\)]+)\))", content)
+
             # Find all snippet includes (MkDocs style: --8<-- "filename")
             # Returns tuples: (full_match, filename)
             snippet_includes = re.findall(r'(--8<--\s+["\']([^"\']+)["\'])', content)
 
-
             for mdx, alt, path in markdown_images:
-                new_file = ("file", open(writeup_path.parent / path, mode="rb"))
+                new_file = ("file", open(solution_path.parent / path, mode="rb"))
                 file_payload = {
                     "type": "solution",
                     "solution_id": solution_id,
@@ -527,7 +551,7 @@ class Challenge(dict):
 
             # Process snippet includes (--8<-- "filename")
             for full_match, filename in snippet_includes:
-                snippet_file_path = writeup_path.parent / filename
+                snippet_file_path = solution_path.parent / filename
                 if snippet_file_path.exists():
                     with snippet_file_path.open("r") as snippet_file:
                         snippet_content = snippet_file.read()
@@ -536,15 +560,7 @@ class Challenge(dict):
                 else:
                     log.warning(f"Snippet file not found: {filename}")
 
-            # # Log found images for debugging
-            # if markdown_images:
-            #     print(f"Found {len(markdown_images)} markdown images in writeup")
-            # if html_images:
-            #     log.debug(f"Found {len(html_images)} HTML images in writeup")
-
-            solution_payload_patch = {
-                "content": content
-            }
+            solution_payload_patch = {"content": content}
             r = self.api.patch(f"/api/v1/solutions/{solution_id}", json=solution_payload_patch)
             r.raise_for_status()
 
@@ -990,6 +1006,10 @@ class Challenge(dict):
         if "next" not in ignore:
             self._set_next(_next)
 
+        # Add solution
+        if "solution" not in ignore:
+            self._create_solution()
+
         # Bring back the challenge if it's supposed to be visible
         # Either explicitly, or by assuming the default value (possibly because the state is ignored)
         if challenge.get("state", "visible") == "visible" or "state" in ignore:
@@ -1059,6 +1079,35 @@ class Challenge(dict):
                 issues["files"].append(
                     f"Challenge file '{challenge_file}' specified, but not found at {challenge_file_path}"
                 )
+
+        # Check that the optional solution file exists
+        solution = self.get("solution", None)
+        if solution:
+            solution_file = None
+            solution_state = "hidden"
+
+            if type(solution) == str:
+                solution_file = solution
+            elif type(solution) == dict:
+                solution_file = solution.get("path")
+                if "visibility" in solution:
+                    issues["fields"].append("The solution object no longer supports visibility. Use state instead.")
+                solution_state = solution.get("state", "hidden")
+
+                if type(solution_state) != str or solution_state not in ["hidden", "visible", "solved"]:
+                    issues["fields"].append("The solution state must be one of: hidden, visible, solved")
+
+            else:
+                issues["fields"].append("The solution field must be a string path or an object with path and state")
+
+            if type(solution_file) != str or not solution_file:
+                issues["fields"].append("The solution object must define a non-empty string path field")
+            else:
+                solution_file_path = self.challenge_directory / solution_file
+                if solution_file_path.is_file() is False:
+                    issues["files"].append(
+                        f"Solution file '{solution_file}' specified, but not found at {solution_file_path}"
+                    )
 
         # Check that files don't have a flag in them
         for challenge_file in files:

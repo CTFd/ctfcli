@@ -134,6 +134,217 @@ class TestRemoteChallengeLoading(unittest.TestCase):
         mock_get.assert_called_once_with("/api/v1/challenges?view=admin")
 
 
+class TestChallengeSolutions(unittest.TestCase):
+    minimal_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+    solution_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-solution" / "challenge.yml"
+
+    def test_resolves_solution_from_specified_path(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
+        solution_path, solution_state = challenge._resolve_solution_path()
+        self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
+        self.assertEqual(solution_state, "hidden")
+
+    def test_resolves_solution_object_from_specified_path(self):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "solution": {
+                    "path": "challenge.yml",
+                    "state": "solved",
+                }
+            },
+        )
+        solution_path, solution_state = challenge._resolve_solution_path()
+        self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
+        self.assertEqual(solution_state, "solved")
+
+    def test_resolves_solution_object_with_state_from_specified_path(self):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "solution": {
+                    "path": "challenge.yml",
+                    "state": "visible",
+                }
+            },
+        )
+        solution_path, solution_state = challenge._resolve_solution_path()
+        self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
+        self.assertEqual(solution_state, "visible")
+
+    def test_does_not_resolve_solution_if_not_specified(self):
+        challenge = Challenge(self.minimal_challenge)
+        self.assertIsNone(challenge._resolve_solution_path())
+
+    @mock.patch("ctfcli.core.challenge.click.secho")
+    def test_does_not_resolve_solution_if_missing(self, mock_secho: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": "writeup/WRITEUP.md"})
+        self.assertIsNone(challenge._resolve_solution_path())
+        mock_secho.assert_called_once_with(
+            f"Solution file 'writeup/WRITEUP.md' specified, but not found at "
+            f"{challenge.challenge_directory / 'writeup/WRITEUP.md'}",
+            fg="red",
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_from_specified_path(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        mock_api.post.assert_has_calls(
+            [call("/api/v1/solutions", json={"challenge_id": 1, "state": "hidden", "content": ""})]
+        )
+        mock_api.patch.assert_has_calls([call("/api/v1/solutions/5", json={"content": ANY})])
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_from_object_with_state(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "visible"}})
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        mock_api.post.assert_has_calls(
+            [call("/api/v1/solutions", json={"challenge_id": 1, "state": "visible", "content": ""})]
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_existing_solution_instead_of_creating_duplicate(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "solved"}})
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 9, "challenge_id": 1, "state": "hidden", "content": "old"}],
+                }
+                return mock_response
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+
+        challenge._create_solution()
+
+        mock_api.post.assert_not_called()
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/solutions/9", json={"state": "solved", "content": ""}),
+                call("/api/v1/solutions/9", json={"content": ANY}),
+            ],
+            any_order=True,
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_does_not_create_solution_if_not_specified(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge)
+        challenge.challenge_id = 1
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge._create_solution()
+
+        mock_api.post.assert_not_called()
+        mock_api.patch.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_solution_uploads_markdown_images_and_inlines_snippets(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.solution_challenge)
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            if path == "/api/v1/files":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"location": "solution-uploaded/test.png"}],
+                }
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/solutions", json={"challenge_id": 1, "state": "hidden", "content": ""}),
+                call("/api/v1/files", files=ANY, data={"type": "solution", "solution_id": 5}),
+            ]
+        )
+        mock_api.patch.assert_called_once()
+        patched_content = mock_api.patch.call_args.kwargs["json"]["content"]
+
+        self.assertIn("![diagram](/files/solution-uploaded/test.png)", patched_content)
+        self.assertIn('print("snippet from python")', patched_content)
+        self.assertIn('<img src="images/test-html.png" />', patched_content)
+
+
 class TestSyncChallenge(unittest.TestCase):
     installed_challenges = [
         {
@@ -1055,6 +1266,7 @@ class TestSyncChallenge(unittest.TestCase):
             "files",
             "hints",
             "requirements",
+            "solution",
             # fmt: on
         ]
 
@@ -1132,6 +1344,9 @@ class TestSyncChallenge(unittest.TestCase):
 
                         if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
+
+                        if p == "solution":
+                            challenge[p] = "challenge.yml"
 
                         challenge.sync(ignore=[p])
 
@@ -1269,6 +1484,45 @@ class TestCreateChallenge(unittest.TestCase):
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_on_create(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/challenges":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 3}}
+                return mock_response
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.post.side_effect = mock_post
+
+        challenge.create()
+
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/challenges", json=ANY),
+                call("/api/v1/solutions", json={"challenge_id": 3, "state": "hidden", "content": ""}),
+            ],
+            any_order=True,
+        )
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/solutions/5", json={"content": ANY}),
+            ],
+            any_order=True,
+        )
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
     def test_exits_if_files_do_not_exist(self, mock_api_constructor: MagicMock, *args, **kwargs):
         challenge = Challenge(self.minimal_challenge, {"files": ["files/nonexistent.png"]})
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1286,7 +1540,7 @@ class TestCreateChallenge(unittest.TestCase):
         # fmt:off
         properties = [
             "value", "category", "description", "attribution", "attempts", "connection_info", "state",  # simple types
-            "extra", "flags", "topics", "tags", "files", "hints", "requirements"  # complex types
+            "extra", "flags", "topics", "tags", "files", "hints", "requirements", "solution"  # complex types
         ]
         # fmt:on
 
@@ -1346,6 +1600,9 @@ class TestCreateChallenge(unittest.TestCase):
 
                         if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
+
+                        if p == "solution":
+                            challenge[p] = "challenge.yml"
 
                         def mock_post(*args, **kwargs):
                             path = args[0]
@@ -1497,6 +1754,52 @@ class TestLintChallenge(unittest.TestCase):
             "dockerfile": [],
             "hadolint": [],
             "files": ["Potential flag found in distributed file 'files/flag.txt':\n Whoopsie: flag{test-flag}"],
+        }
+
+        self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+    def test_validates_solution_file_exists(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": "writeup/WRITEUP.md"})
+
+        with self.assertRaises(LintException) as e:
+            challenge.lint(skip_hadolint=True)
+
+        expected_solution_path = (challenge.challenge_directory / "writeup" / "WRITEUP.md").absolute()
+        expected_lint_issues = {
+            "fields": [],
+            "dockerfile": [],
+            "hadolint": [],
+            "files": [f"Solution file 'writeup/WRITEUP.md' specified, but not found at {expected_solution_path}"],
+        }
+
+        self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+    def test_validates_solution_state(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "public"}})
+
+        with self.assertRaises(LintException) as e:
+            challenge.lint(skip_hadolint=True)
+
+        expected_lint_issues = {
+            "fields": ["The solution state must be one of: hidden, visible, solved"],
+            "dockerfile": [],
+            "hadolint": [],
+            "files": [],
+        }
+
+        self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+    def test_rejects_solution_visibility_key(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "visibility": "visible"}})
+
+        with self.assertRaises(LintException) as e:
+            challenge.lint(skip_hadolint=True)
+
+        expected_lint_issues = {
+            "fields": ["The solution object no longer supports visibility. Use state instead."],
+            "dockerfile": [],
+            "hadolint": [],
+            "files": [],
         }
 
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
