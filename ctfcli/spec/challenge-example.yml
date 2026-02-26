@@ -48,6 +48,15 @@ connection_info: nc hostname 12345
 # ./writeup/exploit.sh --connection-info "nc hostname 12345"
 healthcheck: writeup/exploit.sh
 
+# solution is used to provide a path to the challenge solution document.
+# The file path is relative to this challenge.yml file.
+# If provided as a string path, ctfcli uploads it as a hidden CTFd solution during sync.
+# You can also use an object:
+# solution:
+#   path: writeup/WRITEUP.md
+#   state: solved  # hidden | visible | solved
+solution: writeup/WRITEUP.md
+
 # Can be removed if unused
 attempts: 5
 
