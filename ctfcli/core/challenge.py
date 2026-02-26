@@ -1090,8 +1090,6 @@ class Challenge(dict):
                 solution_file = solution
             elif type(solution) == dict:
                 solution_file = solution.get("path")
-                if "visibility" in solution:
-                    issues["fields"].append("The solution object no longer supports visibility. Use state instead.")
                 solution_state = solution.get("state", "hidden")
 
                 if type(solution_state) != str or solution_state not in ["hidden", "visible", "solved"]:

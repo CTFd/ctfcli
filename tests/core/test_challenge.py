@@ -1789,21 +1789,6 @@ class TestLintChallenge(unittest.TestCase):
 
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
 
-    def test_rejects_solution_visibility_key(self):
-        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "visibility": "visible"}})
-
-        with self.assertRaises(LintException) as e:
-            challenge.lint(skip_hadolint=True)
-
-        expected_lint_issues = {
-            "fields": ["The solution object no longer supports visibility. Use state instead."],
-            "dockerfile": [],
-            "hadolint": [],
-            "files": [],
-        }
-
-        self.assertDictEqual(expected_lint_issues, e.exception.issues)
-
 
 class TestVerifyMirrorChallenge(unittest.TestCase):
     installed_challenges = [
