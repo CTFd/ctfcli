@@ -1,5 +1,12 @@
 # Changelog
 
+# 0.1.7 / 2026-02-26
+
+### Added
+
+- Add support for branches to challenge repo URLs
+- Add support for solutions based on writeups in the challenge repo
+
 # 0.1.6 / 2026-01-06
 
 ### Added
