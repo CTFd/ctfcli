@@ -919,7 +919,9 @@ class Challenge(dict):
             self._set_next(_next)
 
         if "solution" not in ignore:
-            # self._delete_existing_solution()
+            resolved_solution = self._resolve_solution_path()
+            if not resolved_solution:
+                self._delete_existing_solution()
             self._create_solution()
 
         make_challenge_visible = False
