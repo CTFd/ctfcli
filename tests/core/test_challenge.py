@@ -927,6 +927,130 @@ class TestSyncChallenge(unittest.TestCase):
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_hints_with_requirements(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "hints": [
+                    {
+                        "key": "hint-1",
+                        "content": "first hint",
+                    },
+                    {
+                        "key": "hint-2",
+                        "title": "Going deeper",
+                        "content": "second hint",
+                        "cost": 10,
+                        "requirements": ["hint-1"],
+                    },
+                ]
+            },
+        )
+
+        expected_challenge_payload = {
+            "name": "Test Challenge",
+            "category": "New Test",
+            "description": "New Test Description",
+            "attribution": "New Test Attribution",
+            "type": "standard",
+            "value": 150,
+            "state": "hidden",
+            "max_attempts": 0,
+            "connection_info": None,
+        }
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.return_value.json.return_value = {
+            "success": True,
+            "data": [
+                {"challenge_id": 1, "id": 5, "content": "old hint", "cost": 0, "challenge": 1},
+            ],
+        }
+
+        # POST responses return different hint IDs per call
+        post_hint_1_response = MagicMock()
+        post_hint_1_response.json.return_value = {"success": True, "data": {"id": 10}}
+        post_hint_2_response = MagicMock()
+        post_hint_2_response.json.return_value = {"success": True, "data": {"id": 11}}
+        mock_api.post.side_effect = [post_hint_1_response, post_hint_2_response]
+
+        challenge.sync(ignore=["files"])
+
+        # hint-1: created with real content (no requirements)
+        # hint-2: created with blank content (has requirements, to prevent premature exposure)
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/hints", json={"content": "first hint", "title": "", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"content": "", "title": "Going deeper", "cost": 10, "challenge_id": 1}),
+            ]
+        )
+
+        # hint-2 requirements set first, then real content applied
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/1", json=expected_challenge_payload),
+                call().raise_for_status(),
+                call("/api/v1/hints/11", json={"requirements": {"prerequisites": [10]}}),
+                call().raise_for_status(),
+                call("/api/v1/hints/11", json={"content": "second hint"}),
+                call().raise_for_status(),
+            ]
+        )
+
+        mock_api.delete.assert_has_calls(
+            [
+                call("/api/v1/hints/5"),
+                call().raise_for_status(),
+            ]
+        )
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_hints_with_unknown_requirement_key(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "hints": [
+                    {
+                        "key": "hint-1",
+                        "content": "first hint",
+                        "requirements": ["nonexistent-key"],
+                    },
+                ]
+            },
+        )
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.return_value.json.return_value = {
+            "success": True,
+            "data": [
+                {"challenge_id": 1, "id": 5, "content": "old hint", "cost": 0, "challenge": 1},
+            ],
+        }
+
+        post_hint_1_response = MagicMock()
+        post_hint_1_response.json.return_value = {"success": True, "data": {"id": 10}}
+        mock_api.post.side_effect = [post_hint_1_response]
+
+        challenge.sync(ignore=["files"])
+
+        # hint-1 created with blank content since it declares requirements
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/hints", json={"content": "", "title": "", "cost": 0, "challenge_id": 1}),
+            ]
+        )
+
+        # requirements PATCH is skipped (no valid prerequisite IDs resolved)
+        for patch_call in mock_api.patch.call_args_list:
+            if len(patch_call.args) > 0 and patch_call.args[0] == "/api/v1/hints/10":
+                self.assertNotIn("requirements", patch_call.kwargs.get("json", {}))
+
+        # content PATCH still happens after the (skipped) requirements step
+        mock_api.patch.assert_any_call("/api/v1/hints/10", json={"content": "first hint"})
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
     def test_updates_requirements(self, mock_api_constructor: MagicMock, *args, **kwargs):
         challenge = Challenge(self.minimal_challenge, {"requirements": ["Other Test Challenge", 3]})
 

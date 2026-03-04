@@ -424,6 +424,10 @@ class Challenge(dict):
                 r.raise_for_status()
 
     def _create_hints(self):
+        key_to_id = {}
+
+        # Pass 1: create all hints; hints with requirements get blank content initially
+        # to prevent content from being exposed before prerequisites are enforced
         for hint in self["hints"]:
             if type(hint) == str:
                 hint_payload = {
@@ -432,15 +436,57 @@ class Challenge(dict):
                     "cost": 0,
                     "challenge_id": self.challenge_id,
                 }
+                key = None
             else:
+                has_requirements = bool(hint.get("requirements"))
                 hint_payload = {
-                    "content": hint["content"],
+                    "content": "" if has_requirements else hint["content"],
                     "title": hint.get("title", ""),
                     "cost": hint.get("cost", 0),
                     "challenge_id": self.challenge_id,
                 }
+                key = hint.get("key")
 
             r = self.api.post("/api/v1/hints", json=hint_payload)
+            r.raise_for_status()
+
+            if key is not None:
+                key_to_id[key] = r.json()["data"]["id"]
+
+        # Pass 2: set requirements
+        for hint in self["hints"]:
+            if type(hint) == str:
+                continue
+            requirements = hint.get("requirements", [])
+            key = hint.get("key")
+            if not requirements or key is None:
+                continue
+
+            prerequisite_ids = []
+            for req_key in requirements:
+                if req_key in key_to_id:
+                    prerequisite_ids.append(key_to_id[req_key])
+                else:
+                    click.secho(
+                        f'Hint key "{req_key}" not found. Skipping invalid hint requirement.',
+                        fg="yellow",
+                    )
+
+            hint_id = key_to_id[key]
+
+            # Pass 3: fill in real content
+            if prerequisite_ids:
+                r = self.api.patch(
+                    f"/api/v1/hints/{hint_id}",
+                    json={"requirements": {"prerequisites": prerequisite_ids}},
+                )
+                r.raise_for_status()
+
+            # Now safe to set the real content
+            r = self.api.patch(
+                f"/api/v1/hints/{hint_id}",
+                json={"content": hint["content"]},
+            )
             r.raise_for_status()
 
     def _parse_solution_definition(self) -> tuple[str, str] | None:
@@ -749,10 +795,42 @@ class Challenge(dict):
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/hints")
         r.raise_for_status()
         hints = r.json()["data"]
-        # skipping pre-requisites for hints because they are not supported in ctfcli
-        challenge["hints"] = [
-            ({"content": h["content"], "cost": h["cost"]} if h["cost"] > 0 else h["content"]) for h in hints
-        ]
+
+        # Determine which hints are part of a requirements chain:
+        # either they have prerequisites themselves, or are referenced as a prerequisite
+        referenced_ids = set()
+        for h in hints:
+            for pid in (h.get("requirements") or {}).get("prerequisites", []):
+                referenced_ids.add(pid)
+        hints_with_requirements = {h["id"] for h in hints if (h.get("requirements") or {}).get("prerequisites")}
+        needs_key = referenced_ids | hints_with_requirements
+
+        id_to_key = {h["id"]: f"hint-{h['id']}" for h in hints}
+        normalized_hints = []
+        for h in hints:
+            prerequisites = (h.get("requirements") or {}).get("prerequisites", [])
+            has_requirements = bool(prerequisites)
+            has_cost = h["cost"] > 0
+            has_title = bool(h.get("title", ""))
+            in_requirements_chain = h["id"] in needs_key
+
+            if not has_cost and not has_requirements and not has_title and not in_requirements_chain:
+                normalized_hints.append(h["content"])
+            else:
+                hint_dict = {"content": h["content"]}
+                if in_requirements_chain:
+                    hint_dict["key"] = id_to_key[h["id"]]
+                if has_title:
+                    hint_dict["title"] = h["title"]
+                if has_cost:
+                    hint_dict["cost"] = h["cost"]
+                if has_requirements:
+                    hint_dict["requirements"] = [
+                        id_to_key[pid] for pid in prerequisites if pid in id_to_key
+                    ]
+                normalized_hints.append(hint_dict)
+
+        challenge["hints"] = normalized_hints
 
         # Add topics
         r = self.api.get(f"/api/v1/challenges/{self.challenge_id}/topics")

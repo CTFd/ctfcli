@@ -125,6 +125,14 @@ hints:
     - title: Titled Hint
       content: This hint has a title and costs points
       cost: 10
+    - key: keyed_hint_1
+      title: This hint has a key
+      content: This hint has a key
+    - title: This hint has requirements
+      content: This hint has a title and costs points and has requirements
+      cost: 10
+      requirements:
+        - keyed_hint_1
 
 # Requirements are used to make a challenge require another challenge to be
 # solved before being available.
