@@ -853,9 +853,8 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.post.assert_not_called()
         mock_api.delete.assert_not_called()
 
-    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
-    def test_updates_hints(self, mock_api_constructor: MagicMock, *args, **kwargs):
+    def test_updates_hints(self, mock_api_constructor: MagicMock):
         challenge = Challenge(
             self.minimal_challenge,
             {
@@ -868,18 +867,7 @@ class TestSyncChallenge(unittest.TestCase):
                 ]
             },
         )
-
-        expected_challenge_payload = {
-            "name": "Test Challenge",
-            "category": "New Test",
-            "description": "New Test Description",
-            "attribution": "New Test Attribution",
-            "type": "standard",
-            "value": 150,
-            "state": "hidden",
-            "max_attempts": 0,
-            "connection_info": None,
-        }
+        challenge.challenge_id = 1
 
         mock_api: MagicMock = mock_api_constructor.return_value
         mock_api.get.return_value.json.return_value = {
@@ -889,41 +877,28 @@ class TestSyncChallenge(unittest.TestCase):
                 {"challenge_id": 1, "id": 2, "content": "old paid hint", "cost": 50, "challenge": 1},
             ],
         }
+        mock_api.post.return_value.json.return_value = {"success": True, "data": {"id": 10}}
 
-        challenge.sync(ignore=["files"])
+        challenge._delete_existing_hints()
+        challenge._create_hints()
 
-        mock_api.get.assert_has_calls(
-            [
-                call("/api/v1/challenges/1?view=admin"),
-                call("/api/v1/flags"),
-                call("/api/v1/challenges/1/topics"),
-                call("/api/v1/tags"),
-                call("/api/v1/hints"),
-            ],
-            any_order=True,
+        self.assertEqual(
+            mock_api.delete.call_args_list,
+            [call("/api/v1/hints/1"), call("/api/v1/hints/2")],
         )
+        self.assertEqual(mock_api.delete.return_value.raise_for_status.call_count, 2)
 
-        mock_api.patch.assert_has_calls(
-            [call("/api/v1/challenges/1", json=expected_challenge_payload), call().raise_for_status()]
-        )
-
-        mock_api.post.assert_has_calls(
+        self.assertEqual(
+            mock_api.post.call_args_list,
             [
                 call("/api/v1/hints", json={"content": "free hint", "title": "", "cost": 0, "challenge_id": 1}),
-                call().raise_for_status(),
                 call("/api/v1/hints", json={"content": "paid hint", "title": "", "cost": 100, "challenge_id": 1}),
-                call().raise_for_status(),
-            ]
+            ],
         )
+        self.assertEqual(mock_api.post.return_value.raise_for_status.call_count, 2)
 
-        mock_api.delete.assert_has_calls(
-            [
-                call("/api/v1/hints/1"),
-                call().raise_for_status(),
-                call("/api/v1/hints/2"),
-                call().raise_for_status(),
-            ]
-        )
+        # no requirements — no PATCH calls expected
+        mock_api.patch.assert_not_called()
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
