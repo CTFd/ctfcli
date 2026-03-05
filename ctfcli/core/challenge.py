@@ -425,10 +425,11 @@ class Challenge(dict):
 
     def _create_hints(self):
         key_to_id = {}
+        target_hints = {}
 
         # Pass 1: create all hints; hints with requirements get blank content initially
         # to prevent content from being exposed before prerequisites are enforced
-        for hint in self["hints"]:
+        for idx, hint in enumerate(self["hints"]):
             if type(hint) == str:
                 hint_payload = {
                     "content": hint,
@@ -450,29 +451,31 @@ class Challenge(dict):
             r = self.api.post("/api/v1/hints", json=hint_payload)
             r.raise_for_status()
 
+            # Store IDs for processing later
+            target_hints[idx] = r.json()["data"]["id"]
             if key is not None:
                 key_to_id[key] = r.json()["data"]["id"]
 
         # Pass 2: set requirements
-        for hint in self["hints"]:
+        for idx, hint in enumerate(self["hints"]):
             if type(hint) == str:
                 continue
             requirements = hint.get("requirements", [])
-            key = hint.get("key")
-            if not requirements or key is None:
+            if not requirements:
                 continue
 
             prerequisite_ids = []
             for req_key in requirements:
                 if req_key in key_to_id:
-                    prerequisite_ids.append(key_to_id[req_key])
+                    preq_hint_id = key_to_id[req_key]
+                    prerequisite_ids.append(preq_hint_id)
                 else:
                     click.secho(
                         f'Hint key "{req_key}" not found. Skipping invalid hint requirement.',
                         fg="yellow",
                     )
 
-            hint_id = key_to_id[key]
+            hint_id = target_hints[idx]
 
             # Pass 3: fill in real content
             if prerequisite_ids:
@@ -825,9 +828,7 @@ class Challenge(dict):
                 if has_cost:
                     hint_dict["cost"] = h["cost"]
                 if has_requirements:
-                    hint_dict["requirements"] = [
-                        id_to_key[pid] for pid in prerequisites if pid in id_to_key
-                    ]
+                    hint_dict["requirements"] = [id_to_key[pid] for pid in prerequisites if pid in id_to_key]
                 normalized_hints.append(hint_dict)
 
         challenge["hints"] = normalized_hints
