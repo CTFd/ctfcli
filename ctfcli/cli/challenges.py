@@ -1047,7 +1047,7 @@ class ChallengeCommand:
                 for challenge_instance in challenges_out_of_sync:
                     click.echo(f" - {challenge_instance}")
 
-            if len(challenges_out_of_sync) > 1:
+            if len(challenges_out_of_sync) >= 1:
                 return 2
 
             return 0
