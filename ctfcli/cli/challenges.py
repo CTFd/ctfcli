@@ -1047,10 +1047,10 @@ class ChallengeCommand:
                 for challenge_instance in challenges_out_of_sync:
                     click.echo(f" - {challenge_instance}")
 
-            if len(challenges_out_of_sync) > 1:
+            if len(challenges_out_of_sync) >= 1:
                 return 2
 
-            return 1
+            return 0
 
         click.secho("Verification failed for:", fg="red")
         for challenge_instance in failed_verifications:
