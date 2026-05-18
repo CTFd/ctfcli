@@ -72,12 +72,15 @@ class API(Session):
                 fields.extend(files)  # type: ignore
 
             multipart = MultipartEncoder(fields)
+            headers = kwargs.pop("headers", {}) or {}
+            headers = dict(headers)
+            headers["Content-Type"] = multipart.content_type
 
             return super(API, self).request(
                 method,
                 url,
                 data=multipart,
-                headers={"Content-Type": multipart.content_type},
+                headers=headers,
                 *args,
                 **kwargs,
             )
