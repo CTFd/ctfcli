@@ -60,8 +60,9 @@ class ConfigCommand:
 
         if not failed_configs:
             click.secho("Successfully pushed config", fg="green")
-        else:
-            return 1
+            return 0
+
+        return 1
 
 
 class InstanceCommand:

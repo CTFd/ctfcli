@@ -7,7 +7,7 @@ from ctfcli.core.api import API
 
 class MockConfigSection(dict):
     def __init__(self, data):
-        super(MockConfigSection, self).__init__(data)
+        super().__init__(data)
 
     # this is a wrong implementation but all that's necessary for this test
     def getboolean(self, key, default=None):

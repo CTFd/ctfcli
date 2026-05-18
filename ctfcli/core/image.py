@@ -3,11 +3,10 @@ import subprocess
 import tempfile
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union
 
 
 class Image:
-    def __init__(self, name: str, build_path: Optional[Union[str, PathLike]] = None):
+    def __init__(self, name: str, build_path: str | PathLike | None = None):
         # name can be either a new name to assign or an existing image name
         self.name = name
 
@@ -23,24 +22,24 @@ class Image:
             self.build_path = Path(build_path)
             self.built = False
 
-    def build(self) -> Optional[str]:
+    def build(self) -> str | None:
         docker_build = subprocess.call(
             ["docker", "build", "--load", "-t", self.name, "."], cwd=self.build_path.absolute()
         )
         if docker_build != 0:
-            return
+            return None
 
         self.built = True
         return self.name
 
-    def pull(self) -> Optional[str]:
+    def pull(self) -> str | None:
         docker_pull = subprocess.call(["docker", "pull", self.name])
         if docker_pull != 0:
-            return
+            return None
 
         return self.name
 
-    def push(self, location: str) -> Optional[str]:
+    def push(self, location: str) -> str | None:
         if not self.built:
             self.build()
 
@@ -48,23 +47,23 @@ class Image:
         docker_push = subprocess.call(["docker", "push", location])
 
         if any(r != 0 for r in [docker_tag, docker_push]):
-            return
+            return None
 
         return location
 
-    def export(self) -> Optional[str]:
+    def export(self) -> str | None:
         if not self.built:
             self.build()
 
-        image_tar = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{self.basename}.docker.tar")
+        image_tar = tempfile.NamedTemporaryFile(delete=False, suffix=f"_{self.basename}.docker.tar")  # noqa: SIM115
         docker_save = subprocess.call(["docker", "save", "--output", image_tar.name, self.name])
 
         if docker_save != 0:
-            return
+            return None
 
         return image_tar.name
 
-    def get_exposed_port(self) -> Optional[str]:
+    def get_exposed_port(self) -> str | None:
         if not self.built:
             self.build()
 
@@ -73,7 +72,7 @@ class Image:
                 ["docker", "inspect", "--format={{json .Config.ExposedPorts}}", self.name]
             )
         except subprocess.CalledProcessError:
-            return
+            return None
 
         ports_data = json.loads(docker_output)
         if ports_data:
@@ -82,3 +81,4 @@ class Image:
             if ports:
                 # Split '2323/tcp'
                 return ports[0].split("/")[0]
+        return None

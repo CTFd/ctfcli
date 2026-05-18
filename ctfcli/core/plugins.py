@@ -1,14 +1,13 @@
 import importlib
 import logging
 import sys
-from typing import Dict
 
 from ctfcli.core.config import Config
 
 log = logging.getLogger("ctfcli.core.plugins")
 
 
-def load_plugins(commands: Dict):
+def load_plugins(commands: dict):
     plugins_path = Config.get_plugins_path()
     sys.path.insert(0, str(plugins_path.absolute()))
 

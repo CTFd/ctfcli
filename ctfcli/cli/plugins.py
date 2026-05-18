@@ -18,7 +18,7 @@ class PluginsCommand:
         plugins_path = Config.get_plugins_path()
         if not plugin_url.endswith(".git"):
             click.secho(
-                "Can only install plugins from git repositories - " f"{plugin_url} does not end with .git",
+                f"Can only install plugins from git repositories - {plugin_url} does not end with .git",
                 fg="red",
             )
             return 1

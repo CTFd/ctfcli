@@ -19,7 +19,7 @@ class TemplatesCommand:
         templates_path = Config.get_templates_path()
         if not template_url.endswith(".git"):
             click.secho(
-                "Can only install templates from git repositories - " f"{template_url} does not end with .git",
+                f"Can only install templates from git repositories - {template_url} does not end with .git",
                 fg="red",
             )
             return 1

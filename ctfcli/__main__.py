@@ -4,7 +4,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Union
 
 import click
 import fire
@@ -16,7 +15,11 @@ from ctfcli.cli.media import MediaCommand
 from ctfcli.cli.pages import PagesCommand
 from ctfcli.cli.plugins import PluginsCommand
 from ctfcli.cli.templates import TemplatesCommand
-from ctfcli.core.exceptions import ProjectNotInitialized
+from ctfcli.core.exceptions import (
+    MissingAPIKey,
+    MissingInstanceURL,
+    ProjectNotInitialized,
+)
 from ctfcli.core.plugins import load_plugins
 from ctfcli.utils.git import check_if_dir_is_inside_git_repo
 
@@ -29,7 +32,7 @@ log = logging.getLogger("ctfcli.main")
 class CTFCLI:
     @staticmethod
     def init(
-        directory: Optional[Union[str, os.PathLike]] = None,
+        directory: str | os.PathLike | None = None,
         no_git: bool = False,
         no_commit: bool = False,
     ):
@@ -147,6 +150,14 @@ def main():
 
         if isinstance(ret, int):
             sys.exit(ret)
+
+    except MissingInstanceURL as e:
+        click.secho(e, fg="red")
+        sys.exit(1)
+
+    except MissingAPIKey as e:
+        click.secho(e, fg="red")
+        sys.exit(1)
 
     except ProjectNotInitialized:
         if click.confirm(

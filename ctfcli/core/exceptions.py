@@ -1,6 +1,20 @@
-from typing import Dict, List
-
 import click
+
+
+class MissingAPIKey(Exception):
+    def __str__(self):
+        return (
+            "Missing API key. "
+            "Please set the API key in your configuration file or set the CTFCLI_ACCESS_TOKEN environment variable."
+        )
+
+
+class MissingInstanceURL(Exception):
+    def __str__(self):
+        return (
+            "Missing CTFd instance URL. "
+            "Please set the instance URL in your configuration file or set the CTFCLI_URL environment variable."
+        )
 
 
 class ProjectNotInitialized(Exception):
@@ -24,9 +38,9 @@ class RemoteChallengeNotFound(ChallengeException):
 
 
 class LintException(Exception):
-    def __init__(self, *args, issues: Dict[str, List[str]] = None):
+    def __init__(self, *args, issues: dict[str, list[str]] | None = None):
         self.issues = issues if issues else {}
-        super(LintException, self).__init__(*args)
+        super().__init__(*args)
 
     def print_summary(self):
         for category, issues in self.issues.items():

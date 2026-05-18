@@ -1,5 +1,3 @@
-from typing import List
-
 from ctfcli.core.api import API
 from ctfcli.core.exceptions import InstanceConfigException
 
@@ -55,7 +53,7 @@ class ServerConfig:
         return config
 
     @staticmethod
-    def setall(configs) -> List[str]:
+    def setall(configs) -> list[str]:
         failed = []
         for k, v in configs.items():
             try:

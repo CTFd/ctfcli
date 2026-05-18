@@ -5,6 +5,7 @@ from requests import Session
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from ctfcli.core.config import Config
+from ctfcli.core.exceptions import MissingAPIKey, MissingInstanceURL
 
 
 class API(Session):
@@ -12,8 +13,15 @@ class API(Session):
         config = Config()
 
         # Load required configuration values
-        self.url = config["config"]["url"]
-        self.access_token = config["config"]["access_token"]
+        try:
+            self.url = config["config"]["url"]
+        except KeyError as e:
+            raise MissingInstanceURL() from e
+
+        try:
+            self.access_token = config["config"]["access_token"]
+        except KeyError as e:
+            raise MissingAPIKey() from e
 
         # Handle SSL verification disabling
         try:
@@ -24,7 +32,7 @@ class API(Session):
             # https://requests.kennethreitz.org/en/master/user/advanced/#ssl-cert-verification
             ssl_verify = config["config"].get("ssl_verify")
 
-        super(API, self).__init__()
+        super().__init__()
 
         # Strip out ending slashes and append a singular one, so we generate
         # clean base URLs for both main deployments and subdir deployments

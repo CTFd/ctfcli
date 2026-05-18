@@ -1,5 +1,58 @@
 # Changelog
 
+# 0.1.7 / 2026-02-26
+
+### Added
+
+- Add support for branches to challenge repo URLs
+- Add support for solutions based on writeups in the challenge repo
+
+# 0.1.6 / 2026-01-06
+
+### Added
+
+- Add `sha1sum` to `--ignore` as part of `ctf challenge sync` to allow syncing files when the remote checksum or local checksum is corrupted
+
+### Fixed
+
+- Fix an issue where if deployment returned updated connection info we wouldn't update it in challenge.yml
+- Fix an issue where relative paths would not deploy due to a logging error
+
+### Changed
+
+- Challenges without an image will be considered a skipped deploy instead of a failed deploy
+- Switch from poetry to uv
+- Switch from to ruff
+
+# 0.1.5 / 2025-09-04
+
+### Added
+
+- Support for hint titles
+- Support `logic` key for challenges
+
+### Fixed
+
+- Fix issue with resolving relative challenge paths during install
+
+# 0.1.4 / 2025-04-29
+
+### Added
+
+- Added support for `ctf instance` with the `ctf instance config` command which can be used to `get` and `set` configuration on CTFd
+- Added `ctf media add`, `ctf media rm`, `ctf media url`
+  - Allows ctfcli repos to manage files locally and reference the actual server URLs of media files in Pages
+  - Adds concept of replacing placeholders like `{{ media/ctfd.png }}` with the actual URL on the server
+- Added the `attribution` field to challenge.yml
+- Added the `next` field to challenge.yml
+- Added ability to anoymize challenges while specifying prerequisites
+- Added specifying CTFd instance URL and access token via envvars: `CTFCLI_URL`, `CTFCLI_ACCESS_TOKEN`
+
+### Fixed
+
+- Fix issue with managing challenges with an empty files section
+- Fix issue where images could not be deployed due to being named incorrectly
+
 # 0.1.3 / 2024-08-20
 
 ### Added

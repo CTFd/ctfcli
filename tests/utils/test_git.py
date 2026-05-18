@@ -3,74 +3,105 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from ctfcli.utils.git import check_if_dir_is_inside_git_repo, get_git_repo_head_branch
+from ctfcli.utils.git import check_if_dir_is_inside_git_repo, resolve_repo_url
 
 
-class TestGetGitRepoHeadBranch(unittest.TestCase):
-    def test_gets_head_branch_if_head_exists(self):
+class TestResolveRepoUrl(unittest.TestCase):
+    def test_parses_branch_from_https_url(self):
+        with mock.patch("ctfcli.utils.git.subprocess.check_output") as mock_check_output:
+            url, branch = resolve_repo_url("https://github.com/user/repo.git@develop")
+
+            self.assertEqual("https://github.com/user/repo.git", url)
+            self.assertEqual("develop", branch)
+            mock_check_output.assert_not_called()
+
+    def test_parses_branch_from_ssh_url(self):
+        with mock.patch("ctfcli.utils.git.subprocess.check_output") as mock_check_output:
+            url, branch = resolve_repo_url("git@github.com:user/repo.git@develop")
+
+            self.assertEqual("git@github.com:user/repo.git", url)
+            self.assertEqual("develop", branch)
+            mock_check_output.assert_not_called()
+
+    def test_explicit_branch_overrides_inline(self):
+        with mock.patch("ctfcli.utils.git.subprocess.check_output") as mock_check_output:
+            url, branch = resolve_repo_url("https://github.com/user/repo.git@inline", branch="explicit")
+
+            self.assertEqual("https://github.com/user/repo.git", url)
+            self.assertEqual("explicit", branch)
+            mock_check_output.assert_not_called()
+
+    def test_explicit_branch_with_no_inline(self):
+        with mock.patch("ctfcli.utils.git.subprocess.check_output") as mock_check_output:
+            url, branch = resolve_repo_url("https://github.com/user/repo.git", branch="develop")
+
+            self.assertEqual("https://github.com/user/repo.git", url)
+            self.assertEqual("develop", branch)
+            mock_check_output.assert_not_called()
+
+    def test_detects_head_branch_when_none_specified(self):
         # example output taken from ctfcli repo
         mock_output = b"""
 ref: refs/heads/master  HEAD
 7b4a09af8414eb1f5f6da9a8422fb53b5e9cbc15        HEAD
 0370595efd5e9a211b05c55778fc4c0ae2fe70af        refs/heads/15-blank-challenge-template
-410d49503971cf0e16b29a1707b52d911945a59f        refs/heads/21-add-deploy-functionality
-ca1f8be5c207e911a3110f1e0223a1f3db9aa269        refs/heads/30-writeup-folder
-2f12163e6c6a4d105bd5e4ac25167fac8c6f5168        refs/heads/32-add-flag-data-into-spec
-58270ef683a3f92c4beffc3528e1188e11ddb04f        refs/heads/46-install-state-simplified
-4d0e530edd08baebccafb71b6b613c49b67458bd        refs/heads/47-topics
-47cb2285604da69c9e5c9b6cd9b59a9b9c50b647        refs/heads/70-pages-support
-c75b674c1b582852f18719b08b474515d138a14d        refs/heads/75-challenge-healthcheck
 """
         with mock.patch("ctfcli.utils.git.subprocess.check_output", return_value=mock_output) as mock_check_output:
-            expected_head_branch = "master"
-            head_branch = get_git_repo_head_branch("https://github.com/CTFd/ctfcli")
+            url, branch = resolve_repo_url("https://github.com/CTFd/ctfcli.git")
 
+            self.assertEqual("https://github.com/CTFd/ctfcli.git", url)
+            self.assertEqual("master", branch)
             mock_check_output.assert_called_once_with(
-                [
-                    "git",
-                    "ls-remote",
-                    "--symref",
-                    "https://github.com/CTFd/ctfcli",
-                    "HEAD",
-                ],
+                ["git", "ls-remote", "--symref", "https://github.com/CTFd/ctfcli.git", "HEAD"],
                 stderr=subprocess.DEVNULL,
             )
-            self.assertEqual(expected_head_branch, head_branch)
+
+    def test_detects_head_branch_for_ssh_url(self):
+        mock_output = b"ref: refs/heads/main  HEAD\nabc123  HEAD\n"
+
+        with mock.patch("ctfcli.utils.git.subprocess.check_output", return_value=mock_output) as mock_check_output:
+            url, branch = resolve_repo_url("git@github.com:user/repo.git")
+
+            self.assertEqual("git@github.com:user/repo.git", url)
+            self.assertEqual("main", branch)
+            mock_check_output.assert_called_once_with(
+                ["git", "ls-remote", "--symref", "git@github.com:user/repo.git", "HEAD"],
+                stderr=subprocess.DEVNULL,
+            )
+
+    def test_trailing_at_falls_through_to_head_detection(self):
+        mock_output = b"ref: refs/heads/main  HEAD\nabc123  HEAD\n"
+
+        with mock.patch("ctfcli.utils.git.subprocess.check_output", return_value=mock_output) as mock_check_output:
+            url, branch = resolve_repo_url("https://github.com/user/repo.git@")
+
+            self.assertEqual("https://github.com/user/repo.git", url)
+            self.assertEqual("main", branch)
+            mock_check_output.assert_called_once()
 
     def test_returns_none_if_repository_not_found(self):
         with mock.patch("ctfcli.utils.git.subprocess.check_output") as mock_check_output:
             mock_check_output.side_effect = subprocess.CalledProcessError(128, [])
-            head_branch = get_git_repo_head_branch("https://github.com/example/does-not-exist")
+            url, branch = resolve_repo_url("https://github.com/example/does-not-exist.git")
 
-            mock_check_output.assert_called_once_with(
-                [
-                    "git",
-                    "ls-remote",
-                    "--symref",
-                    "https://github.com/example/does-not-exist",
-                    "HEAD",
-                ],
-                stderr=subprocess.DEVNULL,
-            )
-            self.assertIsNone(head_branch)
+            self.assertEqual("https://github.com/example/does-not-exist.git", url)
+            self.assertIsNone(branch)
 
-    def test_returns_none_if_head_not_found(self):
-        mock_output = b""
+    def test_returns_none_if_head_not_set(self):
+        with mock.patch("ctfcli.utils.git.subprocess.check_output", return_value=b"") as mock_check_output:
+            url, branch = resolve_repo_url("https://github.com/example/no-head.git")
 
-        with mock.patch("ctfcli.utils.git.subprocess.check_output", return_value=mock_output) as mock_check_output:
-            head_branch = get_git_repo_head_branch("https://github.com/example/does-not-have-a-head-branch")
+            self.assertEqual("https://github.com/example/no-head.git", url)
+            self.assertIsNone(branch)
+            mock_check_output.assert_called_once()
 
-            mock_check_output.assert_called_once_with(
-                [
-                    "git",
-                    "ls-remote",
-                    "--symref",
-                    "https://github.com/example/does-not-have-a-head-branch",
-                    "HEAD",
-                ],
-                stderr=subprocess.DEVNULL,
-            )
-            self.assertIsNone(head_branch)
+    def test_returns_none_for_non_git_path_without_subprocess(self):
+        with mock.patch("ctfcli.utils.git.subprocess.check_output") as mock_check_output:
+            url, branch = resolve_repo_url("some/local/path")
+
+            self.assertEqual("some/local/path", url)
+            self.assertIsNone(branch)
+            mock_check_output.assert_not_called()
 
 
 class TestCheckIfDirIsInsideGitRepo(unittest.TestCase):

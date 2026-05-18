@@ -1,7 +1,6 @@
 import re
 import unittest
 from pathlib import Path
-from typing import List
 from unittest import mock
 from unittest.mock import ANY, MagicMock, call, mock_open
 
@@ -125,7 +124,7 @@ class TestRemoteChallengeLoading(unittest.TestCase):
         Challenge.load_installed_challenge(1)
 
         mock_get = mock_api.return_value.get
-        mock_get.assert_called_once_with("/api/v1/challenges/1")
+        mock_get.assert_called_once_with("/api/v1/challenges/1?view=admin")
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_load_installed_challenges(self, mock_api: MagicMock):
@@ -133,6 +132,217 @@ class TestRemoteChallengeLoading(unittest.TestCase):
 
         mock_get = mock_api.return_value.get
         mock_get.assert_called_once_with("/api/v1/challenges?view=admin")
+
+
+class TestChallengeSolutions(unittest.TestCase):
+    minimal_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+    solution_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-solution" / "challenge.yml"
+
+    def test_resolves_solution_from_specified_path(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
+        solution_path, solution_state = challenge._resolve_solution_path()
+        self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
+        self.assertEqual(solution_state, "hidden")
+
+    def test_resolves_solution_object_from_specified_path(self):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "solution": {
+                    "path": "challenge.yml",
+                    "state": "solved",
+                }
+            },
+        )
+        solution_path, solution_state = challenge._resolve_solution_path()
+        self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
+        self.assertEqual(solution_state, "solved")
+
+    def test_resolves_solution_object_with_state_from_specified_path(self):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "solution": {
+                    "path": "challenge.yml",
+                    "state": "visible",
+                }
+            },
+        )
+        solution_path, solution_state = challenge._resolve_solution_path()
+        self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
+        self.assertEqual(solution_state, "visible")
+
+    def test_does_not_resolve_solution_if_not_specified(self):
+        challenge = Challenge(self.minimal_challenge)
+        self.assertIsNone(challenge._resolve_solution_path())
+
+    @mock.patch("ctfcli.core.challenge.click.secho")
+    def test_does_not_resolve_solution_if_missing(self, mock_secho: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": "writeup/WRITEUP.md"})
+        self.assertIsNone(challenge._resolve_solution_path())
+        mock_secho.assert_called_once_with(
+            f"Solution file 'writeup/WRITEUP.md' specified, but not found at "
+            f"{challenge.challenge_directory / 'writeup/WRITEUP.md'}",
+            fg="red",
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_from_specified_path(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        mock_api.post.assert_has_calls(
+            [call("/api/v1/solutions", json={"challenge_id": 1, "state": "hidden", "content": ""})]
+        )
+        mock_api.patch.assert_has_calls([call("/api/v1/solutions/5", json={"content": ANY})])
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_from_object_with_state(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "visible"}})
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        mock_api.post.assert_has_calls(
+            [call("/api/v1/solutions", json={"challenge_id": 1, "state": "visible", "content": ""})]
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_existing_solution_instead_of_creating_duplicate(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "solved"}})
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 9, "challenge_id": 1, "state": "hidden", "content": "old"}],
+                }
+                return mock_response
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+
+        challenge._create_solution()
+
+        mock_api.post.assert_not_called()
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/solutions/9", json={"state": "solved", "content": ""}),
+                call("/api/v1/solutions/9", json={"content": ANY}),
+            ],
+            any_order=True,
+        )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_does_not_create_solution_if_not_specified(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge)
+        challenge.challenge_id = 1
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge._create_solution()
+
+        mock_api.post.assert_not_called()
+        mock_api.patch.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_solution_uploads_markdown_images_and_inlines_snippets(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.solution_challenge)
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            if path == "/api/v1/files":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"location": "solution-uploaded/test.png"}],
+                }
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/solutions", json={"challenge_id": 1, "state": "hidden", "content": ""}),
+                call("/api/v1/files", files=ANY, data={"type": "solution", "solution_id": 5}),
+            ]
+        )
+        mock_api.patch.assert_called_once()
+        patched_content = mock_api.patch.call_args.kwargs["json"]["content"]
+
+        self.assertIn("![diagram](/files/solution-uploaded/test.png)", patched_content)
+        self.assertIn('print("snippet from python")', patched_content)
+        self.assertIn('<img src="images/test-html.png" />', patched_content)
 
 
 class TestSyncChallenge(unittest.TestCase):
@@ -211,7 +421,7 @@ class TestSyncChallenge(unittest.TestCase):
         # expect GET calls loading existing resources to check if something needs to be deleted
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -222,6 +432,8 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
+                call().raise_for_status(),
+                call("/api/v1/challenges/1", json={"next_id": None}),
                 call().raise_for_status(),
                 call("/api/v1/challenges/1", json={"state": "visible"}),
                 call().raise_for_status(),
@@ -253,7 +465,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -301,7 +513,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -373,7 +585,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -455,7 +667,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -516,7 +728,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -570,7 +782,7 @@ class TestSyncChallenge(unittest.TestCase):
         def mock_get(*args, **kwargs):
             path = args[0]
 
-            if path == "/api/v1/challenges/1":
+            if path == "/api/v1/challenges/1" or path == "/api/v1/challenges/1?view=admin":
                 mock_response = MagicMock()
                 mock_response.json.return_value = {"success": True, "data": self.installed_challenges[0]}
                 return mock_response
@@ -595,7 +807,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -641,9 +853,8 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.post.assert_not_called()
         mock_api.delete.assert_not_called()
 
-    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
-    def test_updates_hints(self, mock_api_constructor: MagicMock, *args, **kwargs):
+    def test_updates_hints(self, mock_api_constructor: MagicMock):
         challenge = Challenge(
             self.minimal_challenge,
             {
@@ -652,6 +863,60 @@ class TestSyncChallenge(unittest.TestCase):
                     {
                         "content": "paid hint",
                         "cost": 100,
+                    },
+                ]
+            },
+        )
+        challenge.challenge_id = 1
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.return_value.json.return_value = {
+            "success": True,
+            "data": [
+                {"challenge_id": 1, "id": 1, "content": "old free hint", "cost": 0, "challenge": 1},
+                {"challenge_id": 1, "id": 2, "content": "old paid hint", "cost": 50, "challenge": 1},
+            ],
+        }
+        mock_api.post.return_value.json.return_value = {"success": True, "data": {"id": 10}}
+
+        challenge._delete_existing_hints()
+        challenge._create_hints()
+
+        self.assertEqual(
+            mock_api.delete.call_args_list,
+            [call("/api/v1/hints/1"), call("/api/v1/hints/2")],
+        )
+        self.assertEqual(mock_api.delete.return_value.raise_for_status.call_count, 2)
+
+        self.assertEqual(
+            mock_api.post.call_args_list,
+            [
+                call("/api/v1/hints", json={"content": "free hint", "title": "", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"content": "paid hint", "title": "", "cost": 100, "challenge_id": 1}),
+            ],
+        )
+        self.assertEqual(mock_api.post.return_value.raise_for_status.call_count, 2)
+
+        # no requirements — no PATCH calls expected
+        mock_api.patch.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_hints_with_requirements(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "hints": [
+                    {
+                        "key": "hint-1",
+                        "content": "first hint",
+                    },
+                    {
+                        "key": "hint-2",
+                        "title": "Going deeper",
+                        "content": "second hint",
+                        "cost": 10,
+                        "requirements": ["hint-1"],
                     },
                 ]
             },
@@ -673,45 +938,91 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.get.return_value.json.return_value = {
             "success": True,
             "data": [
-                {"challenge_id": 1, "id": 1, "content": "old free hint", "cost": 0, "challenge": 1},
-                {"challenge_id": 1, "id": 2, "content": "old paid hint", "cost": 50, "challenge": 1},
+                {"challenge_id": 1, "id": 5, "content": "old hint", "cost": 0, "challenge": 1},
             ],
         }
 
+        # POST responses return different hint IDs per call
+        post_hint_1_response = MagicMock()
+        post_hint_1_response.json.return_value = {"success": True, "data": {"id": 10}}
+        post_hint_2_response = MagicMock()
+        post_hint_2_response.json.return_value = {"success": True, "data": {"id": 11}}
+        mock_api.post.side_effect = [post_hint_1_response, post_hint_2_response]
+
         challenge.sync(ignore=["files"])
 
-        mock_api.get.assert_has_calls(
-            [
-                call("/api/v1/challenges/1"),
-                call("/api/v1/flags"),
-                call("/api/v1/challenges/1/topics"),
-                call("/api/v1/tags"),
-                call("/api/v1/hints"),
-            ],
-            any_order=True,
-        )
-
-        mock_api.patch.assert_has_calls(
-            [call("/api/v1/challenges/1", json=expected_challenge_payload), call().raise_for_status()]
-        )
-
+        # hint-1: created with real content (no requirements)
+        # hint-2: created with blank content (has requirements, to prevent premature exposure)
         mock_api.post.assert_has_calls(
             [
-                call("/api/v1/hints", json={"content": "free hint", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"content": "first hint", "title": "", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"content": "", "title": "Going deeper", "cost": 10, "challenge_id": 1}),
+            ]
+        )
+
+        # hint-2 requirements set first, then real content applied
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/1", json=expected_challenge_payload),
                 call().raise_for_status(),
-                call("/api/v1/hints", json={"content": "paid hint", "cost": 100, "challenge_id": 1}),
+                call("/api/v1/hints/11", json={"requirements": {"prerequisites": [10]}}),
+                call().raise_for_status(),
+                call("/api/v1/hints/11", json={"content": "second hint"}),
                 call().raise_for_status(),
             ]
         )
 
         mock_api.delete.assert_has_calls(
             [
-                call("/api/v1/hints/1"),
-                call().raise_for_status(),
-                call("/api/v1/hints/2"),
+                call("/api/v1/hints/5"),
                 call().raise_for_status(),
             ]
         )
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_hints_with_unknown_requirement_key(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(
+            self.minimal_challenge,
+            {
+                "hints": [
+                    {
+                        "key": "hint-1",
+                        "content": "first hint",
+                        "requirements": ["nonexistent-key"],
+                    },
+                ]
+            },
+        )
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.return_value.json.return_value = {
+            "success": True,
+            "data": [
+                {"challenge_id": 1, "id": 5, "content": "old hint", "cost": 0, "challenge": 1},
+            ],
+        }
+
+        post_hint_1_response = MagicMock()
+        post_hint_1_response.json.return_value = {"success": True, "data": {"id": 10}}
+        mock_api.post.side_effect = [post_hint_1_response]
+
+        challenge.sync(ignore=["files"])
+
+        # hint-1 created with blank content since it declares requirements
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/hints", json={"content": "", "title": "", "cost": 0, "challenge_id": 1}),
+            ]
+        )
+
+        # requirements PATCH is skipped (no valid prerequisite IDs resolved)
+        for patch_call in mock_api.patch.call_args_list:
+            if len(patch_call.args) > 0 and patch_call.args[0] == "/api/v1/hints/10":
+                self.assertNotIn("requirements", patch_call.kwargs.get("json", {}))
+
+        # content PATCH still happens after the (skipped) requirements step
+        mock_api.patch.assert_any_call("/api/v1/hints/10", json={"content": "first hint"})
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
@@ -736,7 +1047,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
             ]
         )
 
@@ -745,7 +1056,9 @@ class TestSyncChallenge(unittest.TestCase):
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
                 call().raise_for_status(),
                 # challenge 2 retrieved by name, and challenge 3 retrieved by id
-                call("/api/v1/challenges/1", json={"requirements": {"prerequisites": [2, 3]}}),
+                call("/api/v1/challenges/1", json={"requirements": {"prerequisites": [2, 3], "anonymize": False}}),
+                call().raise_for_status(),
+                call("/api/v1/challenges/1", json={"next_id": None}),
                 call().raise_for_status(),
             ]
         )
@@ -796,7 +1109,7 @@ class TestSyncChallenge(unittest.TestCase):
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
                 call().raise_for_status(),
-                call("/api/v1/challenges/1", json={"requirements": {"prerequisites": [2]}}),
+                call("/api/v1/challenges/1", json={"requirements": {"prerequisites": [2], "anonymize": False}}),
                 call().raise_for_status(),
             ],
             any_order=True,
@@ -810,7 +1123,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
             ]
         )
         mock_api.post.assert_not_called()
@@ -840,7 +1153,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -880,7 +1193,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -891,6 +1204,8 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
+                call().raise_for_status(),
+                call("/api/v1/challenges/1", json={"next_id": None}),
                 call().raise_for_status(),
                 # this tests the real assigned state
                 call("/api/v1/challenges/1", json={"state": "visible"}),
@@ -988,7 +1303,7 @@ class TestSyncChallenge(unittest.TestCase):
 
         mock_api.get.assert_has_calls(
             [
-                call("/api/v1/challenges/1"),
+                call("/api/v1/challenges/1?view=admin"),
                 call("/api/v1/flags"),
                 call("/api/v1/challenges/1/topics"),
                 call("/api/v1/tags"),
@@ -1002,7 +1317,9 @@ class TestSyncChallenge(unittest.TestCase):
             [
                 call("/api/v1/challenges/1", json=expected_challenge_payload),
                 call().raise_for_status(),
-                call("/api/v1/challenges/1", json={"requirements": {"prerequisites": [2]}}),
+                call("/api/v1/challenges/1", json={"requirements": {"prerequisites": [2], "anonymize": False}}),
+                call().raise_for_status(),
+                call("/api/v1/challenges/1", json={"next_id": None}),
                 call().raise_for_status(),
                 call("/api/v1/challenges/1", json={"state": "visible"}),
                 call().raise_for_status(),
@@ -1021,7 +1338,7 @@ class TestSyncChallenge(unittest.TestCase):
                 call().raise_for_status(),
                 call("/api/v1/files", files=ANY, data={"challenge_id": 1, "type": "challenge"}),
                 call().raise_for_status(),
-                call("/api/v1/hints", json={"content": "free hint", "cost": 0, "challenge_id": 1}),
+                call("/api/v1/hints", json={"title": "", "content": "free hint", "cost": 0, "challenge_id": 1}),
                 call().raise_for_status(),
             ]
         )
@@ -1032,9 +1349,23 @@ class TestSyncChallenge(unittest.TestCase):
         properties = [
             # fmt: off
             # simple types
-            "category", "description", "attribution", "type", "value", "attempts", "connection_info", "state",
+            "category",
+            "description",
+            "attribution",
+            "type",
+            "value",
+            "attempts",
+            "connection_info",
+            "state",
             # complex types
-            "extra", "flags", "topics", "tags", "files", "hints", "requirements",
+            "extra",
+            "flags",
+            "topics",
+            "tags",
+            "files",
+            "hints",
+            "requirements",
+            "solution",
             # fmt: on
         ]
 
@@ -1113,6 +1444,9 @@ class TestSyncChallenge(unittest.TestCase):
                         if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
 
+                        if p == "solution":
+                            challenge[p] = "challenge.yml"
+
                         challenge.sync(ignore=[p])
 
                         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1121,6 +1455,8 @@ class TestSyncChallenge(unittest.TestCase):
                         mock_api.patch.assert_has_calls(
                             [
                                 call("/api/v1/challenges/1", json=expected_challenge_payload),
+                                call().raise_for_status(),
+                                call("/api/v1/challenges/1", json={"next_id": None}),
                                 call().raise_for_status(),
                                 call("/api/v1/challenges/1", json={"state": "visible"}),
                                 call().raise_for_status(),
@@ -1227,14 +1563,16 @@ class TestCreateChallenge(unittest.TestCase):
                 # files
                 call("/api/v1/files", files=ANY, data={"challenge_id": 3, "type": "challenge"}),
                 # hints
-                call("/api/v1/hints", json={"content": "free hint", "cost": 0, "challenge_id": 3}),
-                call("/api/v1/hints", json={"content": "paid hint", "cost": 100, "challenge_id": 3}),
+                call("/api/v1/hints", json={"title": "", "content": "free hint", "cost": 0, "challenge_id": 3}),
+                call("/api/v1/hints", json={"title": "", "content": "paid hint", "cost": 100, "challenge_id": 3}),
             ]
         )
 
         mock_api.patch.assert_has_calls(
             [
-                call("/api/v1/challenges/3", json={"requirements": {"prerequisites": [1, 2]}}),
+                call("/api/v1/challenges/3", json={"requirements": {"prerequisites": [1, 2], "anonymize": False}}),
+                call().raise_for_status(),
+                call("/api/v1/challenges/3", json={"next_id": None}),
                 call().raise_for_status(),
                 call("/api/v1/challenges/3", json={"state": "visible"}),
                 call().raise_for_status(),
@@ -1242,6 +1580,45 @@ class TestCreateChallenge(unittest.TestCase):
         )
 
         mock_api.delete.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_on_create(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/challenges":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 3}}
+                return mock_response
+
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.post.side_effect = mock_post
+
+        challenge.create()
+
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/challenges", json=ANY),
+                call("/api/v1/solutions", json={"challenge_id": 3, "state": "hidden", "content": ""}),
+            ],
+            any_order=True,
+        )
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/solutions/5", json={"content": ANY}),
+            ],
+            any_order=True,
+        )
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
@@ -1262,7 +1639,7 @@ class TestCreateChallenge(unittest.TestCase):
         # fmt:off
         properties = [
             "value", "category", "description", "attribution", "attempts", "connection_info", "state",  # simple types
-            "extra", "flags", "topics", "tags", "files", "hints", "requirements"  # complex types
+            "extra", "flags", "topics", "tags", "files", "hints", "requirements", "solution"  # complex types
         ]
         # fmt:on
 
@@ -1322,6 +1699,9 @@ class TestCreateChallenge(unittest.TestCase):
 
                         if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
+
+                        if p == "solution":
+                            challenge[p] = "challenge.yml"
 
                         def mock_post(*args, **kwargs):
                             path = args[0]
@@ -1423,7 +1803,7 @@ class TestLintChallenge(unittest.TestCase):
             challenge.lint()
 
         mock_run.assert_called_once_with(
-            ["docker", "run", "--rm", "-i", "hadolint/hadolint"], stdout=-1, stderr=-1, input=ANY
+            ["docker", "run", "--rm", "-i", "hadolint/hadolint"], capture_output=True, input=ANY
         )
 
         expected_lint_issues = {
@@ -1473,6 +1853,37 @@ class TestLintChallenge(unittest.TestCase):
             "dockerfile": [],
             "hadolint": [],
             "files": ["Potential flag found in distributed file 'files/flag.txt':\n Whoopsie: flag{test-flag}"],
+        }
+
+        self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+    def test_validates_solution_file_exists(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": "writeup/WRITEUP.md"})
+
+        with self.assertRaises(LintException) as e:
+            challenge.lint(skip_hadolint=True)
+
+        expected_solution_path = (challenge.challenge_directory / "writeup" / "WRITEUP.md").absolute()
+        expected_lint_issues = {
+            "fields": [],
+            "dockerfile": [],
+            "hadolint": [],
+            "files": [f"Solution file 'writeup/WRITEUP.md' specified, but not found at {expected_solution_path}"],
+        }
+
+        self.assertDictEqual(expected_lint_issues, e.exception.issues)
+
+    def test_validates_solution_state(self):
+        challenge = Challenge(self.minimal_challenge, {"solution": {"path": "challenge.yml", "state": "public"}})
+
+        with self.assertRaises(LintException) as e:
+            challenge.lint(skip_hadolint=True)
+
+        expected_lint_issues = {
+            "fields": ["The solution state must be one of: hidden, visible, solved"],
+            "dockerfile": [],
+            "hadolint": [],
+            "files": [],
         }
 
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
@@ -1529,7 +1940,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
             mock_response.json.return_value = {"success": True, "data": self.installed_challenges}
             return mock_response
 
-        if path == "/api/v1/challenges/3":
+        if path == "/api/v1/challenges/3" or path == "/api/v1/challenges/3?view=admin":
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "success": True,
@@ -1733,7 +2144,8 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                 "tags": ["tag-1", "tag-2"],
                 "hints": ["free hint", {"content": "paid hint", "cost": 100}],
                 "topics": ["topic-1", "topic-2"],
-                "requirements": ["First Test Challenge", "Other Test Challenge"],
+                "next": None,
+                "requirements": {"prerequisites": ["First Test Challenge", "Other Test Challenge"], "anonymize": False},
                 "extra": {
                     "initial": 100,
                     "decay": 10,
@@ -1795,7 +2207,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
         # and ctfcli will update them to use the name
         expected_challenge = Challenge(
             self.full_challenge,
-            {"requirements": ["First Test Challenge", "Other Test Challenge"]},
+            {"requirements": {"prerequisites": ["First Test Challenge", "Other Test Challenge"], "anonymize": False}},
         )
 
         # pop keys with default values as they should not be in the loaded data
@@ -1831,7 +2243,7 @@ class TestSaveChallenge(unittest.TestCase):
             challenge.save()
             dumped_data = mock_open_file.return_value.__enter__().write.call_args_list[0].args[0]
 
-        def check_order(yml: str, order: List[str]):
+        def check_order(yml: str, order: list[str]):
             indices = {}
             for key in order:
                 match = re.search(r"\b" + re.escape(key) + r"\b", yml)
@@ -1844,8 +2256,8 @@ class TestSaveChallenge(unittest.TestCase):
             sorted_indices = sorted(indices.values())
             if sorted_indices == list(indices.values()):
                 return True
-            else:
-                return False
+
+            return False
 
         key_order = challenge.key_order.copy()
         for k in ["state", "type"]:

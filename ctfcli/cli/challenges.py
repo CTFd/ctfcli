@@ -3,7 +3,6 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 import click
@@ -20,7 +19,7 @@ from ctfcli.core.exceptions import (
     LintException,
     RemoteChallengeNotFound,
 )
-from ctfcli.utils.git import check_if_git_subrepo_is_installed, get_git_repo_head_branch
+from ctfcli.utils.git import check_if_git_subrepo_is_installed, resolve_repo_url
 
 log = logging.getLogger("ctfcli.cli.challenges")
 
@@ -103,7 +102,7 @@ class ChallengeCommand:
         if not challenge_instance:
             return 1
 
-        with open(challenge_instance.challenge_file_path, "r") as challenge_yml_file:
+        with open(challenge_instance.challenge_file_path) as challenge_yml_file:
             challenge_yml = challenge_yml_file.read()
 
             if color:
@@ -120,7 +119,12 @@ class ChallengeCommand:
         return TemplatesCommand.list()
 
     def add(
-        self, repo: str, directory: str = None, branch: str = None, force: bool = False, yaml_path: str = None
+        self,
+        repo: str,
+        directory: str | None = None,
+        branch: str | None = None,
+        force: bool = False,
+        yaml_path: str | None = None,
     ) -> int:
         log.debug(f"add: {repo} (directory={directory}, branch={branch}, force={force}, yaml_path={yaml_path})")
         config = Config()
@@ -153,8 +157,8 @@ class ChallengeCommand:
             if yaml_path:
                 challenge_key = challenge_key / yaml_path
 
-            # Add a new challenge to the config
-            config["challenges"][str(challenge_key)] = repo
+            # Add a new challenge to the config, with the branch if specified
+            config["challenges"][str(challenge_key)] = f"{repo}@{branch}" if branch else repo
 
             if use_subrepo:
                 # Clone with subrepo if configured
@@ -167,8 +171,8 @@ class ChallengeCommand:
                     cmd += ["-f"]
             else:
                 # Otherwise default to the built-in subtree
-                head_branch = get_git_repo_head_branch(repo)
-                cmd = ["git", "subtree", "add", "--prefix", challenge_path, repo, head_branch, "--squash"]
+                _, target_branch = resolve_repo_url(repo, branch=branch)
+                cmd = ["git", "subtree", "add", "--prefix", challenge_path, repo, target_branch, "--squash"]
 
             log.debug(f"call({cmd}, cwd='{project_path}')")
             if subprocess.call(cmd, cwd=project_path) != 0:
@@ -207,8 +211,8 @@ class ChallengeCommand:
         click.secho(f"Could not process the challenge path: '{repo}'", fg="red")
         return 1
 
-    def push(self, challenge: str = None, no_auto_pull: bool = False, quiet=False) -> int:
-        log.debug(f"push: (challenge={challenge}, no_auto_pull={no_auto_pull}, quiet={quiet})")
+    def push(self, challenge: str | None = None, quiet=False) -> int:
+        log.debug(f"push: (challenge={challenge}, quiet={quiet})")
         config = Config()
 
         if challenge:
@@ -222,91 +226,91 @@ class ChallengeCommand:
 
         failed_pushes = []
 
-        if quiet or len(challenges) <= 1:
-            context = contextlib.nullcontext(challenges)
-        else:
-            context = click.progressbar(challenges, label="Pushing challenges")
-
         use_subrepo = config["config"].getboolean("use_subrepo", fallback=False)
         if use_subrepo and not check_if_git_subrepo_is_installed():
             click.secho("This project is configured to use git subrepo, but it's not installed.")
             return 1
 
-        with context as context_challenges:
-            for challenge_instance in context_challenges:
+        # Validate all challenges and check for uncommitted changes upfront
+        challenges_to_push = []
+        challenges_with_uncommitted_changes = []
+
+        for challenge_instance in challenges:
+            # Get a relative path from project root to the challenge
+            challenge_path = challenge_instance.challenge_directory.resolve().relative_to(config.project_path)
+            challenge_repo = config.challenges.get(str(challenge_path), None)
+
+            # if we don't find the challenge by the directory,
+            # check if it's saved with a direct path to challenge.yml
+            if not challenge_repo:
+                challenge_repo = config.challenges.get(str(challenge_path / "challenge.yml"), None)
+
+            if not challenge_repo:
+                click.secho(
+                    f"Could not find added challenge '{challenge_path}' "
+                    "Please check that the challenge is added to .ctf/config and that your path matches",
+                    fg="red",
+                )
+                failed_pushes.append(challenge_instance)
+                continue
+
+            challenge_repo, challenge_branch = resolve_repo_url(challenge_repo)
+
+            if not challenge_repo.endswith(".git"):
+                click.secho(
+                    f"Cannot push challenge '{challenge_path}', as it's not a git-based challenge",
+                    fg="yellow",
+                )
+                failed_pushes.append(challenge_instance)
+                continue
+
+            # Check for uncommitted changes
+            log.debug(
+                f"call(['git', 'status', '--porcelain'], cwd='{config.project_path / challenge_path}',"
+                f" stdout=subprocess.PIPE, text=True)"
+            )
+            git_status = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=config.project_path / challenge_path,
+                stdout=subprocess.PIPE,
+                text=True,
+            )
+
+            if git_status.stdout.strip() != "" and git_status.returncode == 0:
+                challenges_with_uncommitted_changes.append(challenge_path)
+
+            challenges_to_push.append((challenge_instance, challenge_path, challenge_repo, challenge_branch))
+
+        # If any challenges have uncommitted changes, error out
+        if challenges_with_uncommitted_changes:
+            click.secho(
+                "Cannot push: the following challenges have uncommitted changes:",
+                fg="red",
+            )
+            for challenge_path in challenges_with_uncommitted_changes:
+                click.echo(f" - {challenge_path}")
+
+            click.echo()
+            click.secho("Please commit your changes before pushing.", fg="yellow")
+            return 1
+
+        # Push all challenges (working directory is clean)
+        if not quiet and len(challenges_to_push) > 1:
+            push_context = click.progressbar(challenges_to_push, label="Pushing challenges")
+        else:
+            push_context = contextlib.nullcontext(challenges_to_push)
+
+        with push_context as challenges_iterator:
+            for challenge_instance, challenge_path, challenge_repo, challenge_branch in challenges_iterator:
                 click.echo()
-
-                # Get a relative path from project root to the challenge
-                # As this is what git subtree push requires
-                challenge_path = challenge_instance.challenge_directory.resolve().relative_to(config.project_path)
-                challenge_repo = config.challenges.get(str(challenge_path), None)
-
-                # if we don't find the challenge by the directory,
-                # check if it's saved with a direct path to challenge.yml
-                if not challenge_repo:
-                    challenge_repo = config.challenges.get(str(challenge_path / "challenge.yml"), None)
-
-                if not challenge_repo:
-                    click.secho(
-                        f"Could not find added challenge '{challenge_path}' "
-                        "Please check that the challenge is added to .ctf/config and that your path matches",
-                        fg="red",
-                    )
-                    failed_pushes.append(challenge_instance)
-                    continue
-
-                if not challenge_repo.endswith(".git"):
-                    click.secho(
-                        f"Cannot push challenge '{challenge_path}', as it's not a git-based challenge",
-                        fg="yellow",
-                    )
-                    failed_pushes.append(challenge_instance)
-                    continue
-
                 click.secho(f"Pushing '{challenge_path}' to '{challenge_repo}'", fg="blue")
-
-                log.debug(
-                    f"call(['git', 'status', '--porcelain'], cwd='{config.project_path / challenge_path}',"
-                    f" stdout=subprocess.PIPE, text=True)"
-                )
-                git_status = subprocess.run(
-                    ["git", "status", "--porcelain"],
-                    cwd=config.project_path / challenge_path,
-                    stdout=subprocess.PIPE,
-                    text=True,
-                )
-
-                if git_status.stdout.strip() == "" and git_status.returncode == 0:
-                    click.secho(f"No changes to be pushed for {challenge_path}", fg="green")
-                    continue
-
-                log.debug(f"call(['git', 'add', '.'], cwd='{config.project_path / challenge_path}')")
-                git_add = subprocess.call(["git", "add", "."], cwd=config.project_path / challenge_path)
-
-                log.debug(
-                    f"call(['git', 'commit', '-m', 'Pushing changes to {challenge_path}'], "
-                    f"cwd='{config.project_path / challenge_path}')"
-                )
-                git_commit = subprocess.call(
-                    ["git", "commit", "-m", f"Pushing changes to {challenge_path}"],
-                    cwd=config.project_path / challenge_path,
-                )
-
-                if any(r != 0 for r in [git_add, git_commit]):
-                    click.secho(
-                        "Could not commit the challenge changes. Please check git error messages above.",
-                        fg="red",
-                    )
-                    failed_pushes.append(challenge_instance)
-                    continue
 
                 if use_subrepo:
                     cmd = ["git", "subrepo", "push", challenge_path]
                 else:
-                    head_branch = get_git_repo_head_branch(challenge_repo)
-                    cmd = ["git", "subtree", "push", "--prefix", challenge_path, challenge_repo, head_branch]
+                    cmd = ["git", "subtree", "push", "--prefix", challenge_path, challenge_repo, challenge_branch]
 
-                log.debug(f"call({cmd}, cwd='{config.project_path / challenge_path}')")
+                log.debug(f"call({cmd}, cwd='{config.project_path}')")
                 if subprocess.call(cmd, cwd=config.project_path) != 0:
                     click.secho(
                         "Could not push the challenge repository. Please check git error messages above.",
@@ -314,10 +318,6 @@ class ChallengeCommand:
                     )
                     failed_pushes.append(challenge_instance)
                     continue
-
-                # if auto pull is not disabled
-                if not no_auto_pull:
-                    self.pull(str(challenge_path), quiet=True)
 
         if len(failed_pushes) == 0:
             if not quiet:
@@ -332,7 +332,7 @@ class ChallengeCommand:
 
         return 1
 
-    def pull(self, challenge: str = None, strategy: str = "fast-forward", quiet: bool = False) -> int:
+    def pull(self, challenge: str | None = None, strategy: str = "fast-forward", quiet: bool = False) -> int:
         log.debug(f"pull: (challenge={challenge}, quiet={quiet})")
         config = Config()
 
@@ -379,6 +379,8 @@ class ChallengeCommand:
                     failed_pulls.append(challenge_instance)
                     continue
 
+                challenge_repo, challenge_branch = resolve_repo_url(challenge_repo)
+
                 if not challenge_repo.endswith(".git"):
                     click.secho(
                         f"Cannot pull challenge '{challenge_path}', as it's not a git-based challenge",
@@ -404,7 +406,6 @@ class ChallengeCommand:
                     else:
                         click.secho(f"Cannot pull challenge - '{strategy}' is not a valid pull strategy", fg="red")
                 else:
-                    head_branch = get_git_repo_head_branch(challenge_repo)
                     pull_env["GIT_MERGE_AUTOEDIT"] = "no"
                     cmd = [
                         "git",
@@ -413,7 +414,7 @@ class ChallengeCommand:
                         "--prefix",
                         challenge_path,
                         challenge_repo,
-                        head_branch,
+                        challenge_branch,
                         "--squash",
                     ]
 
@@ -460,7 +461,7 @@ class ChallengeCommand:
 
         return 1
 
-    def restore(self, challenge: str = None) -> int:
+    def restore(self, challenge: str | None = None) -> int:
         log.debug(f"restore: (challenge={challenge})")
         config = Config()
 
@@ -523,11 +524,12 @@ class ChallengeCommand:
                 f"Restoring git repo '{challenge_source}' to '{challenge_key}'",
                 fg="blue",
             )
-            head_branch = get_git_repo_head_branch(challenge_source)
+
+            challenge_source, challenge_branch = resolve_repo_url(challenge_source)
 
             log.debug(
                 f"call(['git', 'subtree', 'add', '--prefix', '{challenge_key}', '{challenge_source}', "
-                f"'{head_branch}', '--squash'], cwd='{config.project_path}')"
+                f"'{challenge_branch}', '--squash'], cwd='{config.project_path}')"
             )
             git_subtree_add = subprocess.call(
                 [
@@ -537,7 +539,7 @@ class ChallengeCommand:
                     "--prefix",
                     challenge_key,
                     challenge_source,
-                    head_branch,
+                    challenge_branch,
                     "--squash",
                 ],
                 cwd=config.project_path,
@@ -562,7 +564,7 @@ class ChallengeCommand:
         return 1
 
     def install(
-        self, challenge: str = None, force: bool = False, hidden: bool = False, ignore: Union[str, Tuple[str]] = ()
+        self, challenge: str | None = None, force: bool = False, hidden: bool = False, ignore: str | tuple[str] = ()
     ) -> int:
         log.debug(f"install: (challenge={challenge}, force={force}, hidden={hidden}, ignore={ignore})")
 
@@ -578,7 +580,7 @@ class ChallengeCommand:
         if isinstance(ignore, str):
             ignore = (ignore,)
 
-        config = Config()
+        _config = Config()
         remote_challenges = Challenge.load_installed_challenges()
 
         failed_installs = []
@@ -590,9 +592,7 @@ class ChallengeCommand:
                     challenge_instance["state"] = "hidden"
 
                 click.secho(
-                    f"Installing '{challenge_instance}' ("
-                    f"{challenge_instance.challenge_file_path.relative_to(config.project_path)}"
-                    f") ...",
+                    f"Installing '{challenge_instance}' ({challenge_instance.challenge_file_path}) ...",
                     fg="blue",
                 )
 
@@ -640,7 +640,7 @@ class ChallengeCommand:
 
         return 1
 
-    def sync(self, challenge: str = None, ignore: Union[str, Tuple[str]] = ()) -> int:
+    def sync(self, challenge: str | None = None, ignore: str | tuple[str] = ()) -> int:
         log.debug(f"sync: (challenge={challenge}, ignore={ignore})")
 
         if challenge:
@@ -655,7 +655,7 @@ class ChallengeCommand:
         if isinstance(ignore, str):
             ignore = (ignore,)
 
-        config = Config()
+        _config = Config()
         remote_challenges = Challenge.load_installed_challenges()
 
         failed_syncs = []
@@ -674,9 +674,7 @@ class ChallengeCommand:
                     continue
 
                 click.secho(
-                    f"Syncing '{challenge_name}' ("
-                    f"{challenge_instance.challenge_file_path.relative_to(config.project_path)}"
-                    f") ...",
+                    f"Syncing '{challenge_name}' ({challenge_instance.challenge_file_path}) ...",
                     fg="blue",
                 )
                 try:
@@ -698,8 +696,8 @@ class ChallengeCommand:
 
     def deploy(
         self,
-        challenge: str = None,
-        host: str = None,
+        challenge: str | None = None,
+        host: str | None = None,
         skip_login: bool = False,
     ) -> int:
         log.debug(f"deploy: (challenge={challenge}, host={host}, skip_login={skip_login})")
@@ -713,16 +711,16 @@ class ChallengeCommand:
         else:
             challenges = self._resolve_all_challenges()
 
-        deployable_challenges, failed_deployments, failed_syncs = [], [], []
+        deployable_challenges, failed_deployments, skipped_deployments, failed_syncs = [], [], [], []
 
         # get challenges which can be deployed (have an image)
         for challenge_instance in challenges:
             if challenge_instance.get("image"):
                 deployable_challenges.append(challenge_instance)
             else:
-                failed_deployments.append(challenge_instance)
+                skipped_deployments.append(challenge_instance)
 
-        config = Config()
+        _config = Config()
         with click.progressbar(deployable_challenges, label="Deploying challenges") as challenges:
             for challenge_instance in challenges:
                 click.echo()
@@ -750,24 +748,21 @@ class ChallengeCommand:
 
                 click.secho(
                     f"Deploying challenge service '{challenge_name}' "
-                    f"({challenge_instance.challenge_file_path.relative_to(config.project_path)}) "
+                    f"({challenge_instance.challenge_file_path}) "
                     f"with {deployment_handler.__class__.__name__} ...",
                     fg="blue",
                 )
 
                 deployment_result = deployment_handler.deploy(skip_login=skip_login)
 
-                # Don't modify the connection_info if it exists already
-                if challenge_instance.get("connection_info"):
-                    click.secho("Using connection_info from challenge.yml", fg="yellow")
-
-                # Otherwise, use connection_info from the deployment result if provided
-                elif deployment_result.connection_info:
+                # Save connection_info from the deployment result if returned
+                if deployment_result.connection_info:
+                    click.secho("Saving connection_info in challenge.yml", fg="yellow")
                     challenge_instance["connection_info"] = deployment_result.connection_info
 
-                # Finally, if no connection_info was provided in the challenge and the
-                # deployment didn't result in one either, just ensure it's not present
-                else:
+                # If no connection_info was provided by the challenge
+                # and the deployment didn't result in one either, just ensure it's not present
+                elif not challenge_instance.get("connection_info"):
                     challenge_instance["connection_info"] = None
 
                 if not deployment_result.success:
@@ -817,9 +812,14 @@ class ChallengeCommand:
 
                 click.secho("Success!\n", fg="green")
 
+        if len(skipped_deployments) > 0:
+            click.secho("Deployment skipped (no image specified) for:", fg="yellow")
+            for challenge_instance in skipped_deployments:
+                click.echo(f" - {challenge_instance}")
+
         if len(failed_deployments) == 0 and len(failed_syncs) == 0:
             click.secho(
-                "Success! All challenges deployed and installed or synced.",
+                "Success! All deployable challenges deployed and installed or synced.",
                 fg="green",
             )
             return 0
@@ -838,7 +838,7 @@ class ChallengeCommand:
 
     def lint(
         self,
-        challenge: str = None,
+        challenge: str | None = None,
         skip_hadolint: bool = False,
         flag_format: str = "flag{",
     ) -> int:
@@ -859,7 +859,7 @@ class ChallengeCommand:
         click.secho("Success! Lint didn't find any issues!", fg="green")
         return 0
 
-    def healthcheck(self, challenge: Optional[str] = None) -> int:
+    def healthcheck(self, challenge: str | None = None) -> int:
         log.debug(f"healthcheck: (challenge={challenge})")
 
         challenge_instance = self._resolve_single_challenge(challenge)
@@ -924,10 +924,10 @@ class ChallengeCommand:
 
     def mirror(
         self,
-        challenge: str = None,
+        challenge: str | None = None,
         files_directory: str = "dist",
         skip_verify: bool = False,
-        ignore: Union[str, Tuple[str]] = (),
+        ignore: str | tuple[str] = (),
         create: bool = False,
     ) -> int:
         log.debug(
@@ -993,7 +993,7 @@ class ChallengeCommand:
 
         return 1
 
-    def verify(self, challenge: str = None, ignore: Tuple[str] = ()) -> int:
+    def verify(self, challenge: str | None = None, ignore: tuple[str] = ()) -> int:
         log.debug(f"verify: (challenge={challenge}, ignore={ignore})")
 
         if challenge:
@@ -1047,10 +1047,10 @@ class ChallengeCommand:
                 for challenge_instance in challenges_out_of_sync:
                     click.echo(f" - {challenge_instance}")
 
-            if len(challenges_out_of_sync) > 1:
+            if len(challenges_out_of_sync) >= 1:
                 return 2
 
-            return 1
+            return 0
 
         click.secho("Verification failed for:", fg="red")
         for challenge_instance in failed_verifications:
@@ -1058,7 +1058,7 @@ class ChallengeCommand:
 
         return 1
 
-    def format(self, challenge: Optional[str] = None) -> int:
+    def format(self, challenge: str | None = None) -> int:
         log.debug(f"format: (challenge={challenge})")
 
         if challenge:
@@ -1092,7 +1092,7 @@ class ChallengeCommand:
         return 1
 
     @staticmethod
-    def _resolve_single_challenge(challenge: Optional[str] = None) -> Optional[Challenge]:
+    def _resolve_single_challenge(challenge: str | None = None) -> Challenge | None:
         # if a challenge is specified
         if challenge:
             # check if it's a path to challenge.yml, or the current directory
@@ -1115,10 +1115,10 @@ class ChallengeCommand:
             return Challenge(challenge_path)
         except ChallengeException as e:
             click.secho(str(e), fg="red")
-            return
+            return None
 
     @staticmethod
-    def _resolve_all_challenges() -> List[Challenge]:
+    def _resolve_all_challenges() -> list[Challenge]:
         config = Config()
         challenge_keys = config.challenges.keys()
 

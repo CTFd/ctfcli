@@ -1,0 +1,9 @@
+name: Test Challenge Solution
+category: Test
+description: Test challenge with solution fixture
+attribution: Test Attribution
+value: 100
+author: Test
+type: standard
+state: hidden
+solution: writeup/WRITEUP.md

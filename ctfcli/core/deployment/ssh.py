@@ -37,7 +37,7 @@ class SSHDeploymentHandler(DeploymentHandler):
 
         image_export_path = Path(image_export)
         host_url = urlparse(self.host)
-        target_path = host_url.path or "/tmp"
+        target_path = host_url.path or "/tmp"  # noqa: S108
         target_file = f"{target_path}/{image_export_path.name}"
 
         exposed_port = self.challenge.image.get_exposed_port()
