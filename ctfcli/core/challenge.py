@@ -584,14 +584,15 @@ class Challenge(dict):
             snippet_includes = re.findall(r'(--8<--\s+["\']([^"\']+)["\'])', content)
 
             for mdx, alt, path in markdown_images:
-                new_file = ("file", open(solution_path.parent / path, mode="rb"))
+                local_path = solution_path.parent / path
+                new_file = (local_path.name, open(solution_path.parent / path, mode="rb"))
                 file_payload = {
                     "type": "solution",
                     "solution_id": solution_id,
                 }
 
                 # Specifically use data= here to send multipart/form-data
-                r = self.api.post("/api/v1/files", files=[new_file], data=file_payload)
+                r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
                 r.raise_for_status()
                 resp = r.json()
                 server_location = resp["data"][0]["location"]
