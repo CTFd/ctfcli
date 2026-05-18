@@ -389,11 +389,11 @@ class Challenge(dict):
                 r.raise_for_status()
 
     def _create_file(self, local_path: Path):
-        new_file = ("file", open(local_path, mode="rb"))  # noqa: SIM115
+        new_file = (local_path.name, open(local_path, mode="rb"))
         file_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
 
         # Specifically use data= here to send multipart/form-data
-        r = self.api.post("/api/v1/files", files=[new_file], data=file_payload)
+        r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
         r.raise_for_status()
 
         # Close the file handle
@@ -401,10 +401,9 @@ class Challenge(dict):
 
     def _create_all_files(self):
         new_files = []
-
-        files = self.get("files") or []
-        for challenge_file in files:
-            new_files.append(("file", open(self.challenge_directory / challenge_file, mode="rb")))  # noqa: SIM115
+        for challenge_file in self["files"]:
+            file_path = self.challenge_directory / challenge_file
+            new_files.append(("file", (file_path.name, file_path.open("rb"))))
 
         files_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
 
@@ -414,7 +413,7 @@ class Challenge(dict):
 
         # Close the file handles
         for file_payload in new_files:
-            file_payload[1].close()
+            file_payload[1][1].close()
 
     def _delete_existing_hints(self):
         remote_hints = self.api.get("/api/v1/hints").json()["data"]
@@ -585,14 +584,15 @@ class Challenge(dict):
             snippet_includes = re.findall(r'(--8<--\s+["\']([^"\']+)["\'])', content)
 
             for mdx, alt, path in markdown_images:
-                new_file = ("file", open(solution_path.parent / path, mode="rb"))
+                local_path = solution_path.parent / path
+                new_file = (local_path.name, open(solution_path.parent / path, mode="rb"))
                 file_payload = {
                     "type": "solution",
                     "solution_id": solution_id,
                 }
 
                 # Specifically use data= here to send multipart/form-data
-                r = self.api.post("/api/v1/files", files=[new_file], data=file_payload)
+                r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
                 r.raise_for_status()
                 resp = r.json()
                 server_location = resp["data"][0]["location"]

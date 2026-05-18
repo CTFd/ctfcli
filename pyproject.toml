@@ -19,6 +19,7 @@ dependencies = [
     "fire>=0.7.0,<0.8",
     "typing-extensions>=4.7.1,<5",
     "python-slugify>=8.0.4,<9",
+    "requests-toolbelt==1.0.0",
 ]
 
 [project.scripts]
@@ -49,4 +50,3 @@ exclude = ["build/**", "ctfcli/templates/**"]
 
 [tool.ruff.format]
 exclude = ["build/**", "ctfcli/templates/**"]
-
