@@ -267,6 +267,25 @@ class TestChallengeSolutions(unittest.TestCase):
                     "data": [{"id": 9, "challenge_id": 1, "state": "hidden", "content": "old"}],
                 }
                 return mock_response
+            if path == "/api/v1/solutions/9":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "id": 9,
+                        "challenge_id": 1,
+                        "state": "hidden",
+                        "content": "old ![x](/files/stale-location/old.png)",
+                    },
+                }
+                return mock_response
+            if path == "/api/v1/files?type=solution":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 42, "location": "stale-location/old.png"}],
+                }
+                return mock_response
             return MagicMock()
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -275,6 +294,8 @@ class TestChallengeSolutions(unittest.TestCase):
         challenge._create_solution()
 
         mock_api.post.assert_not_called()
+        # Previously uploaded solution files should be deleted before re-uploading
+        mock_api.delete.assert_called_once_with("/api/v1/files/42")
         mock_api.patch.assert_has_calls(
             [
                 call("/api/v1/solutions/9", json={"state": "solved", "content": ""}),
@@ -282,6 +303,48 @@ class TestChallengeSolutions(unittest.TestCase):
             ],
             any_order=True,
         )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_delete_solution_files_removes_referenced_files(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge)
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            if args[0] == "/api/v1/files?type=solution":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [
+                        {"id": 1, "location": "loc-a/a.png"},
+                        {"id": 2, "location": "loc-b/b.png"},
+                        {"id": 3, "location": "loc-c/c.png"},
+                    ],
+                }
+                return mock_response
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+
+        challenge._delete_solution_files("![a](/files/loc-a/a.png) and ![c](/files/loc-c/c.png)")
+
+        # Only files referenced in the content should be deleted, not the unreferenced one
+        mock_api.delete.assert_has_calls(
+            [call("/api/v1/files/1"), call("/api/v1/files/3")],
+            any_order=True,
+        )
+        self.assertEqual(mock_api.delete.call_count, 2)
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_delete_solution_files_noop_without_references(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge)
+        challenge.challenge_id = 1
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge._delete_solution_files("no files referenced here")
+
+        mock_api.get.assert_not_called()
+        mock_api.delete.assert_not_called()
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_does_not_create_solution_if_not_specified(self, mock_api_constructor: MagicMock):
