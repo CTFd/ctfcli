@@ -158,6 +158,13 @@ requirements:
 # if you want to remove or disable it.
 next: null
 
+# scheduled_at schedules a timed release: a visible challenge stays hidden from
+# players until this moment passes. Omit or set to null for no schedule.
+# Must be an ISO 8601 datetime WITH an explicit timezone offset
+#   scheduled_at: "2026-06-15T12:00:00+00:00"   # UTC
+#   scheduled_at: "2026-06-15T14:00:00+02:00"   # CEST
+# scheduled_at: null
+
 # The state of the challenge.
 # If the field is omitted, the challenge is visible by default.
 # If provided, the field can take one of two values: hidden, visible.
