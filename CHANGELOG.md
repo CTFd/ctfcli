@@ -1,5 +1,20 @@
 # Changelog
 
+# 0.1.8 / 2026-07-14
+
+### Added
+
+- Add support for hint requirements through hint keys
+- Add repo integrations to create challenge repos with sync integrations during `ctf init`, including `ctf init --github --gitlab`
+- Add `--force` to `ctf pages`
+
+### Fixed
+
+- Fix return value for sync verification to properly check for failed challenge verification counts
+- Stream POST requests using a multipart encoder to handle large file uploads without reading the entire file into memory
+
+### Changed
+
 # 0.1.7 / 2026-02-26
 
 ### Added
