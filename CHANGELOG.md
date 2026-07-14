@@ -5,6 +5,7 @@
 ### Added
 
 - Add support for hint requirements through hint keys
+  - Hints in challenge.yml can now specify a `key` and list other hints' keys under `requirements` to gate them behind those hints
 - Add repo integrations to create challenge repos with sync integrations during `ctf init`, including `ctf init --github --gitlab`
 - Add `--force` to `ctf pages`
 
@@ -12,8 +13,6 @@
 
 - Fix return value for sync verification to properly check for failed challenge verification counts
 - Stream POST requests using a multipart encoder to handle large file uploads without reading the entire file into memory
-
-### Changed
 
 # 0.1.7 / 2026-02-26
 
