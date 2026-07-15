@@ -1067,6 +1067,134 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.delete.assert_not_called()
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_module_by_name(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"module": "Test Module"})
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [
+                        {"id": 1, "name": "Other Module", "description": None},
+                        {"id": 2, "name": "Test Module", "description": None},
+                    ],
+                }
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+
+        challenge.sync(ignore=["files"])
+
+        mock_api.get.assert_has_calls([call("/api/v1/modules")])
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/1", json={"module_id": 2}),
+                call().raise_for_status(),
+            ]
+        )
+
+        # the module already exists, so it should not be created
+        mock_api.post.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_module_if_missing(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"module": "New Module"})
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {"id": 7, "name": "New Module", "description": None},
+                }
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge.sync(ignore=["files"])
+
+        mock_api.get.assert_has_calls([call("/api/v1/modules")])
+        mock_api.post.assert_has_calls([call("/api/v1/modules", json={"name": "New Module"})])
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/1", json={"module_id": 7}),
+                call().raise_for_status(),
+            ]
+        )
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_updates_module_by_id(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"module": 42})
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge.sync(ignore=["files"])
+
+        # the module id is trusted and used directly, without resolving it against the remote
+        self.assertNotIn(call("/api/v1/modules"), mock_api.get.call_args_list)
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/1", json={"module_id": 42}),
+                call().raise_for_status(),
+            ]
+        )
+        mock_api.post.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_removes_module_with_explicit_null(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"module": None})
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge.sync(ignore=["files"])
+
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/1", json={"module_id": None}),
+                call().raise_for_status(),
+            ]
+        )
+        mock_api.post.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_does_not_touch_module_if_absent(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge)
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge.sync(ignore=["files"])
+
+        # without a module key in challenge.yml the remote module assignment should be left untouched
+        self.assertNotIn(call("/api/v1/modules"), mock_api.get.call_args_list)
+        for patch_call in mock_api.patch.call_args_list:
+            self.assertNotIn("module_id", patch_call.kwargs.get("json", {}))
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.click.secho")
     @mock.patch("ctfcli.core.challenge.API")
     def test_challenge_cannot_require_itself(
@@ -1365,6 +1493,7 @@ class TestSyncChallenge(unittest.TestCase):
             "files",
             "hints",
             "requirements",
+            "module",
             "solution",
             # fmt: on
         ]
@@ -1443,6 +1572,9 @@ class TestSyncChallenge(unittest.TestCase):
 
                         if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
+
+                        if p == "module":
+                            challenge[p] = "new-value"
 
                         if p == "solution":
                             challenge[p] = "challenge.yml"
@@ -1621,6 +1753,59 @@ class TestCreateChallenge(unittest.TestCase):
         )
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_challenge_with_module(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"module": "New Module"})
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/challenges":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 3}}
+                return mock_response
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {"id": 7, "name": "New Module", "description": None},
+                }
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge.create()
+
+        mock_api.post.assert_has_calls(
+            [
+                call("/api/v1/challenges", json=ANY),
+                call("/api/v1/modules", json={"name": "New Module"}),
+            ]
+        )
+        mock_api.patch.assert_has_calls(
+            [
+                call("/api/v1/challenges/3", json={"module_id": 7}),
+                call().raise_for_status(),
+            ]
+        )
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
     def test_exits_if_files_do_not_exist(self, mock_api_constructor: MagicMock, *args, **kwargs):
         challenge = Challenge(self.minimal_challenge, {"files": ["files/nonexistent.png"]})
@@ -1639,7 +1824,7 @@ class TestCreateChallenge(unittest.TestCase):
         # fmt:off
         properties = [
             "value", "category", "description", "attribution", "attempts", "connection_info", "state",  # simple types
-            "extra", "flags", "topics", "tags", "files", "hints", "requirements", "solution"  # complex types
+            "extra", "flags", "topics", "tags", "files", "hints", "requirements", "module", "solution"  # complex types
         ]
         # fmt:on
 
@@ -1699,6 +1884,9 @@ class TestCreateChallenge(unittest.TestCase):
 
                         if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
+
+                        if p == "module":
+                            challenge[p] = "new-value"
 
                         if p == "solution":
                             challenge[p] = "challenge.yml"
@@ -2145,6 +2333,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                 "hints": ["free hint", {"content": "paid hint", "cost": 100}],
                 "topics": ["topic-1", "topic-2"],
                 "next": None,
+                "module": None,
                 "requirements": {"prerequisites": ["First Test Challenge", "Other Test Challenge"], "anonymize": False},
                 "extra": {
                     "initial": 100,
@@ -2154,6 +2343,68 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
             },
             normalized_data,
         )
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_normalize_resolves_module_name(self, mock_api_constructor: MagicMock):
+        mock_api: MagicMock = mock_api_constructor.return_value
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules/5":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {"id": 5, "name": "Test Module", "description": None},
+                }
+                return mock_response
+
+            return self.mock_get(*args, **kwargs)
+
+        mock_api.get.side_effect = mock_get
+
+        challenge = Challenge(self.full_challenge)
+        challenge.challenge_id = 3
+
+        normalized_data = challenge._normalize_challenge(
+            {
+                "name": "Test Challenge",
+                "description": "Test Description",
+                "max_attempts": 5,
+                "module_id": 5,
+            }
+        )
+
+        self.assertEqual("Test Module", normalized_data["module"])
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_compare_challenge_module(self, mock_api_constructor: MagicMock):
+        mock_api: MagicMock = mock_api_constructor.return_value
+
+        def mock_get(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules/5":
+                mock_response = MagicMock()
+                mock_response.ok = True
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {"id": 5, "name": "Test Module", "description": None},
+                }
+                return mock_response
+
+            return MagicMock()
+
+        mock_api.get.side_effect = mock_get
+
+        challenge = Challenge(self.full_challenge)
+        challenge.challenge_id = 3
+
+        # module referenced by id should resolve to its name
+        self.assertTrue(challenge._compare_challenge_module(5, "Test Module"))
+        self.assertTrue(challenge._compare_challenge_module("Test Module", "Test Module"))
+        self.assertTrue(challenge._compare_challenge_module(None, None))
+        self.assertFalse(challenge._compare_challenge_module("Other Module", "Test Module"))
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_verify_checks_if_challenge_is_the_same(self, mock_api_constructor: MagicMock):
