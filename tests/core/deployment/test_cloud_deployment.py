@@ -69,7 +69,7 @@ class TestCloudDeployment(unittest.TestCase):
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_fails_deployment_if_image_build_failed(
         self,
@@ -122,7 +122,7 @@ class TestCloudDeployment(unittest.TestCase):
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_fails_deployment_if_image_push_failed(
         self,
@@ -189,7 +189,7 @@ class TestCloudDeployment(unittest.TestCase):
         return_value=b'Error response from daemon: Get "https://registry.ctfd.io/v2/": unauthorized: authentication required',  # noqa
     )
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_fails_deployment_if_registry_login_unsuccessful(
         self,
@@ -271,7 +271,7 @@ class TestCloudDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.cloud.subprocess.check_output")
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_fails_deployment_if_instance_url_is_not_ctfd_assigned(
         self,
@@ -355,7 +355,7 @@ class TestCloudDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.cloud.subprocess.check_output")
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_allows_skipping_registry_login(
         self,
@@ -486,7 +486,7 @@ class TestCloudDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.cloud.subprocess.check_output", return_value=b"Login Succeeded")
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_deploys_challenge_with_existing_image_service(
         self,
@@ -628,7 +628,7 @@ class TestCloudDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.deployment.cloud.subprocess.check_output", return_value=b"Login Succeeded")
     @mock.patch("ctfcli.core.deployment.cloud.time.sleep")
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_deploys_challenge_with_new_image_service(
         self,
@@ -822,7 +822,7 @@ class TestCloudDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.deployment.cloud.subprocess.check_output", return_value=b"Login Succeeded")
     @mock.patch("ctfcli.core.deployment.cloud.time.sleep")
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_fails_deployment_after_timeout(
         self,
@@ -1013,7 +1013,7 @@ class TestCloudDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.cloud.subprocess.check_output", return_value=b"Login Succeeded")
     @mock.patch("ctfcli.core.deployment.cloud.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     @mock.patch("ctfcli.core.deployment.cloud.API")
     def test_exposes_tcp_port(
         self,

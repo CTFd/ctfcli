@@ -19,7 +19,7 @@ class TestSSHDeployment(unittest.TestCase):
     @mock.patch.object(Path, "unlink")
     @mock.patch("ctfcli.core.deployment.ssh.subprocess.run")
     @mock.patch("ctfcli.core.deployment.ssh.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_builds_exports_and_copies_image(
         self,
         mock_image_constructor: MagicMock,
@@ -95,7 +95,7 @@ class TestSSHDeployment(unittest.TestCase):
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.ssh.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_image_build_failed(
         self,
         mock_image_constructor: MagicMock,
@@ -118,7 +118,7 @@ class TestSSHDeployment(unittest.TestCase):
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.ssh.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_image_export_failed(
         self,
         mock_image_constructor: MagicMock,
@@ -143,7 +143,7 @@ class TestSSHDeployment(unittest.TestCase):
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.ssh.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_no_exposed_port(
         self,
         mock_image_constructor: MagicMock,
@@ -172,7 +172,7 @@ class TestSSHDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.ssh.subprocess.run")
     @mock.patch("ctfcli.core.deployment.ssh.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_any_subprocess_exits(
         self,
         mock_image_constructor: MagicMock,

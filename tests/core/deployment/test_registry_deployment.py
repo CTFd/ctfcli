@@ -18,7 +18,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.registry.subprocess.run")
     @mock.patch("ctfcli.core.deployment.registry.Config")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_builds_and_pushes_image(
         self,
         mock_image_constructor: MagicMock,
@@ -68,7 +68,7 @@ class TestRegistryDeployment(unittest.TestCase):
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_no_registry_config(
         self,
         mock_image_constructor: MagicMock,
@@ -93,7 +93,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
     @mock.patch("ctfcli.core.deployment.registry.Config")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_if_no_credentials(
         self,
         mock_image_constructor: MagicMock,
@@ -122,7 +122,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
     @mock.patch("ctfcli.core.deployment.registry.subprocess.run")
     @mock.patch("ctfcli.core.deployment.registry.Config")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_if_registry_credentials_invalid(
         self,
         mock_image_constructor: MagicMock,
@@ -155,7 +155,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.deployment.registry.subprocess.run")
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
     @mock.patch("ctfcli.core.deployment.registry.Config")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_image_build_failed(
         self,
         mock_image_constructor: MagicMock,
@@ -185,7 +185,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.deployment.registry.subprocess.run")
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
     @mock.patch("ctfcli.core.deployment.registry.Config")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_fails_deployment_if_image_push_failed(
         self,
         mock_image_constructor: MagicMock,
@@ -217,7 +217,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
     @mock.patch("ctfcli.core.deployment.registry.subprocess.run")
     @mock.patch("ctfcli.core.deployment.registry.Config")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_allows_skipping_login(
         self,
         mock_image_constructor: MagicMock,
@@ -252,7 +252,7 @@ class TestRegistryDeployment(unittest.TestCase):
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=challenge_directory)
     @mock.patch("ctfcli.core.deployment.registry.click.secho")
     @mock.patch("ctfcli.core.deployment.registry.subprocess.run")
-    @mock.patch("ctfcli.core.challenge.Image")
+    @mock.patch("ctfcli.core.properties.image.Image")
     def test_warns_about_logging_in_with_skip_login(
         self,
         mock_image_constructor: MagicMock,

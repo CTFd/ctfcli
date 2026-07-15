@@ -13,6 +13,7 @@ from ctfcli.core.exceptions import (
     RemoteChallengeNotFound,
 )
 from ctfcli.core.image import Image
+from ctfcli.core.properties import PropertyContext, get_property
 
 BASE_DIR = Path(__file__).parent.parent
 
@@ -57,7 +58,7 @@ class TestLocalChallengeLoading(unittest.TestCase):
 
         self.assertEqual(challenge["name"], "Test Challenge")
 
-    @mock.patch("ctfcli.core.challenge.subprocess.call")
+    @mock.patch("ctfcli.core.properties.image.subprocess.call")
     def test_raises_if_image_defined_but_not_resolved(self, mock_call: MagicMock):
         mock_call.return_value = 1
         challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
@@ -106,7 +107,7 @@ class TestLocalChallengeLoading(unittest.TestCase):
         self.assertEqual(challenge.image.basename, "test-challenge")
         self.assertTrue(challenge.image.built)
 
-    @mock.patch("ctfcli.core.challenge.subprocess.call")
+    @mock.patch("ctfcli.core.properties.image.subprocess.call")
     def test_recognizes_local_prebuilt_images(self, mock_call: MagicMock):
         mock_call.return_value = 0
         challenge_path = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
@@ -140,7 +141,7 @@ class TestChallengeSolutions(unittest.TestCase):
 
     def test_resolves_solution_from_specified_path(self):
         challenge = Challenge(self.minimal_challenge, {"solution": "challenge.yml"})
-        solution_path, solution_state = challenge._resolve_solution_path()
+        solution_path, solution_state = get_property("solution").resolve_path(PropertyContext(challenge))
         self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
         self.assertEqual(solution_state, "hidden")
 
@@ -154,7 +155,7 @@ class TestChallengeSolutions(unittest.TestCase):
                 }
             },
         )
-        solution_path, solution_state = challenge._resolve_solution_path()
+        solution_path, solution_state = get_property("solution").resolve_path(PropertyContext(challenge))
         self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
         self.assertEqual(solution_state, "solved")
 
@@ -168,18 +169,18 @@ class TestChallengeSolutions(unittest.TestCase):
                 }
             },
         )
-        solution_path, solution_state = challenge._resolve_solution_path()
+        solution_path, solution_state = get_property("solution").resolve_path(PropertyContext(challenge))
         self.assertEqual(solution_path, challenge.challenge_directory / "challenge.yml")
         self.assertEqual(solution_state, "visible")
 
     def test_does_not_resolve_solution_if_not_specified(self):
         challenge = Challenge(self.minimal_challenge)
-        self.assertIsNone(challenge._resolve_solution_path())
+        self.assertIsNone(get_property("solution").resolve_path(PropertyContext(challenge)))
 
-    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.properties.solution.click.secho")
     def test_does_not_resolve_solution_if_missing(self, mock_secho: MagicMock):
         challenge = Challenge(self.minimal_challenge, {"solution": "writeup/WRITEUP.md"})
-        self.assertIsNone(challenge._resolve_solution_path())
+        self.assertIsNone(get_property("solution").resolve_path(PropertyContext(challenge)))
         mock_secho.assert_called_once_with(
             f"Solution file 'writeup/WRITEUP.md' specified, but not found at "
             f"{challenge.challenge_directory / 'writeup/WRITEUP.md'}",
@@ -213,7 +214,7 @@ class TestChallengeSolutions(unittest.TestCase):
         mock_api.get.side_effect = mock_get
         mock_api.post.side_effect = mock_post
 
-        challenge._create_solution()
+        get_property("solution").upsert(PropertyContext(challenge))
 
         mock_api.post.assert_has_calls(
             [call("/api/v1/solutions", json={"challenge_id": 1, "state": "hidden", "content": ""})]
@@ -247,7 +248,7 @@ class TestChallengeSolutions(unittest.TestCase):
         mock_api.get.side_effect = mock_get
         mock_api.post.side_effect = mock_post
 
-        challenge._create_solution()
+        get_property("solution").upsert(PropertyContext(challenge))
 
         mock_api.post.assert_has_calls(
             [call("/api/v1/solutions", json={"challenge_id": 1, "state": "visible", "content": ""})]
@@ -272,7 +273,7 @@ class TestChallengeSolutions(unittest.TestCase):
         mock_api: MagicMock = mock_api_constructor.return_value
         mock_api.get.side_effect = mock_get
 
-        challenge._create_solution()
+        get_property("solution").upsert(PropertyContext(challenge))
 
         mock_api.post.assert_not_called()
         mock_api.patch.assert_has_calls(
@@ -289,7 +290,7 @@ class TestChallengeSolutions(unittest.TestCase):
         challenge.challenge_id = 1
 
         mock_api: MagicMock = mock_api_constructor.return_value
-        challenge._create_solution()
+        get_property("solution").upsert(PropertyContext(challenge))
 
         mock_api.post.assert_not_called()
         mock_api.patch.assert_not_called()
@@ -329,7 +330,7 @@ class TestChallengeSolutions(unittest.TestCase):
         mock_api.get.side_effect = mock_get
         mock_api.post.side_effect = mock_post
 
-        challenge._create_solution()
+        get_property("solution").upsert(PropertyContext(challenge))
 
         mock_api.post.assert_has_calls(
             [
@@ -879,8 +880,8 @@ class TestSyncChallenge(unittest.TestCase):
         }
         mock_api.post.return_value.json.return_value = {"success": True, "data": {"id": 10}}
 
-        challenge._delete_existing_hints()
-        challenge._create_hints()
+        get_property("hints").delete_existing(PropertyContext(challenge))
+        get_property("hints").create_items(PropertyContext(challenge))
 
         self.assertEqual(
             mock_api.delete.call_args_list,
@@ -1104,7 +1105,7 @@ class TestSyncChallenge(unittest.TestCase):
         mock_api.post.assert_not_called()
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
-    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.properties.references.click.secho")
     @mock.patch("ctfcli.core.challenge.API")
     def test_creates_module_if_missing(self, mock_api_constructor: MagicMock, *args, **kwargs):
         challenge = Challenge(self.minimal_challenge, {"module": "New Module"})
@@ -1195,7 +1196,7 @@ class TestSyncChallenge(unittest.TestCase):
             self.assertNotIn("module_id", patch_call.kwargs.get("json", {}))
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
-    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.properties.references.click.secho")
     @mock.patch("ctfcli.core.challenge.API")
     def test_challenge_cannot_require_itself(
         self, mock_api_constructor: MagicMock, mock_secho: MagicMock, *args, **kwargs
@@ -1753,7 +1754,7 @@ class TestCreateChallenge(unittest.TestCase):
         )
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
-    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.properties.references.click.secho")
     @mock.patch("ctfcli.core.challenge.API")
     def test_creates_challenge_with_module(self, mock_api_constructor: MagicMock, *args, **kwargs):
         challenge = Challenge(self.minimal_challenge, {"module": "New Module"})
@@ -1960,7 +1961,7 @@ class TestLintChallenge(unittest.TestCase):
         }
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
 
-    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.lint.click.secho")
     def test_validates_dockerfile_exposes_port(self, mock_secho: MagicMock):
         challenge = Challenge(self.invalid_dockerfile_challenge)
 
@@ -1977,7 +1978,7 @@ class TestLintChallenge(unittest.TestCase):
         mock_secho.assert_called_once_with("Skipping Hadolint", fg="yellow")
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
 
-    @mock.patch("ctfcli.core.challenge.subprocess.run")
+    @mock.patch("ctfcli.core.lint.subprocess.run")
     def test_runs_hadolint(self, mock_run: MagicMock):
         class RunResult:
             def __init__(self, return_code):
@@ -2002,8 +2003,8 @@ class TestLintChallenge(unittest.TestCase):
         }
         self.assertDictEqual(expected_lint_issues, e.exception.issues)
 
-    @mock.patch("ctfcli.core.challenge.subprocess.run")
-    @mock.patch("ctfcli.core.challenge.click.secho")
+    @mock.patch("ctfcli.core.lint.subprocess.run")
+    @mock.patch("ctfcli.core.lint.click.secho")
     def test_allows_for_skipping_hadolint(self, mock_secho: MagicMock, mock_run: MagicMock, *args, **kwargs):
         challenge = Challenge(self.dockerfile_challenge)
         result = challenge.lint(skip_hadolint=True)
@@ -2401,10 +2402,10 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
         challenge.challenge_id = 3
 
         # module referenced by id should resolve to its name
-        self.assertTrue(challenge._compare_challenge_module(5, "Test Module"))
-        self.assertTrue(challenge._compare_challenge_module("Test Module", "Test Module"))
-        self.assertTrue(challenge._compare_challenge_module(None, None))
-        self.assertFalse(challenge._compare_challenge_module("Other Module", "Test Module"))
+        self.assertTrue(get_property("module").matches(PropertyContext(challenge), 5, "Test Module"))
+        self.assertTrue(get_property("module").matches(PropertyContext(challenge), "Test Module", "Test Module"))
+        self.assertTrue(get_property("module").matches(PropertyContext(challenge), None, None))
+        self.assertFalse(get_property("module").matches(PropertyContext(challenge), "Other Module", "Test Module"))
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_verify_checks_if_challenge_is_the_same(self, mock_api_constructor: MagicMock):
