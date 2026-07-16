@@ -163,8 +163,8 @@ next: null
 # to specific audiences (groups of users or teams) in the CTFd admin panel.
 # If the module does not exist on the CTFd instance yet, it will be created
 # during install/sync - audiences still have to be assigned to it manually.
-# Accepts a module name as a string, a module ID as an integer, or null
-# if you want to remove the challenge from its module.
+# Accepts a module name as a string, or null if you want to remove the
+# challenge from its module.
 # If the field is omitted, the remote module assignment is left untouched.
 # Can be removed if unused
 module: null

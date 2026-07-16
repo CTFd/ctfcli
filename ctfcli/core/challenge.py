@@ -703,15 +703,14 @@ class Challenge(dict):
     def _set_module(self):
         module = self.get("module", None)
 
-        if not module:
+        if module is None or module == "":
             # explicit null (or empty) module - remove the challenge from its module
             module_id = None
-        elif type(module) == int:
-            # module by id
-            # trust it and use it directly
-            module_id = module
         else:
-            # module by name
+            # module is always treated as a name - coerce so a numeric name
+            # (e.g. "2024", which YAML loads as an int) is handled as a string
+            module = str(module)
+
             # find the module id from the modules installed on the remote
             module_id = None
             r = self.api.get("/api/v1/modules")
@@ -776,17 +775,11 @@ class Challenge(dict):
 
         return normalize_next(r1) == normalize_next(r2)
 
-    # Compare module assignments, will resolve module IDs to names
+    # Compare module assignments - modules are always referenced by name, so a
+    # numeric name (loaded from YAML as an int) is coerced to a string to compare
     def _compare_challenge_module(self, m1: str | int | None, m2: str | int | None) -> bool:
         def normalize_module(m):
-            if type(m) == int:
-                r = self.api.get(f"/api/v1/modules/{m}")
-                if not r.ok:
-                    return None
-
-                return (r.json().get("data") or {}).get("name", None)
-
-            return m
+            return None if m is None else str(m)
 
         return normalize_module(m1) == normalize_module(m2)
 

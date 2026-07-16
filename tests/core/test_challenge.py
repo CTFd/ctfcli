@@ -1149,21 +1149,49 @@ class TestSyncChallenge(unittest.TestCase):
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
-    def test_updates_module_by_id(self, mock_api_constructor: MagicMock, *args, **kwargs):
+    def test_numeric_module_treated_as_name(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        # a numeric module (YAML loads "42" as an int) is always treated as a name,
+        # not a module id - it is resolved (and created if missing) by name
         challenge = Challenge(self.minimal_challenge, {"module": 42})
 
+        def mock_get(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/modules":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {"id": 7, "name": "42", "description": None},
+                }
+                return mock_response
+
+            return MagicMock()
+
         mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
         challenge.sync(ignore=["files"])
 
-        # the module id is trusted and used directly, without resolving it against the remote
-        self.assertNotIn(call("/api/v1/modules"), mock_api.get.call_args_list)
+        # the numeric name is resolved against the remote and created as a string name
+        mock_api.get.assert_has_calls([call("/api/v1/modules")])
+        mock_api.post.assert_has_calls([call("/api/v1/modules", json={"name": "42"})])
         mock_api.patch.assert_has_calls(
             [
-                call("/api/v1/challenges/1", json={"module_id": 42}),
+                call("/api/v1/challenges/1", json={"module_id": 7}),
                 call().raise_for_status(),
             ]
         )
-        mock_api.post.assert_not_called()
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
@@ -2379,32 +2407,17 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_compare_challenge_module(self, mock_api_constructor: MagicMock):
-        mock_api: MagicMock = mock_api_constructor.return_value
-
-        def mock_get(*args, **kwargs):
-            path = args[0]
-
-            if path == "/api/v1/modules/5":
-                mock_response = MagicMock()
-                mock_response.ok = True
-                mock_response.json.return_value = {
-                    "success": True,
-                    "data": {"id": 5, "name": "Test Module", "description": None},
-                }
-                return mock_response
-
-            return MagicMock()
-
-        mock_api.get.side_effect = mock_get
-
         challenge = Challenge(self.full_challenge)
         challenge.challenge_id = 3
 
-        # module referenced by id should resolve to its name
-        self.assertTrue(challenge._compare_challenge_module(5, "Test Module"))
+        # modules are compared by name
         self.assertTrue(challenge._compare_challenge_module("Test Module", "Test Module"))
         self.assertTrue(challenge._compare_challenge_module(None, None))
         self.assertFalse(challenge._compare_challenge_module("Other Module", "Test Module"))
+
+        # a numeric name (loaded from YAML as an int) is coerced to a string
+        self.assertTrue(challenge._compare_challenge_module(42, "42"))
+        self.assertFalse(challenge._compare_challenge_module(42, "Test Module"))
 
     @mock.patch("ctfcli.core.challenge.API")
     def test_verify_checks_if_challenge_is_the_same(self, mock_api_constructor: MagicMock):
