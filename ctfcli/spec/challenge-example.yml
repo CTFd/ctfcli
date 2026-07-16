@@ -151,12 +151,23 @@ requirements:
 #        - "Are you alive"
 #    anonymize: true
 
-# The next is used to display a next recommended challenge to a user when 
+# The next is used to display a next recommended challenge to a user when
 # the user correctly answers the current challenge.
 # Can be removed if unused
 # Accepts a challenge name as a string, a challenge ID as an integer, or null
 # if you want to remove or disable it.
 next: null
+
+# The module is used to assign this challenge to a CTFd module.
+# Modules group challenges together, and access to a module can be restricted
+# to specific audiences (groups of users or teams) in the CTFd admin panel.
+# If the module does not exist on the CTFd instance yet, it will be created
+# during install/sync - audiences still have to be assigned to it manually.
+# Accepts a module name as a string, or null if you want to remove the
+# challenge from its module.
+# If the field is omitted, the remote module assignment is left untouched.
+# Can be removed if unused
+module: null
 
 # The state of the challenge.
 # If the field is omitted, the challenge is visible by default.

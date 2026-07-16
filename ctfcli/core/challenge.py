@@ -67,6 +67,7 @@ class Challenge(dict):
         "hints",
         "requirements",
         "next",
+        "module",
         "state",
         "version",
     ]
@@ -131,6 +132,9 @@ class Challenge(dict):
             return True
 
         if key == "requirements" and value == {"prerequisites": [], "anonymize": False}:
+            return True
+
+        if key == "module" and value is None:
             return True
 
         return bool(key == "next" and value is None)
@@ -696,6 +700,42 @@ class Challenge(dict):
         r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=next_payload)
         r.raise_for_status()
 
+    def _set_module(self):
+        module = self.get("module", None)
+
+        if module is None or module == "":
+            # explicit null (or empty) module - remove the challenge from its module
+            module_id = None
+        else:
+            # module is always treated as a name - coerce so a numeric name
+            # (e.g. "2024", which YAML loads as an int) is handled as a string
+            module = str(module)
+
+            # find the module id from the modules installed on the remote
+            module_id = None
+            r = self.api.get("/api/v1/modules")
+            r.raise_for_status()
+            remote_modules = r.json()["data"]
+            for remote_module in remote_modules:
+                if remote_module["name"] == module:
+                    module_id = remote_module["id"]
+                    break
+
+            # the module does not exist yet - create it
+            if module_id is None:
+                r = self.api.post("/api/v1/modules", json={"name": module})
+                r.raise_for_status()
+                module_id = r.json()["data"]["id"]
+                click.secho(
+                    f'Created module "{module}". '
+                    "Remember to assign audiences to it in the admin panel if you want to restrict access.",
+                    fg="yellow",
+                )
+
+        module_payload = {"module_id": module_id}
+        r = self.api.patch(f"/api/v1/challenges/{self.challenge_id}", json=module_payload)
+        r.raise_for_status()
+
     # Compare challenge requirements, will resolve all IDs to names
     def _compare_challenge_requirements(self, r1: list[str | int], r2: list[str | int]) -> bool:
         remote_challenges = self.load_installed_challenges()
@@ -734,6 +774,14 @@ class Challenge(dict):
             return normalized
 
         return normalize_next(r1) == normalize_next(r2)
+
+    # Compare module assignments - modules are always referenced by name, so a
+    # numeric name (loaded from YAML as an int) is coerced to a string to compare
+    def _compare_challenge_module(self, m1: str | int | None, m2: str | int | None) -> bool:
+        def normalize_module(m):
+            return None if m is None else str(m)
+
+        return normalize_module(m1) == normalize_module(m2)
 
     # Normalize challenge data from the API response to match challenge.yml
     # It will remove any extra fields from the remote, as well as expand external references
@@ -850,6 +898,7 @@ class Challenge(dict):
             r2.raise_for_status()
             challenges = r2.json()["data"]
             challenge["requirements"]["prerequisites"] = [c["name"] for c in challenges if c["id"] in requirements]
+
         # Add anonymize flag
         challenge["requirements"]["anonymize"] = (r.json().get("data") or {}).get("anonymize", False)
 
@@ -862,6 +911,16 @@ class Challenge(dict):
             challenge["next"] = (r.json().get("data") or {}).get("name", None)
         else:
             challenge["next"] = None
+
+        # Add module
+        module_id = challenge_data.get("module_id")
+        if module_id:
+            # Prefer the module name over the ID
+            r = self.api.get(f"/api/v1/modules/{module_id}")
+            r.raise_for_status()
+            challenge["module"] = (r.json().get("data") or {}).get("name", None)
+        else:
+            challenge["module"] = None
 
         return challenge
 
@@ -997,6 +1056,13 @@ class Challenge(dict):
         if "next" not in ignore:
             self._set_next(_next)
 
+        # Update module
+        # Only touch the module assignment if the key is present in challenge.yml -
+        # an explicit "module: null" removes the challenge from its module,
+        # while an absent key leaves the remote assignment untouched
+        if "module" in challenge and "module" not in ignore:
+            self._set_module()
+
         if "solution" not in ignore:
             resolved_solution = self._resolve_solution_path()
             if not resolved_solution:
@@ -1086,6 +1152,10 @@ class Challenge(dict):
         _next = challenge.get("next", None)
         if "next" not in ignore:
             self._set_next(_next)
+
+        # Assign module
+        if challenge.get("module") and "module" not in ignore:
+            self._set_module()
 
         # Add solution
         if "solution" not in ignore:
@@ -1293,6 +1363,9 @@ class Challenge(dict):
                         continue
 
                 if key == "next" and self._compare_challenge_next(challenge[key], normalized_challenge[key]):
+                    continue
+
+                if key == "module" and self._compare_challenge_module(challenge[key], normalized_challenge[key]):
                     continue
 
                 click.secho(
