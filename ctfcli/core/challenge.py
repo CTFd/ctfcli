@@ -141,6 +141,15 @@ class Challenge(dict):
 
         return bool(key == "next" and value is None)
 
+    @staticmethod
+    def _datetime_from_iso(value: str) -> datetime:
+        # datetime.fromisoformat only accepts a 'Z' suffix on Python 3.11+,
+        # so translate it to an explicit offset for the versions that don't
+        if value.endswith(("Z", "z")):
+            value = value[:-1] + "+00:00"
+
+        return datetime.fromisoformat(value)
+
     def _parse_scheduled_at(self, value: Any) -> "datetime | None":
         # Never assume a timezone for scheduled_at: always expect an explicit offset
         if value is None:
@@ -153,7 +162,7 @@ class Challenge(dict):
             if not value.strip():
                 return None
             try:
-                parsed = datetime.fromisoformat(value)
+                parsed = self._datetime_from_iso(value)
             except ValueError as e:
                 raise InvalidChallengeFile(
                     f"Challenge file at {self.challenge_file_path} has an invalid 'scheduled_at' value "
@@ -174,14 +183,14 @@ class Challenge(dict):
 
         return parsed
 
-    @staticmethod
-    def _normalize_scheduled_at(value: Any) -> "str | None":
+    @classmethod
+    def _normalize_scheduled_at(cls, value: Any) -> "str | None":
         # CTFd stores and returns scheduled_at as a naive UTC datetime.
         # Make the timezone explicit (UTC) on the challenge
         if not value:
             return None
 
-        parsed = value if isinstance(value, datetime) else datetime.fromisoformat(value)
+        parsed = value if isinstance(value, datetime) else cls._datetime_from_iso(value)
         parsed = parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
 
         return parsed.isoformat()
