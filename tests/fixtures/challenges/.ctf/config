@@ -8,3 +8,7 @@ test-challenge-full = user@host:example/test-challenge-full.git
 test-challenge-files = user@host:example/test-challenge-files.git
 test-challenge-dockerfile = user@host:example/test-challenge-dockerfile.git
 
+[media]
+logo = /files/media/logo.png
+handout = /files/media/handout.zip
+
