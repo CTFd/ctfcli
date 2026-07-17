@@ -336,6 +336,75 @@ class TestChallengeSolutions(unittest.TestCase):
         self.assertEqual(mock_api.delete.call_count, 2)
 
     @mock.patch("ctfcli.core.challenge.API")
+    def test_delete_solution_files_deduplicates_repeated_references(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge)
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            if args[0] == "/api/v1/files?type=solution":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"id": 7, "location": "loc-dup/dup.png"}],
+                }
+                return mock_response
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+
+        challenge._delete_solution_files("![a](/files/loc-dup/dup.png) and again ![a](/files/loc-dup/dup.png)")
+
+        # A file referenced twice must only be deleted once - a second DELETE would 404
+        mock_api.delete.assert_called_once_with("/api/v1/files/7")
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_solution_uploads_repeated_image_only_once(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(
+            self.solution_challenge,
+            {"solution": {"path": "writeup/WRITEUP-DUPLICATE.md", "state": "hidden"}},
+        )
+        challenge.challenge_id = 1
+
+        def mock_get(*args, **kwargs):
+            if args[0] == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": []}
+                return mock_response
+            return MagicMock()
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+            if path == "/api/v1/solutions":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 5}}
+                return mock_response
+            if path == "/api/v1/files":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": [{"location": "uploaded-location/test.png"}],
+                }
+                return mock_response
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.get.side_effect = mock_get
+        mock_api.post.side_effect = mock_post
+
+        challenge._create_solution()
+
+        # The image is referenced twice but must only be uploaded once - content.replace
+        # rewrites every occurrence, so a second upload would be orphaned immediately
+        file_uploads = [c for c in mock_api.post.call_args_list if c.args[0] == "/api/v1/files"]
+        self.assertEqual(len(file_uploads), 1)
+
+        # Both references should still be rewritten to the uploaded location
+        patched_content = mock_api.patch.call_args_list[-1].kwargs["json"]["content"]
+        self.assertEqual(patched_content.count("/files/uploaded-location/test.png"), 2)
+        self.assertNotIn("](images/test.png)", patched_content)
+
+    @mock.patch("ctfcli.core.challenge.API")
     def test_delete_solution_files_noop_without_references(self, mock_api_constructor: MagicMock):
         challenge = Challenge(self.minimal_challenge)
         challenge.challenge_id = 1
