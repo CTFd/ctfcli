@@ -393,6 +393,19 @@ class TestSyncChallenge(unittest.TestCase):
     files_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-files" / "challenge.yml"
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.Media.upload")
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_uploads_media(self, mock_api_constructor: MagicMock, mock_media_upload: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"media": ["challenge.yml"]})
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        challenge.sync()
+
+        mock_media_upload.assert_called_once_with(challenge.challenge_directory / "challenge.yml")
+        mock_api.post.assert_not_called()
+        mock_api.delete.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")
     def test_updates_simple_properties(self, mock_api_constructor: MagicMock, *args, **kwargs):
         challenge = Challenge(
@@ -1519,6 +1532,7 @@ class TestSyncChallenge(unittest.TestCase):
             "topics",
             "tags",
             "files",
+            "media",
             "hints",
             "requirements",
             "module",
@@ -1598,7 +1612,7 @@ class TestSyncChallenge(unittest.TestCase):
                         if p == "extra":
                             challenge["extra"] = {"new-value": "new-value"}
 
-                        if p in ["flags", "topics", "tags", "files", "hints", "requirements"]:
+                        if p in ["flags", "topics", "tags", "files", "media", "hints", "requirements"]:
                             challenge[p] = ["new-value"]
 
                         if p == "module":
@@ -1624,6 +1638,14 @@ class TestSyncChallenge(unittest.TestCase):
                         )
                         mock_api.post.assert_not_called()
                         mock_api.delete.assert_not_called()
+
+    def test_exits_if_media_do_not_exist(self):
+        challenge = Challenge(self.minimal_challenge, {"media": ["files/nonexistent.png"]})
+
+        with self.assertRaises(InvalidChallengeFile) as e:
+            challenge.sync()
+
+        self.assertEqual(str(e.exception), "Media file files/nonexistent.png could not be loaded")
 
 
 class TestCreateChallenge(unittest.TestCase):
@@ -1656,6 +1678,31 @@ class TestCreateChallenge(unittest.TestCase):
 
     minimal_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
     full_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-full" / "challenge.yml"
+
+    @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
+    @mock.patch("ctfcli.core.challenge.Media.upload")
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_uploads_media_on_create(
+        self, mock_api_constructor: MagicMock, mock_media_upload: MagicMock, *args, **kwargs
+    ):
+        challenge = Challenge(self.minimal_challenge, {"media": ["challenge.yml"]})
+
+        def mock_post(*args, **kwargs):
+            path = args[0]
+
+            if path == "/api/v1/challenges":
+                mock_response = MagicMock()
+                mock_response.json.return_value = {"success": True, "data": {"id": 3}}
+                return mock_response
+
+            return MagicMock()
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.post.side_effect = mock_post
+
+        challenge.create()
+
+        mock_media_upload.assert_called_once_with(challenge.challenge_directory / "challenge.yml")
 
     @mock.patch("ctfcli.core.challenge.Challenge.load_installed_challenges", return_value=installed_challenges)
     @mock.patch("ctfcli.core.challenge.API")

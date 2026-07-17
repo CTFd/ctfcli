@@ -19,6 +19,7 @@ from ctfcli.core.exceptions import (
     RemoteChallengeNotFound,
 )
 from ctfcli.core.image import Image
+from ctfcli.core.media import Media
 from ctfcli.utils.hashing import hash_file
 from ctfcli.utils.tools import strings
 
@@ -56,6 +57,7 @@ class Challenge(dict):
         "host",
         "connection_info",
         "healthcheck",
+        "media",
         "solution",
         "attempts",
         "logic",
@@ -80,6 +82,7 @@ class Challenge(dict):
         "topics",
         "tags",
         "files",
+        "media",
         "hints",
         "requirements",
         "state",
@@ -294,12 +297,18 @@ class Challenge(dict):
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 
+    def _validate_media(self):
+        media = self.get("media") or []
+        for media_file in media:
+            if not (self.challenge_directory / media_file).exists():
+                raise InvalidChallengeFile(f"Media file {media_file} could not be loaded")
+
     def _get_initial_challenge_payload(self, ignore: tuple[str] = ()) -> dict:
         challenge = self
         challenge_payload = {
             "name": self["name"],
             "category": self.get("category", ""),
-            "description": self.get("description", ""),
+            "description": Media.replace_placeholders(self.get("description", "")),
             "attribution": self.get("attribution", ""),
             "type": self.get("type", "standard"),
             # Hide the challenge for the duration of the sync / creation
@@ -393,15 +402,14 @@ class Challenge(dict):
                 r.raise_for_status()
 
     def _create_file(self, local_path: Path):
-        new_file = (local_path.name, open(local_path, mode="rb"))
         file_payload = {"challenge_id": self.challenge_id, "type": "challenge"}
 
-        # Specifically use data= here to send multipart/form-data
-        r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
-        r.raise_for_status()
+        with local_path.open(mode="rb") as local_file:
+            new_file = (local_path.name, local_file)
 
-        # Close the file handle
-        new_file[1].close()
+            # Specifically use data= here to send multipart/form-data
+            r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
+            r.raise_for_status()
 
     def _create_all_files(self):
         new_files = []
@@ -418,6 +426,11 @@ class Challenge(dict):
         # Close the file handles
         for file_payload in new_files:
             file_payload[1][1].close()
+
+    def _upload_media(self):
+        media = self.get("media") or []
+        for media_file in media:
+            Media.upload(self.challenge_directory / media_file)
 
     def _delete_existing_hints(self):
         remote_hints = self.api.get("/api/v1/hints").json()["data"]
@@ -589,18 +602,20 @@ class Challenge(dict):
 
             for mdx, alt, path in markdown_images:
                 local_path = solution_path.parent / path
-                new_file = (local_path.name, open(solution_path.parent / path, mode="rb"))
                 file_payload = {
                     "type": "solution",
                     "solution_id": solution_id,
                 }
 
-                # Specifically use data= here to send multipart/form-data
-                r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
-                r.raise_for_status()
-                resp = r.json()
-                server_location = resp["data"][0]["location"]
-                content = content.replace(mdx, f"![{alt}](/files/{server_location})")
+                with local_path.open(mode="rb") as local_file:
+                    new_file = (local_path.name, local_file)
+
+                    # Specifically use data= here to send multipart/form-data
+                    r = self.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
+                    r.raise_for_status()
+                    resp = r.json()
+                    server_location = resp["data"][0]["location"]
+                    content = content.replace(mdx, f"![{alt}](/files/{server_location})")
 
             # Process snippet includes (--8<-- "filename")
             for full_match, filename in snippet_includes:
@@ -958,6 +973,11 @@ class Challenge(dict):
             # _validate_files will raise if file is not found
             self._validate_files()
 
+        if challenge.get("media", False) and "media" not in ignore:
+            # _validate_media will raise if file is not found
+            self._validate_media()
+            self._upload_media()
+
         challenge_payload = self._get_initial_challenge_payload(ignore=ignore)
 
         self._load_challenge_id()
@@ -1033,9 +1053,8 @@ class Challenge(dict):
                             local_file_sha1sum = hash_file(lf)
 
                         # Allow users to specify sha1sum in ignore to force reuploads
-                        if "sha1sum" not in ignore:
-                            if local_file_sha1sum == remote_file_sha1sum:
-                                continue
+                        if "sha1sum" not in ignore and local_file_sha1sum == remote_file_sha1sum:
+                            continue
 
                     # if sha1sums are not present, or the hashes are different, re-upload the file
                     self._delete_file(remote_files[local_file_name]["location"])
@@ -1105,6 +1124,11 @@ class Challenge(dict):
         if challenge.get("files", False) and "files" not in ignore:
             # _validate_files will raise if file is not found
             self._validate_files()
+
+        if challenge.get("media", False) and "media" not in ignore:
+            # _validate_media will raise if file is not found
+            self._validate_media()
+            self._upload_media()
 
         challenge_payload = self._get_initial_challenge_payload(ignore=ignore)
 
