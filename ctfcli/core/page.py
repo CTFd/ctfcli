@@ -152,9 +152,14 @@ class Page:
         with open(page_path, "wb+") as page_file:
             frontmatter.dump(self.as_frontmatter_post(), page_file)
 
-    def push(self):
+    def push(self, force=False):
         # upload / create remote copy of a local page
         if getattr(self, "page_id", None):
+            if force:
+                click.secho("Syncing existing page instead (because of --force)", fg="yellow")
+                self.sync()
+                return
+
             raise IllegalPageOperation(
                 f"Cannot push page '{self.page_file_path}' - remote version exists. Use sync instead."
             )
