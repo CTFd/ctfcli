@@ -1,5 +1,6 @@
 import re
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 from unittest.mock import ANY, MagicMock, call, mock_open
@@ -412,6 +413,7 @@ class TestSyncChallenge(unittest.TestCase):
             "value": 150,
             "state": "hidden",
             "connection_info": "https://example.com",
+            "scheduled_at": None,
             "max_attempts": 0,
         }
 
@@ -458,6 +460,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 5,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -506,6 +509,7 @@ class TestSyncChallenge(unittest.TestCase):
             "application_name": "application-name",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -563,6 +567,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -652,6 +657,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -713,6 +719,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -777,6 +784,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         def mock_get(*args, **kwargs):
@@ -932,6 +940,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1039,6 +1048,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1240,6 +1250,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         def mock_get(*args, **kwargs):
@@ -1301,6 +1312,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1339,6 +1351,7 @@ class TestSyncChallenge(unittest.TestCase):
             "value": 150,
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
             # initial patch should set the state to hidden for the duration of the update
             "state": "hidden",
         }
@@ -1392,6 +1405,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1451,6 +1465,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "hidden",
             "max_attempts": 5,
             "connection_info": "https://example.com",
+            "scheduled_at": None,
         }
 
         mock_api: MagicMock = mock_api_constructor.return_value
@@ -1512,6 +1527,7 @@ class TestSyncChallenge(unittest.TestCase):
             "value",
             "attempts",
             "connection_info",
+            "scheduled_at",
             "state",
             # complex types
             "extra",
@@ -1536,6 +1552,7 @@ class TestSyncChallenge(unittest.TestCase):
             "state": "visible",
             "max_attempts": 0,
             "connection_info": None,
+            "scheduled_at": None,
         }
 
         # This nightmare is necessary because on python 3.8 for whatever reason "with" with multiple context managers
@@ -1566,6 +1583,7 @@ class TestSyncChallenge(unittest.TestCase):
                             "state": "hidden",
                             "max_attempts": 0,
                             "connection_info": None,
+                            "scheduled_at": None,
                         }
 
                         # expect the payload to modify values with new ones from challenge.yml
@@ -1591,6 +1609,10 @@ class TestSyncChallenge(unittest.TestCase):
                         if p == "connection_info":
                             challenge["connection_info"] = "https://example.com"
                             del expected_challenge_payload["connection_info"]
+
+                        if p == "scheduled_at":
+                            challenge["scheduled_at"] = "2026-06-15T12:00:00+00:00"
+                            del expected_challenge_payload["scheduled_at"]
 
                         if p == "state":
                             challenge[p] = "new-value"
@@ -1671,6 +1693,7 @@ class TestCreateChallenge(unittest.TestCase):
             "max_attempts": 5,
             "type": "standard",
             "connection_info": "https://example.com",
+            "scheduled_at": None,
             "extra_property": "extra_property_value",
             "state": "hidden",
         }
@@ -1851,7 +1874,7 @@ class TestCreateChallenge(unittest.TestCase):
     def test_does_not_set_ignored_attributes(self):
         # fmt:off
         properties = [
-            "value", "category", "description", "attribution", "attempts", "connection_info", "state",  # simple types
+            "value", "category", "description", "attribution", "attempts", "connection_info", "scheduled_at", "state",  # simple types  # noqa: E501
             "extra", "flags", "topics", "tags", "files", "hints", "requirements", "module", "solution"  # complex types
         ]
         # fmt:on
@@ -1875,6 +1898,7 @@ class TestCreateChallenge(unittest.TestCase):
                             "state": "hidden",
                             "max_attempts": 0,
                             "connection_info": None,
+                            "scheduled_at": None,
                         }
 
                         # add a property that should be defined but ignored
@@ -1903,6 +1927,10 @@ class TestCreateChallenge(unittest.TestCase):
                         if p == "connection_info":
                             challenge["connection_info"] = "https://example.com"
                             del expected_challenge_payload["connection_info"]
+
+                        if p == "scheduled_at":
+                            challenge["scheduled_at"] = "2026-06-15T12:00:00+00:00"
+                            del expected_challenge_payload["scheduled_at"]
 
                         if p == "state":
                             challenge[p] = "new-value"
@@ -2361,6 +2389,7 @@ class TestVerifyMirrorChallenge(unittest.TestCase):
                 "hints": ["free hint", {"content": "paid hint", "cost": 100}],
                 "topics": ["topic-1", "topic-2"],
                 "next": None,
+                "scheduled_at": None,
                 "module": None,
                 "requirements": {"prerequisites": ["First Test Challenge", "Other Test Challenge"], "anonymize": False},
                 "extra": {
@@ -2542,3 +2571,105 @@ class TestSaveChallenge(unittest.TestCase):
 
         loaded_data = yaml.safe_load(dumped_data)
         self.assertDictEqual(challenge, loaded_data)
+
+
+class TestChallengeScheduledAt(unittest.TestCase):
+    minimal_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+
+    def test_parse_accepts_timezone_aware_string(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00+00:00"})
+        parsed = challenge._parse_scheduled_at(challenge["scheduled_at"])
+        self.assertEqual(parsed, datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc))
+
+    def test_parse_accepts_z_suffix(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00Z"})
+        parsed = challenge._parse_scheduled_at(challenge["scheduled_at"])
+        self.assertEqual(parsed.astimezone(timezone.utc), datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc))
+
+    def test_parse_accepts_timezone_aware_datetime(self):
+        # PyYAML parses an unquoted ISO timestamp into a datetime object
+        challenge = Challenge(
+            self.minimal_challenge,
+            {"scheduled_at": datetime(2026, 6, 15, 14, 0, 0, tzinfo=timezone.utc)},
+        )
+        parsed = challenge._parse_scheduled_at(challenge["scheduled_at"])
+        self.assertEqual(parsed, datetime(2026, 6, 15, 14, 0, 0, tzinfo=timezone.utc))
+
+    def test_parse_returns_none_for_none_or_empty(self):
+        challenge = Challenge(self.minimal_challenge)
+        self.assertIsNone(challenge._parse_scheduled_at(None))
+        self.assertIsNone(challenge._parse_scheduled_at(""))
+
+    def test_parse_rejects_naive_string(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00"})
+        with self.assertRaises(InvalidChallengeFile) as ctx:
+            challenge._parse_scheduled_at(challenge["scheduled_at"])
+        self.assertIn("timezone", str(ctx.exception))
+
+    def test_parse_rejects_naive_datetime(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": datetime(2026, 6, 15, 12, 0, 0)})  # noqa: DTZ001
+        with self.assertRaises(InvalidChallengeFile):
+            challenge._parse_scheduled_at(challenge["scheduled_at"])
+
+    def test_parse_rejects_invalid_string(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "not-a-date"})
+        with self.assertRaises(InvalidChallengeFile):
+            challenge._parse_scheduled_at(challenge["scheduled_at"])
+
+    def test_payload_includes_scheduled_at_iso(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T14:00:00+02:00"})
+        payload = challenge._get_initial_challenge_payload()
+        # The explicit offset is preserved when sent to CTFd (CTFd normalizes server-side)
+        self.assertEqual(payload["scheduled_at"], "2026-06-15T14:00:00+02:00")
+
+    def test_payload_scheduled_at_none_when_absent(self):
+        challenge = Challenge(self.minimal_challenge)
+        payload = challenge._get_initial_challenge_payload()
+        self.assertIsNone(payload["scheduled_at"])
+
+    def test_payload_omits_scheduled_at_when_ignored(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00+00:00"})
+        payload = challenge._get_initial_challenge_payload(ignore=("scheduled_at",))
+        self.assertNotIn("scheduled_at", payload)
+
+    def test_payload_raises_on_naive_scheduled_at(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00"})
+        with self.assertRaises(InvalidChallengeFile):
+            challenge._get_initial_challenge_payload()
+
+    def test_normalize_makes_utc_explicit(self):
+        # CTFd returns naive UTC; ctfcli should write it back with an explicit offset
+        self.assertEqual(
+            Challenge._normalize_scheduled_at("2026-06-15T12:00:00"),
+            "2026-06-15T12:00:00+00:00",
+        )
+
+    def test_normalize_returns_none_for_none(self):
+        self.assertIsNone(Challenge._normalize_scheduled_at(None))
+
+    def test_compare_equal_for_same_instant_different_offsets(self):
+        challenge = Challenge(self.minimal_challenge)
+        # 14:00+02:00 == 12:00+00:00 (same instant)
+        self.assertTrue(challenge._compare_scheduled_at("2026-06-15T14:00:00+02:00", "2026-06-15T12:00:00+00:00"))
+
+    def test_compare_not_equal_for_different_instants(self):
+        challenge = Challenge(self.minimal_challenge)
+        self.assertFalse(challenge._compare_scheduled_at("2026-06-15T13:00:00+00:00", "2026-06-15T12:00:00+00:00"))
+
+    def test_compare_handles_none(self):
+        challenge = Challenge(self.minimal_challenge)
+        self.assertTrue(challenge._compare_scheduled_at(None, None))
+        self.assertFalse(challenge._compare_scheduled_at("2026-06-15T12:00:00+00:00", None))
+
+    def test_lint_flags_naive_scheduled_at(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00"})
+        with self.assertRaises(LintException) as ctx:
+            challenge.lint(skip_hadolint=True)
+        field_issues = " ".join(ctx.exception.issues["fields"])
+        self.assertIn("scheduled_at", field_issues)
+        self.assertIn("timezone", field_issues)
+
+    def test_lint_accepts_timezone_aware_scheduled_at(self):
+        challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00+00:00"})
+        # Should not raise for scheduled_at (no other lint issues in the minimal fixture)
+        self.assertTrue(challenge.lint(skip_hadolint=True))
