@@ -28,7 +28,7 @@ class PagesCommand:
             click.secho(str(e), fg="red")
             return 1
 
-    def push(self, page: str | None = None) -> int:
+    def push(self, page: str | None = None, force: bool = False) -> int:
         pages = Page.get_local_pages()
 
         if page:
@@ -37,14 +37,14 @@ class PagesCommand:
                 None,
             )
             if page_object:
-                return self._page_operation(page_object, "push")
+                return self._page_operation(page_object, "push", force=force)
 
             click.secho(f"Could not find page '{page}'", fg="red")
             return 1
 
         return_code = 0
         for page_object in pages:
-            status = self._page_operation(page_object, "push")
+            status = self._page_operation(page_object, "push", force=force)
 
             if status == 1:
                 return_code = 1

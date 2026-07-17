@@ -22,6 +22,7 @@ from ctfcli.core.exceptions import (
 )
 from ctfcli.core.plugins import load_plugins
 from ctfcli.utils.git import check_if_dir_is_inside_git_repo
+from ctfcli.utils.integrations import INTEGRATIONS
 
 # Init logging
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO").upper())
@@ -35,8 +36,12 @@ class CTFCLI:
         directory: str | os.PathLike | None = None,
         no_git: bool = False,
         no_commit: bool = False,
+        github: bool = False,
+        gitlab: bool = False,
     ):
-        log.debug(f"init: (directory={directory}, no_git={no_git}, no_commit={no_commit})")
+        log.debug(
+            f"init: (directory={directory}, no_git={no_git}, no_commit={no_commit}, github={github}, gitlab={gitlab})"
+        )
         project_path = Path.cwd()
 
         # Create our project directory if requested
@@ -62,7 +67,26 @@ class CTFCLI:
 
         ctf_token = click.prompt("Please enter CTFd Admin Access Token", default="", show_default=False)
 
-        # Confirm information with user
+        # Collect CI integrations chosen via switches
+        selected = []
+        if github:
+            selected.append("github")
+        if gitlab:
+            selected.append("gitlab")
+
+        # If no integration switch was passed, ask once for a comma-separated list
+        if not selected:
+            available = ", ".join(INTEGRATIONS)
+            response = click.prompt(
+                f"Any integrations to add: (comma-separated, leave blank for none)\n"
+                f"Available: {available} \n"
+                "Integrations",
+                default="",
+                show_default=False,
+            )
+            selected = [name.strip().lower() for name in response.split(",") if name.strip()]
+
+        # Confirm information with user before creating anything
         if not click.confirm(f"Do you want to continue with {ctf_url} and {ctf_token}", default=True):
             click.echo("Aborted!")
             return
@@ -73,6 +97,20 @@ class CTFCLI:
         config["challenges"] = {}
         with (project_path / ".ctf" / "config").open(mode="a+") as config_file:
             config.write(config_file)
+
+        # Generate integration files, collecting the paths to stage in the initial commit
+        paths_to_add = [".ctf/config"]
+        for name in selected:
+            entry = INTEGRATIONS.get(name)
+            if entry is None:
+                click.secho(
+                    f"Unknown integration '{name}'. Available: {', '.join(INTEGRATIONS)}",
+                    fg="yellow",
+                )
+                continue
+
+            _label, creator = entry
+            paths_to_add.extend(creator(project_path))
 
         # if git init is to be skipped we can return
         if no_git:
@@ -88,7 +126,7 @@ class CTFCLI:
                 click.secho("Skipping git commit.", fg="yellow")
                 return
 
-            subprocess.call(["git", "add", ".ctf/config"], cwd=project_path)
+            subprocess.call(["git", "add", *paths_to_add], cwd=project_path)
             subprocess.call(["git", "commit", "-m", "init ctfcli project"], cwd=project_path)
             return
 
@@ -100,7 +138,7 @@ class CTFCLI:
             click.secho("Skipping git commit.", fg="yellow")
             return
 
-        subprocess.call(["git", "add", ".ctf/config"], cwd=project_path)
+        subprocess.call(["git", "add", *paths_to_add], cwd=project_path)
         subprocess.call(["git", "commit", "-m", "init ctfcli project"], cwd=project_path)
 
     def config(self):

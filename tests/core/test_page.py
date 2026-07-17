@@ -437,6 +437,49 @@ class TestPage(unittest.TestCase):
             "Cannot push page 'html-page.html' - remote version exists. Use sync instead.", str(e.exception)
         )
 
+    @mock.patch("ctfcli.core.config.Path.cwd", return_value=minimal_challenge_cwd)
+    @mock.patch("ctfcli.core.page.click.secho")
+    @mock.patch("ctfcli.core.page.API")
+    def test_force_push_syncs_local_page_if_remote_exists(
+        self, mock_api_constructor: MagicMock, mock_secho: MagicMock, *args, **kwargs
+    ):
+        mock_api = mock_api_constructor.return_value
+
+        mock_page_data = {
+            "format": "html",
+            "files": [],
+            "draft": False,
+            "title": "HTML Page",
+            "id": 1,
+            "content": "<h1>Hello World!</h1>",
+            "auth_required": False,
+            "hidden": False,
+            "route": "html-page",
+        }
+
+        mock_api.get.return_value.json.return_value = {
+            "success": True,
+            "data": [mock_page_data],
+        }
+
+        page_path = BASE_DIR / "fixtures" / "challenges" / "pages" / "html-page.html"
+        page = Page(page_path=page_path)
+        page.push(force=True)
+
+        expected_page_payload = {
+            "route": "html-page",
+            "title": "HTML Page",
+            "content": "<h1>Hello World!</h1>",
+            "draft": False,
+            "hidden": False,
+            "auth_required": False,
+            "format": "html",
+        }
+
+        mock_secho.assert_called_once_with("Syncing existing page instead (because of --force)", fg="yellow")
+        mock_api.post.assert_not_called()
+        mock_api.patch.assert_called_once_with("/api/v1/pages/1", json=expected_page_payload)
+
     def test_get_format(self):
         formats = {
             ".md": "markdown",
