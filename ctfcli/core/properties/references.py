@@ -208,15 +208,14 @@ class ModuleProperty(Property):
     def _set(self, ctx: PropertyContext) -> None:
         module = ctx.challenge.get("module", None)
 
-        if not module:
+        if module is None or module == "":
             # explicit null (or empty) module - remove the challenge from its module
             module_id = None
-        elif type(module) == int:
-            # module by id
-            # trust it and use it directly
-            module_id = module
         else:
-            # module by name
+            # module is always treated as a name - coerce so a numeric name
+            # (e.g. "2024", which YAML loads as an int) is handled as a string
+            module = str(module)
+
             # find the module id from the modules installed on the remote
             module_id = None
             r = ctx.api.get("/api/v1/modules")
@@ -252,16 +251,10 @@ class ModuleProperty(Property):
         r.raise_for_status()
         return (r.json().get("data") or {}).get("name", None)
 
-    # Compare module assignments, will resolve module IDs to names
+    # Compare module assignments - modules are always referenced by name, so a
+    # numeric name (loaded from YAML as an int) is coerced to a string to compare
     def matches(self, ctx: PropertyContext, local, remote) -> bool:
         def normalize_module(value):
-            if type(value) == int:
-                r = ctx.api.get(f"/api/v1/modules/{value}")
-                if not r.ok:
-                    return None
-
-                return (r.json().get("data") or {}).get("name", None)
-
-            return value
+            return None if value is None else str(value)
 
         return normalize_module(local) == normalize_module(remote)

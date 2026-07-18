@@ -3,6 +3,7 @@ import subprocess
 import click
 
 from ctfcli.core.exceptions import LintException
+from ctfcli.core.properties import PROPERTIES
 from ctfcli.utils.tools import strings
 
 
@@ -24,6 +25,10 @@ def lint_challenge(challenge, skip_hadolint: bool = False, flag_format: str = "f
 
         if challenge.get(field) is None:
             issues["fields"].append(f"challenge.yml is missing required field: {field}")
+
+    # Let each property validate its own value
+    for prop in PROPERTIES:
+        prop.lint(challenge, issues)
 
     # Check that the image field and Dockerfile match
     if (challenge.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") != ".":

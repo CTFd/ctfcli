@@ -103,6 +103,11 @@ class Property:
     def verify(self, ctx: PropertyContext) -> bool:
         return True
 
+    # per-property validation of the local challenge.yml value, appending any
+    # problems to the shared lint issues dict (see ctfcli.core.lint)
+    def lint(self, challenge, issues: dict) -> None:
+        pass
+
     # hook to amend the normalized challenge during mirror, for properties that
     # are not part of the normalized challenge and require side effects instead
     # (e.g. files, which have to be downloaded and written to disk)
