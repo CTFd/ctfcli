@@ -16,21 +16,18 @@ class MediaCommand:
         api = API()
 
         filename = os.path.basename(path)
-        new_file = (filename, open(path, mode="rb"))
         location = f"media/{filename}"
         file_payload = {
             "type": "page",
             "location": location,
         }
 
-        # Specifically use data= here to send multipart/form-data
-        r = api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
-        r.raise_for_status()
-        resp = r.json()
-        server_location = resp["data"][0]["location"]
-
-        # Close the file handle
-        new_file[1].close()
+        with open(path, mode="rb") as file_handle:
+            # Specifically use data= here to send multipart/form-data
+            r = api.post("/api/v1/files", files={"file": (filename, file_handle)}, data=file_payload)
+            r.raise_for_status()
+            resp = r.json()
+            server_location = resp["data"][0]["location"]
 
         config.config.set("media", location, f"/files/{server_location}")
 

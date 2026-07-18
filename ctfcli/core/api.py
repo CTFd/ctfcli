@@ -1,4 +1,4 @@
-from typing import Mapping
+from collections.abc import Mapping
 from urllib.parse import urljoin
 
 from requests import Session
@@ -76,12 +76,12 @@ class API(Session):
             headers = dict(headers)
             headers["Content-Type"] = multipart.content_type
 
-            return super(API, self).request(
+            return super().request(
                 method,
                 url,
+                *args,
                 data=multipart,
                 headers=headers,
-                *args,
                 **kwargs,
             )
 
@@ -89,15 +89,15 @@ class API(Session):
         # modify the headers here instead of using self.headers because we don't want to
         # override the multipart/form-data case above
         if data is None and files is None:
-            if kwargs.get("headers", None) is None:
+            if kwargs.get("headers") is None:
                 kwargs["headers"] = {}
             kwargs["headers"]["Content-Type"] = "application/json"
 
-        return super(API, self).request(
+        return super().request(
             method,
             url,
+            *args,
             data=data,
             files=files,
-            *args,
             **kwargs,
         )

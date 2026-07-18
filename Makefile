@@ -1,5 +1,5 @@
-.PHONY: all
-.IGNORE: lint format
+.PHONY: lint format test clean
+.IGNORE: format
 
 lint:
 	ruff format --check .

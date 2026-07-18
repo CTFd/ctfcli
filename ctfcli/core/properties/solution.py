@@ -122,17 +122,18 @@ class SolutionProperty(Property):
 
             for mdx, alt, path in markdown_images:
                 local_path = solution_path.parent / path
-                new_file = (local_path.name, open(solution_path.parent / path, mode="rb"))
                 file_payload = {
                     "type": "solution",
                     "solution_id": solution_id,
                 }
 
-                # Specifically use data= here to send multipart/form-data
-                r = ctx.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
-                r.raise_for_status()
-                resp = r.json()
-                server_location = resp["data"][0]["location"]
+                with local_path.open(mode="rb") as file_handle:
+                    # Specifically use data= here to send multipart/form-data
+                    r = ctx.api.post("/api/v1/files", files={"file": (local_path.name, file_handle)}, data=file_payload)
+                    r.raise_for_status()
+                    resp = r.json()
+                    server_location = resp["data"][0]["location"]
+
                 content = content.replace(mdx, f"![{alt}](/files/{server_location})")
 
             # Process snippet includes (--8<-- "filename")

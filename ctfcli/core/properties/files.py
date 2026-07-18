@@ -191,15 +191,12 @@ class FilesProperty(Property):
                 r.raise_for_status()
 
     def create_file(self, ctx: PropertyContext, local_path: Path) -> None:
-        new_file = (local_path.name, open(local_path, mode="rb"))
         file_payload = {"challenge_id": ctx.challenge_id, "type": "challenge"}
 
-        # Specifically use data= here to send multipart/form-data
-        r = ctx.api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
-        r.raise_for_status()
-
-        # Close the file handle
-        new_file[1].close()
+        with local_path.open(mode="rb") as file_handle:
+            # Specifically use data= here to send multipart/form-data
+            r = ctx.api.post("/api/v1/files", files={"file": (local_path.name, file_handle)}, data=file_payload)
+            r.raise_for_status()
 
     def create_all_files(self, ctx: PropertyContext) -> None:
         new_files = []
