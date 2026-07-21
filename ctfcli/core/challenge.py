@@ -630,6 +630,22 @@ class Challenge(dict):
                 return solution["id"]
         return None
 
+    def _delete_solution_files(self, content: str) -> None:
+        locations = re.findall(r"/files/([^)\s]+)", content or "")
+        if not locations:
+            return
+
+        remote_files = self.api.get("/api/v1/files?type=solution").json()["data"]
+        file_ids_by_location = {f["location"]: f["id"] for f in remote_files}
+
+        # A writeup can reference the same file more than once - deduplicate so
+        # that each file is only deleted once (a second DELETE would 404)
+        for location in dict.fromkeys(locations):
+            file_id = file_ids_by_location.get(location)
+            if file_id is not None:
+                r = self.api.delete(f"/api/v1/files/{file_id}")
+                r.raise_for_status()
+
     def _create_solution(self):
         resolved_solution = self._resolve_solution_path()
         if not resolved_solution:
@@ -644,6 +660,11 @@ class Challenge(dict):
             r.raise_for_status()
             solution_id = r.json()["data"]["id"]
         else:
+            r = self.api.get(f"/api/v1/solutions/{solution_id}")
+            r.raise_for_status()
+            previous_content = r.json()["data"].get("content") or ""
+            self._delete_solution_files(previous_content)
+
             # Keep solution state in sync and clear stale content before rebuilding references.
             r = self.api.patch(
                 f"/api/v1/solutions/{solution_id}",
@@ -657,7 +678,9 @@ class Challenge(dict):
             # Find all images in the content (markdown format; ignore html format)
             # Markdown format: ![alt text](image_url)
             # Returns tuples: (full_match, alt_text, image_path)
-            markdown_images = re.findall(r"(!\[([^\]]*)\]\(([^\)]+)\))", content)
+            # content.replace() below rewrites every occurrence, so uploading once per
+            # regex match would orphan a file for each repeated reference. Deduplicate.
+            markdown_images = list(dict.fromkeys(re.findall(r"(!\[([^\]]*)\]\(([^\)]+)\))", content)))
 
             # Find all snippet includes (MkDocs style: --8<-- "filename")
             # Returns tuples: (full_match, filename)
