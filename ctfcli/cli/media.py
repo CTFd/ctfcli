@@ -1,41 +1,14 @@
-import os
-
 import click
 
 from ctfcli.core.api import API
 from ctfcli.core.config import Config
+from ctfcli.core.media import Media
 
 
 class MediaCommand:
     def add(self, path):
         """Add local media file to config file and remote instance"""
-        config = Config()
-        if config.config.has_section("media") is False:
-            config.config.add_section("media")
-
-        api = API()
-
-        filename = os.path.basename(path)
-        new_file = (filename, open(path, mode="rb"))
-        location = f"media/{filename}"
-        file_payload = {
-            "type": "page",
-            "location": location,
-        }
-
-        # Specifically use data= here to send multipart/form-data
-        r = api.post("/api/v1/files", files={"file": new_file}, data=file_payload)
-        r.raise_for_status()
-        resp = r.json()
-        server_location = resp["data"][0]["location"]
-
-        # Close the file handle
-        new_file[1].close()
-
-        config.config.set("media", location, f"/files/{server_location}")
-
-        with open(config.config_path, "w+") as f:
-            config.write(f)
+        Media.upload(path)
 
     def rm(self, path):
         """Remove local media file from remote server and local config"""
