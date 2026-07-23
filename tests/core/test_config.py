@@ -69,6 +69,10 @@ class TestConfig(unittest.TestCase):
                 "test-challenge-full": "user@host:example/test-challenge-full.git",
                 "test-challenge-minimal": "user@host:example/test-challenge-minimal.git",
             },
+            "media": {
+                "logo": "/files/media/logo.png",
+                "handout": "/files/media/handout.zip",
+            },
         }
 
         config_data = json.loads(config.as_json())

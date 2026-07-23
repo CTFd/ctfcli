@@ -17,9 +17,11 @@ from ctfcli.core.exceptions import (
     InvalidChallengeDefinition,
     InvalidChallengeFile,
     LintException,
+    ProjectNotInitialized,
     RemoteChallengeNotFound,
 )
 from ctfcli.core.image import Image
+from ctfcli.core.media import Media
 from ctfcli.utils.hashing import hash_file
 from ctfcli.utils.tools import strings
 
@@ -365,12 +367,36 @@ class Challenge(dict):
             if not (self.challenge_directory / challenge_file).exists():
                 raise InvalidChallengeFile(f"File {challenge_file} could not be loaded")
 
+    def _render_media(self, text):
+        # Substitute [media] placeholders from .ctf/config; no-op if text isn't a
+        # string or the project config can't be located (e.g. outside a project).
+        if not isinstance(text, str):
+            return text
+        try:
+            return Media.replace_placeholders(text)
+        except ProjectNotInitialized:
+            return text
+
+    def _render_media_in_hints(self, hints):
+        # Return a copy of the hints list with [media] placeholders rendered in
+        # each hint's content, preserving the str-vs-dict structure used by
+        # challenge.yml / _normalize_challenge.
+        rendered = []
+        for h in hints:
+            if isinstance(h, str):
+                rendered.append(self._render_media(h))
+            elif isinstance(h, dict) and "content" in h:
+                rendered.append({**h, "content": self._render_media(h["content"])})
+            else:
+                rendered.append(h)
+        return rendered
+
     def _get_initial_challenge_payload(self, ignore: tuple[str] = ()) -> dict:
         challenge = self
         challenge_payload = {
             "name": self["name"],
             "category": self.get("category", ""),
-            "description": self.get("description", ""),
+            "description": self._render_media(self.get("description", "") or ""),
             "attribution": self.get("attribution", ""),
             "type": self.get("type", "standard"),
             # Hide the challenge for the duration of the sync / creation
@@ -511,7 +537,7 @@ class Challenge(dict):
         for idx, hint in enumerate(self["hints"]):
             if type(hint) == str:
                 hint_payload = {
-                    "content": hint,
+                    "content": self._render_media(hint),
                     "title": "",
                     "cost": 0,
                     "challenge_id": self.challenge_id,
@@ -520,7 +546,7 @@ class Challenge(dict):
             else:
                 has_requirements = bool(hint.get("requirements"))
                 hint_payload = {
-                    "content": "" if has_requirements else hint["content"],
+                    "content": "" if has_requirements else self._render_media(hint["content"]),
                     "title": hint.get("title", ""),
                     "cost": hint.get("cost", 0),
                     "challenge_id": self.challenge_id,
@@ -567,7 +593,7 @@ class Challenge(dict):
             # Now safe to set the real content
             r = self.api.patch(
                 f"/api/v1/hints/{hint_id}",
-                json={"content": hint["content"]},
+                json={"content": self._render_media(hint["content"])},
             )
             r.raise_for_status()
 
@@ -1478,6 +1504,15 @@ class Challenge(dict):
                     continue
 
                 if key == "module" and self._compare_challenge_module(challenge[key], normalized_challenge[key]):
+                    continue
+
+                # Render [media] placeholders locally before comparing, so a
+                # challenge pushed with placeholders still verifies against the
+                # substituted values stored on the remote.
+                if key == "description" and self._render_media(challenge[key]) == normalized_challenge[key]:
+                    continue
+
+                if key == "hints" and self._render_media_in_hints(challenge[key]) == normalized_challenge[key]:
                     continue
 
                 click.secho(
