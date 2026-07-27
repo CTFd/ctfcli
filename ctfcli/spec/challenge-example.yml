@@ -6,6 +6,14 @@ name: "{{cookiecutter.name}}"
 author: "author"
 category: category
 description: This is a sample description
+# Descriptions (and hint contents) can reference media files that have already
+# been uploaded to your CTFd instance. Add media with `ctf media add`
+# and then reference them with {name} or {{ name }} placeholders.
+# The name is media/<filename>, matching the key written to .ctf/config.
+#
+# description: |
+#     This is a sample description with an image ![logo]({media/logo.png})
+#     and a link to a [handout]({{ media/handout.zip }}).
 attribution: Written by [author](https://ctfd.io)
 value: 100
 type: standard
@@ -116,6 +124,7 @@ files:
 # required but can be nice.
 # Can be removed if unused
 # Accepts dictionaries or strings
+# Hint content also supports media placeholders as described in the description field.
 hints:
     - {
         content: "This hint costs points",
@@ -124,6 +133,9 @@ hints:
     - This hint is free
     - title: Titled Hint
       content: This hint has a title and costs points
+      cost: 10
+    - title: Hint with media
+      content: Take a look at this [handout]({handout})
       cost: 10
     - key: keyed_hint_1
       title: This hint has a key
