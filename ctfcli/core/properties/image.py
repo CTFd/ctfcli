@@ -34,6 +34,10 @@ class ImageProperty(Property):
         if not challenge_image:
             return None
 
+        # Check if challenge_image is explicitly marked as __compose__
+        if challenge_image == "__compose__":
+            return Image(challenge_image)
+
         # Check if challenge_image is explicitly marked with registry:// prefix
         if challenge_image.startswith("registry://"):
             challenge_image = challenge_image.replace("registry://", "")
