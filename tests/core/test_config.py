@@ -42,14 +42,14 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(expected_config_path, config.get_config_path())
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=minimal_challenge_cwd)
-    @mock.patch("ctfcli.core.config.configparser.ConfigParser")
+    @mock.patch("ctfcli.core.config.EnvConfigParser")
     def test_reads_config(self, mock_configparser: MagicMock, *args, **kwargs):
         Config()
         expected_config_path = BASE_DIR / "fixtures" / "challenges" / ".ctf" / "config"
         mock_configparser.return_value.read.assert_called_once_with(expected_config_path)
 
     @mock.patch("ctfcli.core.config.Path.cwd", return_value=minimal_challenge_cwd)
-    @mock.patch("ctfcli.core.config.configparser.ConfigParser")
+    @mock.patch("ctfcli.core.config.EnvConfigParser")
     def test_writes_config(self, mock_configparser: MagicMock, *args, **kwargs):
         config = Config()
 
