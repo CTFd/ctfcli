@@ -1,9 +1,25 @@
+import os
+
 from ctfcli.core.config import Config
 from ctfcli.core.exceptions import ProjectNotInitialized
 from ctfcli.utils.tools import safe_format
 
 
 class Media:
+    @staticmethod
+    def upload(api, path, location: str) -> str:
+        file_payload = {
+            "type": "page",
+            "location": location,
+        }
+
+        with open(path, mode="rb") as file_handle:
+            # Specifically use data= here to send multipart/form-data
+            r = api.post("/api/v1/files", files={"file": (os.path.basename(path), file_handle)}, data=file_payload)
+            r.raise_for_status()
+            resp = r.json()
+            return resp["data"][0]["location"]
+
     @staticmethod
     def replace_placeholders(content: str) -> str:
         config = Config()
