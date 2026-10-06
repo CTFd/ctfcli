@@ -9,6 +9,25 @@ from ctfcli import __name__ as pkg_name
 from ctfcli.core.exceptions import ProjectNotInitialized
 
 
+class EnvConfigParser(configparser.ConfigParser):
+    """
+    ConfigParser that reads environment variable overrides from the "config" section
+    without storing them, so they are never written to disk.
+    """
+
+    env_overrides = {}
+
+    def get(self, section, option, **kwargs):
+        if section == "config" and option in self.env_overrides:
+            return self.env_overrides[option]
+        return super().get(section, option, **kwargs)
+
+    def has_option(self, section, option):
+        if section == "config" and option in self.env_overrides:
+            return True
+        return super().has_option(section, option)
+
+
 class Config:
     _env_vars = {
         "CTFCLI_ACCESS_TOKEN": "access_token",
@@ -24,7 +43,7 @@ class Config:
         self.pages_path = self.get_pages_path()
         self.plugins_path = self.get_plugins_path()
 
-        parser = configparser.ConfigParser()
+        parser = EnvConfigParser()
         parser.optionxform = str
         parser.read(self.config_path)
 
@@ -37,17 +56,18 @@ class Config:
     def _env_overrides(self):
         """
         For each environment variable specified in _env_vars, check if it exists
-        and if so, add it to the config under the "config" section.
+        and if so, set it as an override for the "config" section.
         """
+        overrides = {}
         for env_var, config_key in self._env_vars.items():
             env_value = os.getenv(env_var)
-            if not env_value:
-                continue
+            if env_value:
+                overrides[config_key] = env_value
 
-            if not self.config.has_section("config"):
-                self.config.add_section("config")
+        if overrides and not self.config.has_section("config"):
+            self.config.add_section("config")
 
-            self.config["config"][config_key] = env_value
+        self.config.env_overrides = overrides
 
     def __getitem__(self, key):
         return self.config[key]
@@ -64,6 +84,9 @@ class Config:
             data[section] = {}
             for k, v in self.config.items(section):
                 data[section][k] = v
+
+        for k, v in self.config.env_overrides.items():
+            data["config"][k] = v
 
         if pretty:
             return json.dumps(data, sort_keys=True, indent=4)
