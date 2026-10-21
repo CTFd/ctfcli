@@ -9,6 +9,7 @@ import yaml
 
 from ctfcli.core.challenge import Challenge
 from ctfcli.core.exceptions import (
+    InvalidChallengeDefinition,
     InvalidChallengeFile,
     LintException,
     RemoteChallengeNotFound,
@@ -2095,6 +2096,28 @@ class TestCreateChallenge(unittest.TestCase):
                         mock_api.post.assert_called_once_with("/api/v1/challenges", json=expected_challenge_payload)
                         mock_api.get.assert_not_called()
                         mock_api.delete.assert_not_called()
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_creates_challenge_with_zero_value(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"value": 0})
+
+        mock_api: MagicMock = mock_api_constructor.return_value
+        mock_api.post.return_value.json.return_value = {"success": True, "data": {"id": 3}}
+
+        challenge.create()
+
+        mock_api.post.assert_called_once_with("/api/v1/challenges", json=ANY)
+        self.assertEqual(mock_api.post.call_args.kwargs["json"]["value"], 0)
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_does_not_create_challenge_without_value(self, mock_api_constructor: MagicMock, *args, **kwargs):
+        challenge = Challenge(self.minimal_challenge, {"value": None})
+
+        with self.assertRaises(InvalidChallengeDefinition) as e:
+            challenge.create()
+
+        self.assertEqual(str(e.exception), "Challenge does not provide a value")
+        mock_api_constructor.return_value.post.assert_not_called()
 
 
 class TestLintChallenge(unittest.TestCase):
