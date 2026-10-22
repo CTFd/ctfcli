@@ -137,14 +137,46 @@ class AttemptsProperty(Property):
     def is_default(self, value) -> bool:
         return value == 0
 
+    @classmethod
+    def parse(cls, value: Any, challenge_file_path=None) -> int:
+        # CTFd uses 0 for unlimited attempts, and rejects null or negative values
+        error = (
+            f"Challenge file at {challenge_file_path} has an invalid 'attempts' value '{value}': "
+            "expected a non-negative integer, use 0 for unlimited attempts"
+        )
+
+        # if attempts is an int as string, cast it
+        if isinstance(value, str) and value.lstrip("-").isdigit():
+            value = int(value)
+
+        # bool is a subclass of int, but attempts: true is not a valid value
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise InvalidChallengeFile(error)
+
+        return value
+
     def create_payload(self, ctx: PropertyContext) -> dict:
         if self.ignored(ctx):
             return {}
 
-        return {"max_attempts": ctx.challenge.get("attempts", 0)}
+        # parse validates the attempts value and raises otherwise
+        attempts = self.parse(ctx.challenge.get("attempts", 0), ctx.challenge.challenge_file_path)
+
+        return {"max_attempts": attempts}
 
     def pull(self, ctx: PropertyContext, remote_data: dict):
-        return remote_data["max_attempts"]
+        # Older CTFd versions accepted a null max_attempts, which behaves as unlimited
+        return remote_data["max_attempts"] or 0
+
+    # Check that attempts, if present, is a non-negative integer
+    def lint(self, challenge, issues: dict) -> None:
+        if "attempts" not in challenge:
+            return
+
+        try:
+            self.parse(challenge["attempts"], challenge.challenge_file_path)
+        except InvalidChallengeFile as e:
+            issues["fields"].append(str(e))
 
 
 class ConnectionInfoProperty(CopiedProperty):

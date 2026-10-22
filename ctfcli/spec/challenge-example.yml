@@ -65,7 +65,8 @@ healthcheck: writeup/exploit.sh
 #   state: solved  # hidden | visible | solved
 solution: writeup/WRITEUP.md
 
-# Can be removed if unused
+# Maximum amount of attempts, must be a non-negative integer
+# Can be removed if unused, which defaults to 0 (unlimited attempts)
 attempts: 5
 
 # Specifies flag processing behavior of challenge

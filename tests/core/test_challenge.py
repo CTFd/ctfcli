@@ -2977,3 +2977,89 @@ class TestChallengeScheduledAt(unittest.TestCase):
         challenge = Challenge(self.minimal_challenge, {"scheduled_at": "2026-06-15T12:00:00+00:00"})
         # Should not raise for scheduled_at (no other lint issues in the minimal fixture)
         self.assertTrue(challenge.lint(skip_hadolint=True))
+
+
+class TestChallengeAttempts(unittest.TestCase):
+    minimal_challenge = BASE_DIR / "fixtures" / "challenges" / "test-challenge-minimal" / "challenge.yml"
+
+    def _prop(self):
+        return get_property("attempts")
+
+    def _payload(self, challenge, ignore=()):
+        return self._prop().create_payload(PropertyContext(challenge, ignore=ignore))
+
+    def test_parse_accepts_non_negative_integers(self):
+        self.assertEqual(self._prop().parse(0), 0)
+        self.assertEqual(self._prop().parse(5), 5)
+
+    def test_parse_casts_integer_strings(self):
+        self.assertEqual(self._prop().parse("5"), 5)
+
+    def test_parse_rejects_null(self):
+        # CTFd uses 0 for unlimited attempts, a null max_attempts breaks the challenge view
+        with self.assertRaises(InvalidChallengeFile) as ctx:
+            self._prop().parse(None)
+        self.assertIn("0 for unlimited", str(ctx.exception))
+
+    def test_parse_rejects_negative_values(self):
+        with self.assertRaises(InvalidChallengeFile):
+            self._prop().parse(-1)
+
+        with self.assertRaises(InvalidChallengeFile):
+            self._prop().parse("-1")
+
+    def test_parse_rejects_non_integer_values(self):
+        for value in [True, 1.5, "five", ""]:
+            with self.subTest(value=value), self.assertRaises(InvalidChallengeFile):
+                self._prop().parse(value)
+
+    def test_payload_defaults_to_unlimited_when_absent(self):
+        challenge = Challenge(self.minimal_challenge)
+        self.assertEqual(self._payload(challenge), {"max_attempts": 0})
+
+    def test_payload_includes_attempts(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": 5})
+        self.assertEqual(self._payload(challenge), {"max_attempts": 5})
+
+    def test_payload_raises_on_null_attempts(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": None})
+        with self.assertRaises(InvalidChallengeFile):
+            self._payload(challenge)
+
+    def test_payload_raises_on_negative_attempts(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": -1})
+        with self.assertRaises(InvalidChallengeFile):
+            self._payload(challenge)
+
+    def test_payload_omits_attempts_when_ignored(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": None})
+        self.assertEqual(self._payload(challenge, ignore=("attempts",)), {})
+
+    @mock.patch("ctfcli.core.challenge.API")
+    def test_create_does_not_post_null_attempts(self, mock_api_constructor: MagicMock):
+        challenge = Challenge(self.minimal_challenge, {"attempts": None})
+        with self.assertRaises(InvalidChallengeFile):
+            challenge.create()
+        mock_api_constructor.return_value.post.assert_not_called()
+
+    def test_pull_normalizes_null_remote_attempts(self):
+        # Older CTFd versions accepted a null max_attempts, which means unlimited
+        ctx = PropertyContext(Challenge(self.minimal_challenge))
+        self.assertEqual(self._prop().pull(ctx, {"max_attempts": None}), 0)
+        self.assertEqual(self._prop().pull(ctx, {"max_attempts": 5}), 5)
+
+    def test_lint_flags_null_attempts(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": None})
+        with self.assertRaises(LintException) as ctx:
+            challenge.lint(skip_hadolint=True)
+        self.assertIn("attempts", " ".join(ctx.exception.issues["fields"]))
+
+    def test_lint_flags_negative_attempts(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": -1})
+        with self.assertRaises(LintException) as ctx:
+            challenge.lint(skip_hadolint=True)
+        self.assertIn("attempts", " ".join(ctx.exception.issues["fields"]))
+
+    def test_lint_accepts_valid_attempts(self):
+        challenge = Challenge(self.minimal_challenge, {"attempts": 0})
+        self.assertTrue(challenge.lint(skip_hadolint=True))
