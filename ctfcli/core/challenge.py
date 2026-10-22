@@ -263,7 +263,7 @@ class Challenge(dict):
         if not self.get("name", False):
             raise InvalidChallengeDefinition("Challenge does not provide a name")
 
-        if not self.get("value", False) and self.get("type", "standard") != "dynamic":
+        if self.get("value") is None and self.get("type", "standard") != "dynamic":
             raise InvalidChallengeDefinition("Challenge does not provide a value")
 
         ctx = PropertyContext(self, ignore=ignore)
