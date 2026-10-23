@@ -19,6 +19,47 @@ class SSHDeploymentHandler(DeploymentHandler):
             )
             return DeploymentResult(False)
 
+        if self.challenge.image.compose:
+            return self._deploy_compose_stack(*args, **kwargs)
+
+        return self._deploy_single_image(*args, **kwargs)
+
+    def _deploy_compose_stack(self, *args, **kwargs) -> DeploymentResult:
+        host_url = urlparse(self.host)
+        target_path = str(host_url.path)
+        if target_path == "/":  # Don't put challenges in the root of the filesystem.
+            target_path = ""
+        elif target_path == "//":  # If you really want to, add a second slash as part of your path: ssh://1.1.1.1//
+            target_path = "/"
+        elif target_path.startswith("/~/"):  # Support relative paths by starting your path with /~/
+            target_path = target_path.removeprefix("/~/")
+        try:
+            subprocess.run(["ssh", host_url.netloc, f"mkdir -p '{target_path}/'"], check=True)
+            subprocess.run(
+                ["rsync", "-a", "--delete", self.challenge.challenge_directory, f"{host_url.netloc}:{target_path}"],
+                check=True,
+            )
+            if not target_path:
+                remote_path = f"{self.challenge.challenge_directory.name}"
+            else:
+                remote_path = f"{target_path}/{self.challenge.challenge_directory.name}"
+            subprocess.run(
+                [
+                    "ssh",
+                    host_url.netloc,
+                    f"cd '{remote_path}' && docker compose up -d --build --remove-orphans -y",
+                ],
+                check=True,
+            )
+
+        except subprocess.CalledProcessError as e:
+            click.secho("Failed to deploy compose stack!", fg="red")
+            click.secho(str(e), fg="red")
+            return DeploymentResult(False)
+
+        return DeploymentResult(True)
+
+    def _deploy_single_image(self, *args, **kwargs) -> DeploymentResult:
         if self.challenge.image.built:
             if not self.challenge.image.pull():
                 click.secho("Could not pull the image. Please check docker output above.", fg="red")

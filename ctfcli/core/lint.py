@@ -31,8 +31,8 @@ def lint_challenge(challenge, skip_hadolint: bool = False, flag_format: str = "f
         prop.lint(challenge, issues)
 
     # Check that the image field and Dockerfile match
-    if (challenge.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") != ".":
-        issues["dockerfile"].append("Dockerfile exists but image field does not point to it")
+    if (challenge.challenge_directory / "Dockerfile").is_file() and challenge.get("image", "") not in [".", "__compose__"]:
+        issues["dockerfile"].append("Dockerfile exists but image field does not point to it or compose")
 
     # Check that Dockerfile exists and is EXPOSE'ing a port
     if challenge.get("image") == ".":
